@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Colector de MONITO: mide CPU/RAM/uptime/load/temp y lo publica en GitHub.
 
-Solo usa la libreria estandar. Cada equipo publica en su propia rama
-`data-<nombre>` con un commit sin padre (force-push), asi no hay conflictos
-entre equipos ni crece el historial del repo.
+Solo usa la libreria estandar. Los equipos comparten el archivo data.json de la rama
+`data` (un commit sin padre, force-push), asi la pagina lee todo con una sola
+llamada a la API y el historial del repo no crece.
 
 Config (variables de entorno o archivo KEY=VALUE, por defecto
 ~/.config/monito.env):
@@ -17,6 +17,7 @@ Uso:  collector.py            # mide y publica
 import glob
 import json
 import os
+import random
 import socket
 import sys
 import time
@@ -25,6 +26,8 @@ import urllib.request
 
 CONF = os.path.expanduser(os.environ.get("MONITO_CONF", "~/.config/monito.env"))
 SAMPLE_SECONDS = 1.0
+JITTER_SECONDS = 10
+BRANCH, FILE = "data", "data.json"
 
 
 def load_conf():
@@ -149,20 +152,44 @@ def gh(cfg, method, path, body=None):
         return json.load(r)
 
 
-def publish(cfg, data):
-    name = data["name"]
-    branch = "data-" + name
-    tree = gh(cfg, "POST", "/git/trees", {"tree": [
-        {"path": name + ".json", "mode": "100644", "type": "blob",
-         "content": json.dumps(data, separators=(",", ":"))}]})
-    commit = gh(cfg, "POST", "/git/commits",
-                {"message": "datos " + name, "tree": tree["sha"], "parents": []})
+def read_all(cfg):
+    """Lee el data.json actual de la rama `data` (todos los equipos)."""
+    req = urllib.request.Request(
+        "https://api.github.com/repos/%s/contents/%s?ref=%s" % (cfg["MONITO_REPO"], FILE, BRANCH),
+        headers={"Authorization": "Bearer " + cfg["MONITO_TOKEN"],
+                 "Accept": "application/vnd.github.raw+json", "User-Agent": "monito-collector"})
     try:
-        gh(cfg, "PATCH", "/git/refs/heads/" + branch, {"sha": commit["sha"], "force": True})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return json.load(r)
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return {}
+        raise
+    except ValueError:
+        return {}
+
+
+def publish(cfg, data):
+    # Todos los equipos comparten data.json; el jitter evita que escriban a la vez.
+    time.sleep(random.uniform(0, JITTER_SECONDS))
+    allm = read_all(cfg)
+    allm[data["name"]] = data
+    tree = gh(cfg, "POST", "/git/trees", {"tree": [
+        {"path": FILE, "mode": "100644", "type": "blob",
+         "content": json.dumps(allm, separators=(",", ":"))}]})
+    commit = gh(cfg, "POST", "/git/commits",
+                {"message": "datos", "tree": tree["sha"], "parents": []})
+    try:
+        gh(cfg, "PATCH", "/git/refs/heads/" + BRANCH, {"sha": commit["sha"], "force": True})
     except urllib.error.HTTPError as e:
         if e.code not in (404, 422):
             raise
-        gh(cfg, "POST", "/git/refs", {"ref": "refs/heads/" + branch, "sha": commit["sha"]})
+        try:
+            gh(cfg, "POST", "/git/refs", {"ref": "refs/heads/" + BRANCH, "sha": commit["sha"]})
+        except urllib.error.HTTPError as e2:
+            if e2.code != 422:   # otro equipo creo la rama justo antes
+                raise
+            gh(cfg, "PATCH", "/git/refs/heads/" + BRANCH, {"sha": commit["sha"], "force": True})
 
 
 def main():

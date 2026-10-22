@@ -88,7 +88,7 @@ const INTERVALS = [                    // solo estos tres
   { s: 60,   label: "1 min" },
 ];
 const DARK_FROM = 19, DARK_TO = 7;     // modo automático: oscuro de 19:00 a 07:00
-const STALE_AFTER = 660;               // s sin datos nuevos => sin conexión (caché de GitHub raw: 5 min + cron: 1 min)
+const STALE_API = 300, STALE_RAW = 660; // s sin datos nuevos => sin conexión (API: caché 1 min + cron 1 min; raw: caché 5 min)
 const WARN = 50, BAD = 80;
 // ===========================
 
@@ -98,7 +98,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
 const demo = !REPO || new URLSearchParams(location.search).has("demo");
-const state = { data: {}, next: 0, timer: null };
+const state = { data: {}, next: 0, timer: null, stale: 300 };
 
 // ---------- tema ----------
 const THEMES = ["auto", "light", "dark"];
@@ -175,7 +175,7 @@ function render() {
     const d = state.data[m.id];
     if (!d) return `<section class="card stale"><h2><span class="dot"></span>${m.id} <small>${m.label}</small></h2>
       <div class="legend" style="padding:90px 0">Sin datos</div></section>`;
-    const age = now - d.ts, live = age <= STALE_AFTER;
+    const age = now - d.ts, live = age <= state.stale;
     const ramTxt = d.ram_gb ? ` de ${d.ram_gb} GB` : "";
     return `<section class="card ${live ? "live" : "stale"}">
       <h2><span class="dot"></span>${m.id} <small>${m.label} · ${d.cores.length} hilos</small></h2>
@@ -201,17 +201,24 @@ function fakeData(id, prev) {
     ram: Math.round(30 + Math.random() * 60), ram_gb: n * 4, load: [n * Math.random() / 2, 0, 0], temp: 40 + Math.random() * 35,
   };
 }
-async function load(m) {
-  if (demo) return fakeData(m.id, state.data[m.id]);
-  const url = `https://raw.githubusercontent.com/${REPO}/data-${m.id}/${m.id}.json?t=${Date.now()}`;
-  const r = await fetch(url, { cache: "no-store" });
-  if (!r.ok) throw new Error(r.status);
-  return r.json();
+async function loadAll() {
+  if (demo) return Object.fromEntries(MACHINES.map(m => [m.id, fakeData(m.id, state.data[m.id])]));
+  try {   // API: caché de 60 s; una sola llamada trae los 3 equipos (límite 60/h sin token)
+    const r = await fetch(`https://api.github.com/repos/${REPO}/contents/data.json?ref=data`,
+      { headers: { Accept: "application/vnd.github.raw+json" } });
+    if (!r.ok) throw new Error(r.status);
+    state.stale = STALE_API;
+    return await r.json();
+  } catch (e) {   // sin cupo de API: raw.githubusercontent.com (caché de 5 min)
+    const r = await fetch(`https://raw.githubusercontent.com/${REPO}/data/data.json?t=${Date.now()}`, { cache: "no-store" });
+    if (!r.ok) throw new Error(r.status);
+    state.stale = STALE_RAW;
+    return await r.json();
+  }
 }
 async function refresh() {
   clearTimeout(state.timer);
-  const res = await Promise.allSettled(MACHINES.map(load));
-  res.forEach((r, i) => { if (r.status === "fulfilled") state.data[MACHINES[i].id] = r.value; });
+  try { Object.assign(state.data, await loadAll()); } catch (e) { console.warn("monito:", e); }
   render();
   state.last = new Date();
   state.next = Date.now() + INTERVALS[iv].s * 1000;

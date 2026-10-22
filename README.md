@@ -4,11 +4,11 @@ Monitor en tiempo real de **akaza**, **ymir** e **inozuke** (página estática e
 
 ```
  cada equipo (cron, 1/min)            GitHub                      navegador
- collector.py  ── API git ──►  rama data-<equipo>  ◄── fetch ──  index.html (Pages)
+ collector.py  ── API git ──►  rama data  ◄── fetch ──  index.html (Pages)
 ```
 
-Cada equipo publica un JSON en su propia rama `data-<nombre>` (un solo commit, se
-sobrescribe, el historial no crece). La página lee esos JSON y se refresca cada
+Los equipos publican en un solo `data.json` de la rama `data` (un solo commit, se
+sobrescribe, el historial no crece). La página lo lee con una sola llamada a la API de GitHub (caché de 1 min; si se agota el cupo de 60/h, usa raw.githubusercontent.com con caché de 5 min) y se refresca cada
 1 hora / 10 min / 1 min (botón arriba a la derecha).
 
 ## 1. Repo y Pages
@@ -49,7 +49,7 @@ crontab -e   # agregar:
 
 - Color de cada hilo / CPU total / RAM: verde < 50 %, naranja 50–80 %, rojo ≥ 80 %.
 - Modo automático de tema: oscuro de 19:00 a 07:00; el botón alterna Auto → Claro → Oscuro.
-- Un equipo sin datos nuevos por más de 11 min aparece atenuado como "sin conexión".
+- Un equipo sin datos nuevos por más de 5 min (11 si usa raw) aparece atenuado como "sin conexión".
 - La temperatura es el promedio de los cores (`coretemp` / `k10temp`); si el equipo no la expone, muestra `—`.
 - El CPU % es el promedio de 1 s al momento de medir (cada minuto), no un promedio del intervalo completo.
-- La caché de GitHub (`raw.githubusercontent.com`) retrasa los datos hasta ~5 min; por eso el dato mostrado puede tener hasta ~6 min aunque el botón diga "1 min".
+- Retraso típico del dato: hasta ~2 min con la API (hasta ~6 min si se agota su cupo y cae a raw).

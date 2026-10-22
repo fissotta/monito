@@ -3,13 +3,13 @@
 Monitor en tiempo real de **akaza**, **ymir** e **inozuke** (página estática en GitHub Pages).
 
 ```
- cada equipo (cron, 1/min)            GitHub                      navegador
+ cada equipo (cron, cada 5 min)            GitHub                      navegador
  collector.py  ── API git ──►  rama data  ◄── fetch ──  index.html (Pages)
 ```
 
 Los equipos publican en un solo `data.json` de la rama `data` (un solo commit, se
 sobrescribe, el historial no crece). La página lo lee con una sola llamada a la API de GitHub (caché de 1 min; si se agota el cupo de 60/h, usa raw.githubusercontent.com con caché de 5 min) y se refresca cada
-1 hora / 10 min / 1 min (botón arriba a la derecha).
+1 hora / 15 min / 5 min (botón arriba a la derecha).
 
 ## 1. Repo y Pages
 
@@ -42,14 +42,14 @@ chmod 600 ~/.config/monito.env
 python3 ~/monito/collector.py --dry-run   # prueba: imprime el JSON
 python3 ~/monito/collector.py              # publica una vez
 crontab -e   # agregar:
-* * * * * /usr/bin/python3 $HOME/monito/collector.py
+*/5 * * * * /usr/bin/python3 $HOME/monito/collector.py
 ```
 
 ## Notas
 
 - Color de cada hilo / CPU total / RAM: verde < 50 %, naranja 50–80 %, rojo ≥ 80 %.
 - Modo automático de tema: oscuro de 19:00 a 07:00; el botón alterna Auto → Claro → Oscuro.
-- Un equipo sin datos nuevos por más de 5 min (11 si usa raw) aparece atenuado como "sin conexión".
+- Un equipo sin datos nuevos por más de 8 min (13 si usa raw) aparece atenuado como "sin conexión".
 - La temperatura es el promedio de los cores (`coretemp` / `k10temp`); si el equipo no la expone, muestra `—`.
 - El CPU % es el promedio de 1 s al momento de medir (cada minuto), no un promedio del intervalo completo.
 - Retraso típico del dato: hasta ~2 min con la API (hasta ~6 min si se agota su cupo y cae a raw).

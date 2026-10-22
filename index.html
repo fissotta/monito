@@ -84,11 +84,11 @@ const MACHINES = [
 ];
 const INTERVALS = [                    // solo estos tres
   { s: 3600, label: "1 hora" },
-  { s: 600,  label: "10 min" },
-  { s: 60,   label: "1 min" },
+  { s: 900,  label: "15 min" },
+  { s: 300,  label: "5 min" },
 ];
 const DARK_FROM = 19, DARK_TO = 7;     // modo automático: oscuro de 19:00 a 07:00
-const STALE_API = 300, STALE_RAW = 660; // s sin datos nuevos => sin conexión (API: caché 1 min + cron 1 min; raw: caché 5 min)
+const STALE_API = 480, STALE_RAW = 780; // s sin datos nuevos => sin conexión (cron 5 min + caché API 1 min / raw 5 min)
 const WARN = 50, BAD = 80;
 // ===========================
 
@@ -119,7 +119,8 @@ $("btnTheme").onclick = () => {
 setInterval(applyTheme, 60000);
 
 // ---------- frecuencia ----------
-let iv = Math.max(0, INTERVALS.findIndex(i => String(i.s) === store.get("interval", "60")));
+let iv = INTERVALS.findIndex(i => String(i.s) === store.get("interval", "300"));
+if (iv < 0) iv = INTERVALS.length - 1;   // por defecto: 5 min
 function applyInterval() {
   $("btnRefresh").textContent = "Actualizar cada: " + INTERVALS[iv].label;
 }

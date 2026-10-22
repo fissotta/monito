@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>MONITO</title>
+<style>
+:root {
+  --bg: #f4f6f9; --card: #ffffff; --text: #1b2430; --muted: #6b7686; --track: #e3e8ef; --border: #dde3ec;
+  --ok: #16a34a; --warn: #f59e0b; --bad: #dc2626; --off: #9aa4b2; --accent: #2563eb;
+}
+:root[data-theme="dark"] {
+  --bg: #0d1117; --card: #161b22; --text: #e6edf3; --muted: #8b96a5; --track: #262d38; --border: #2a313c;
+  --ok: #3fb950; --warn: #f0a030; --bad: #f85149; --off: #6b7686; --accent: #58a6ff;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  transition: background .3s, color .3s;
+}
+header {
+  display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between;
+  padding: 14px 16px; max-width: 1200px; margin: 0 auto;
+}
+h1 { font-size: 20px; margin: 0; letter-spacing: .12em; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+button {
+  font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--border);
+  border-radius: 8px; padding: 7px 12px; cursor: pointer; min-height: 36px;
+}
+button:hover { border-color: var(--accent); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.status { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+main {
+  display: grid; gap: 16px; padding: 0 16px 24px; max-width: 1200px; margin: 0 auto;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+}
+.card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 14px 12px;
+  transition: opacity .3s;
+}
+.card.stale { opacity: .55; }
+.card h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 17px; }
+.card h2 small { color: var(--muted); font-weight: 400; font-size: 13px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--off); flex: none; }
+.live .dot { background: var(--ok); }
+svg { display: block; width: 100%; max-width: 360px; margin: 0 auto; }
+svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
+.seg { transition: stroke .4s; }
+.row { display: flex; justify-content: space-around; font-size: 14px; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.row span b { font-weight: 600; }
+.legend { color: var(--muted); font-size: 12px; text-align: center; margin-top: 6px; }
+.age { color: var(--muted); font-size: 12px; text-align: center; margin-top: 2px; }
+footer { max-width: 1200px; margin: 0 auto; padding: 0 16px 24px; color: var(--muted); font-size: 12px; }
+.sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin: 0 3px 0 8px; vertical-align: baseline; }
+</style>
+</head>
+<body>
+<header>
+  <h1>MONITO</h1>
+  <div class="controls">
+    <span class="status" id="status" aria-live="polite">—</span>
+    <button id="btnRefresh" title="Cambiar frecuencia de actualización"></button>
+    <button id="btnTheme" title="Cambiar tema"></button>
+  </div>
+</header>
+<main id="grid"></main>
+<footer>
+  CPU por hilo y total: <span class="sw" style="background:var(--ok)"></span>&lt; 50 %
+  <span class="sw" style="background:var(--warn)"></span>50–80 %
+  <span class="sw" style="background:var(--bad)"></span>≥ 80 %.
+  Anillo exterior: hilos (arco fino = CPU total). Anillo interior: RAM.
+</footer>
+
+<script>
+// ====== Configuración ======
+const REPO = "fissotta/monito"; // "usuario/monito"  (vacío = modo demo)
+const MACHINES = [
+  { id: "akaza",   label: "Desktop" },
+  { id: "ymir",    label: "Servidor" },
+  { id: "inozuke", label: "Servidor" },
+];
+const INTERVALS = [                    // solo estos tres
+  { s: 3600, label: "1 hora" },
+  { s: 600,  label: "10 min" },
+  { s: 60,   label: "1 min" },
+];
+const DARK_FROM = 19, DARK_TO = 7;     // modo automático: oscuro de 19:00 a 07:00
+const STALE_AFTER = 300;               // s sin datos nuevos => equipo sin conexión
+const WARN = 50, BAD = 80;
+// ===========================
+
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d) { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+};
+const demo = !REPO || new URLSearchParams(location.search).has("demo");
+const state = { data: {}, next: 0, timer: null };
+
+// ---------- tema ----------
+const THEMES = ["auto", "light", "dark"];
+const THEME_LABEL = { auto: "Auto (hora)", light: "Claro", dark: "Oscuro" };
+let theme = store.get("theme", "auto");
+if (!THEMES.includes(theme)) theme = "auto";
+function applyTheme() {
+  const h = new Date().getHours();
+  const night = h >= DARK_FROM || h < DARK_TO;
+  const dark = theme === "dark" || (theme === "auto" && night);
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+  $("btnTheme").textContent = "Tema: " + THEME_LABEL[theme] + (theme === "auto" ? (dark ? " · noche" : " · día") : "");
+}
+$("btnTheme").onclick = () => {
+  theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
+  store.set("theme", theme); applyTheme();
+};
+setInterval(applyTheme, 60000);
+
+// ---------- frecuencia ----------
+let iv = Math.max(0, INTERVALS.findIndex(i => String(i.s) === store.get("interval", "60")));
+function applyInterval() {
+  $("btnRefresh").textContent = "Actualizar cada: " + INTERVALS[iv].label;
+}
+$("btnRefresh").onclick = () => {
+  iv = (iv + 1) % INTERVALS.length;
+  store.set("interval", INTERVALS[iv].s); applyInterval(); refresh();
+};
+
+// ---------- utilidades ----------
+const color = p => p >= BAD ? "var(--bad)" : p >= WARN ? "var(--warn)" : "var(--ok)";
+const pad = n => String(n).padStart(2, "0");
+function fmtUp(s) {
+  const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
+  return d ? `${d}d ${h}h` : h ? `${h}h ${m}m` : `${m}m`;
+}
+function polar(r, deg) {
+  const a = (deg - 90) * Math.PI / 180;
+  return [150 + r * Math.cos(a), 150 + r * Math.sin(a)];
+}
+function arc(r, a0, a1) {
+  if (a1 - a0 >= 359.99) a1 = a0 + 359.99;
+  const [x0, y0] = polar(r, a0), [x1, y1] = polar(r, a1);
+  return `M${x0.toFixed(2)} ${y0.toFixed(2)}A${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+}
+
+function ringSVG(d) {
+  const n = d.cores.length || 1, gap = n > 32 ? 1 : 3, step = 360 / n;
+  let s = `<svg viewBox="0 0 300 300" role="img" aria-label="${d.name}: CPU ${d.cpu}%, RAM ${d.ram}%">`;
+  // CPU total (arco fino exterior)
+  s += `<path d="${arc(142, 0, 360)}" fill="none" stroke="var(--track)" stroke-width="4"/>`;
+  if (d.cpu > 0) s += `<path class="seg" d="${arc(142, 0, 3.6 * d.cpu)}" fill="none" stroke="${color(d.cpu)}" stroke-width="4" stroke-linecap="round"/>`;
+  // hilos
+  d.cores.forEach((p, i) => {
+    const a0 = i * step + gap / 2, a1 = (i + 1) * step - gap / 2;
+    s += `<path class="seg" d="${arc(122, a0, a1)}" fill="none" stroke="${color(p)}" stroke-width="18"><title>Hilo ${i}: ${p}%</title></path>`;
+  });
+  // RAM
+  s += `<path d="${arc(92, 0, 360)}" fill="none" stroke="var(--track)" stroke-width="14"/>`;
+  if (d.ram > 0) s += `<path class="seg" d="${arc(92, 0, 3.6 * d.ram)}" fill="none" stroke="${color(d.ram)}" stroke-width="14" stroke-linecap="round"/>`;
+  // centro
+  const load = d.load ? d.load[0].toFixed(2) : "—";
+  const temp = d.temp == null ? "—" : Math.round(d.temp) + " °C";
+  s += `<text x="150" y="128" font-size="11" style="fill:var(--muted)">UPTIME</text>
+        <text x="150" y="153" font-size="24" font-weight="600">${fmtUp(d.uptime)}</text>
+        <text x="150" y="176" font-size="13">Load ${load}</text>
+        <text x="150" y="194" font-size="13">${temp} prom.</text>`;
+  return s + "</svg>";
+}
+
+function render() {
+  const now = Date.now() / 1000;
+  $("grid").innerHTML = MACHINES.map(m => {
+    const d = state.data[m.id];
+    if (!d) return `<section class="card stale"><h2><span class="dot"></span>${m.id} <small>${m.label}</small></h2>
+      <div class="legend" style="padding:90px 0">Sin datos</div></section>`;
+    const age = now - d.ts, live = age <= STALE_AFTER;
+    const ramTxt = d.ram_gb ? ` de ${d.ram_gb} GB` : "";
+    return `<section class="card ${live ? "live" : "stale"}">
+      <h2><span class="dot"></span>${m.id} <small>${m.label} · ${d.cores.length} hilos</small></h2>
+      ${ringSVG(d)}
+      <div class="row"><span>CPU <b style="color:${color(d.cpu)}">${d.cpu.toFixed(0)}%</b></span>
+        <span>RAM <b style="color:${color(d.ram)}">${d.ram.toFixed(0)}%</b><small style="color:var(--muted)">${ramTxt}</small></span></div>
+      <div class="age">${live ? "Dato de hace " + ago(age) : "Sin conexión · último dato hace " + ago(age)}</div>
+    </section>`;
+  }).join("");
+}
+function ago(s) {
+  s = Math.round(s);
+  return s < 90 ? s + " s" : s < 5400 ? Math.round(s / 60) + " min" : (s / 3600).toFixed(1) + " h";
+}
+
+// ---------- datos ----------
+function fakeData(id, prev) {
+  const n = { akaza: 16, ymir: 32, inozuke: 24 }[id];
+  const cores = Array.from({ length: n }, () => Math.round(Math.random() * 100));
+  return {
+    name: id, ts: Date.now() / 1000, uptime: (prev?.uptime ?? 86400 * (3 + n)) + 60,
+    cpu: Math.round(cores.reduce((a, b) => a + b) / n), cores,
+    ram: Math.round(30 + Math.random() * 60), ram_gb: n * 4, load: [n * Math.random() / 2, 0, 0], temp: 40 + Math.random() * 35,
+  };
+}
+async function load(m) {
+  if (demo) return fakeData(m.id, state.data[m.id]);
+  const url = `https://raw.githubusercontent.com/${REPO}/data-${m.id}/${m.id}.json?t=${Date.now()}`;
+  const r = await fetch(url, { cache: "no-store" });
+  if (!r.ok) throw new Error(r.status);
+  return r.json();
+}
+async function refresh() {
+  clearTimeout(state.timer);
+  const res = await Promise.allSettled(MACHINES.map(load));
+  res.forEach((r, i) => { if (r.status === "fulfilled") state.data[MACHINES[i].id] = r.value; });
+  render();
+  state.last = new Date();
+  state.next = Date.now() + INTERVALS[iv].s * 1000;
+  state.timer = setTimeout(refresh, INTERVALS[iv].s * 1000);
+  tick();
+}
+function tick() {
+  if (!state.last) return;
+  const left = Math.max(0, Math.round((state.next - Date.now()) / 1000));
+  const t = state.last;
+  $("status").textContent = (demo ? "DEMO · " : "") +
+    `Actualizado ${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())} · próxima en ` +
+    (left >= 60 ? `${Math.floor(left / 60)}m ${pad(left % 60)}s` : `${left}s`);
+}
+setInterval(tick, 1000);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && state.next && Date.now() > state.next) refresh();
+});
+
+applyTheme(); applyInterval(); refresh();
+</script>
+</body>
+</html>

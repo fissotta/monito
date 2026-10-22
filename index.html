@@ -47,6 +47,9 @@ main {
 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--off); flex: none; }
 .live .dot { background: var(--ok); }
 svg { display: block; width: 100%; max-width: 360px; margin: 0 auto; }
+.ringwrap { position: relative; max-width: 360px; margin: 0 auto; }
+.ringwrap svg { max-width: none; margin: 0; }
+.ringwrap .zoo { position: absolute; inset: 0; height: 100%; pointer-events: none; overflow: visible; }
 svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
 .seg { transition: stroke .4s; }
 .row { display: flex; justify-content: space-around; font-size: 14px; margin-top: 4px; font-variant-numeric: tabular-nums; }
@@ -63,6 +66,7 @@ footer { max-width: 1200px; margin: 0 auto; padding: 0 16px 24px; color: var(--m
   <div class="controls">
     <span class="status" id="status" aria-live="polite">—</span>
     <button id="btnRefresh" title="Cambiar frecuencia de actualización"></button>
+    <button id="btnZoo" title="Mostrar u ocultar los monos"></button>
     <button id="btnTheme" title="Cambiar tema"></button>
   </div>
 </header>
@@ -74,6 +78,7 @@ footer { max-width: 1200px; margin: 0 auto; padding: 0 16px 24px; color: var(--m
   Anillo exterior: hilos (arco fino = CPU total). Anillo interior: RAM.
 </footer>
 
+<script src="zoo.js"></script>
 <script>
 // ====== Configuración ======
 const REPO = "fissotta/monito"; // "usuario/monito"  (vacío = modo demo)
@@ -180,7 +185,7 @@ function render() {
     const ramTxt = d.ram_gb ? ` de ${d.ram_gb} GB` : "";
     return `<section class="card ${live ? "live" : "stale"}">
       <h2><span class="dot"></span>${m.id} <small>${m.label} · ${d.cores.length} hilos</small></h2>
-      ${ringSVG(d)}
+      <div class="ringwrap">${ringSVG(d)}<svg class="zoo" data-id="${m.id}" viewBox="0 0 300 300" aria-hidden="true"></svg></div>
       <div class="row"><span>CPU <b style="color:${color(d.cpu)}">${d.cpu.toFixed(0)}%</b></span>
         <span>RAM <b style="color:${color(d.ram)}">${d.ram.toFixed(0)}%</b><small style="color:var(--muted)">${ramTxt}</small></span></div>
       <div class="age">${live ? "Dato de hace " + ago(age) : "Sin conexión · último dato hace " + ago(age)}</div>
@@ -239,7 +244,16 @@ document.addEventListener("visibilitychange", () => {
   if (!document.hidden && state.next && Date.now() > state.next) refresh();
 });
 
-applyTheme(); applyInterval(); refresh();
+// ---------- monos ----------
+let zooOn = store.get("zoo", matchMedia("(prefers-reduced-motion: reduce)").matches ? "0" : "1") === "1";
+function applyZoo() {
+  $("btnZoo").textContent = "Monos: " + (zooOn ? "sí" : "no");
+  Zoo.setEnabled(zooOn);
+}
+$("btnZoo").onclick = () => { zooOn = !zooOn; store.set("zoo", zooOn ? "1" : "0"); applyZoo(); };
+Zoo.init(MACHINES.map(m => m.id), () => state.data);
+
+applyTheme(); applyInterval(); applyZoo(); refresh();
 </script>
 </body>
 </html>

@@ -49,6 +49,7 @@ crontab -e   # agregar:
 
 - Color de cada hilo / CPU total / RAM: verde < 50 %, naranja 50–80 %, rojo ≥ 80 %.
 - Modo automático de tema: oscuro de 19:00 a 07:00; el botón alterna Auto → Claro → Oscuro.
-- Un equipo sin datos nuevos por más de 5 min aparece atenuado como "sin conexión".
+- Un equipo sin datos nuevos por más de 11 min aparece atenuado como "sin conexión".
 - La temperatura es el promedio de los cores (`coretemp` / `k10temp`); si el equipo no la expone, muestra `—`.
 - El CPU % es el promedio de 1 s al momento de medir (cada minuto), no un promedio del intervalo completo.
+- La caché de GitHub (`raw.githubusercontent.com`) retrasa los datos hasta ~5 min; por eso el dato mostrado puede tener hasta ~6 min aunque el botón diga "1 min".

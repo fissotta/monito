@@ -10,6 +10,7 @@ Config (variables de entorno o archivo KEY=VALUE, por defecto
   MONITO_REPO   owner/repo
   MONITO_TOKEN  token fine-grained con permiso Contents: read/write sobre el repo
   MONITO_NAME   akaza | ymir | inozuke   (por defecto: hostname)
+  MONITO_OFFSET segundos de espera antes de publicar (escalonar equipos: 0, 20, 40)
 
 Uso:  collector.py            # mide y publica
       collector.py --dry-run  # mide e imprime el JSON, sin publicar
@@ -38,7 +39,7 @@ def load_conf():
             if line and not line.startswith("#") and "=" in line:
                 k, v = line.split("=", 1)
                 cfg[k.strip()] = v.strip().strip("'\"")
-    for k in ("MONITO_REPO", "MONITO_TOKEN", "MONITO_NAME"):
+    for k in ("MONITO_REPO", "MONITO_TOKEN", "MONITO_NAME", "MONITO_OFFSET"):
         if k in os.environ:
             cfg[k] = os.environ[k]
     cfg.setdefault("MONITO_NAME", socket.gethostname().split(".")[0].lower())
@@ -169,11 +170,7 @@ def read_all(cfg):
         return {}
 
 
-def publish(cfg, data):
-    # Todos los equipos comparten data.json; el jitter evita que escriban a la vez.
-    time.sleep(random.uniform(0, JITTER_SECONDS))
-    allm = read_all(cfg)
-    allm[data["name"]] = data
+def write_all(cfg, allm):
     tree = gh(cfg, "POST", "/git/trees", {"tree": [
         {"path": FILE, "mode": "100644", "type": "blob",
          "content": json.dumps(allm, separators=(",", ":"))}]})
@@ -190,6 +187,22 @@ def publish(cfg, data):
             if e2.code != 422:   # otro equipo creo la rama justo antes
                 raise
             gh(cfg, "PATCH", "/git/refs/heads/" + BRANCH, {"sha": commit["sha"], "force": True})
+
+
+def publish(cfg, data):
+    # Los equipos comparten data.json (leer, agregar lo propio, escribir). Para no
+    # pisarse cada uno espera un desfase fijo (MONITO_OFFSET) y luego verifica que
+    # su dato quedo; si otro escribio justo antes, reintenta.
+    time.sleep(float(cfg.get("MONITO_OFFSET", random.uniform(0, JITTER_SECONDS))))
+    for attempt in range(4):
+        allm = read_all(cfg)
+        allm[data["name"]] = data
+        write_all(cfg, allm)
+        time.sleep(2)
+        if read_all(cfg).get(data["name"], {}).get("ts") == data["ts"]:
+            return
+        time.sleep(random.uniform(1, 6))
+    sys.exit("el dato de %s no quedo publicado tras reintentos" % data["name"])
 
 
 def main():

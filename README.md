@@ -50,6 +50,7 @@ crontab -e   # agregar:
 - Color de cada hilo / CPU total / RAM: verde < 50 %, naranja 50–80 %, rojo ≥ 80 %.
 - Modo automático de tema: oscuro de 19:00 a 07:00; el botón alterna Auto → Claro → Oscuro.
 - Un equipo sin datos nuevos por más de 8 min (13 si usa raw) aparece atenuado como "sin conexión".
+- Los equipos se turnan para escribir `data.json` con `MONITO_OFFSET` (0, 20 y 40 s) y verifican que su dato quedó; sin ese desfase se pisaban y uno quedaba desactualizado.
 - La temperatura es el promedio de los cores (`coretemp` / `k10temp`); si el equipo no la expone, muestra `—`.
 - El CPU % es el promedio de 1 s al momento de medir (cada 5 min), no un promedio del intervalo completo.
 - Retraso típico del dato: hasta ~6 min con la API (hasta ~11 min si se agota su cupo y cae a raw).

@@ -245,7 +245,7 @@ document.addEventListener("visibilitychange", () => {
 });
 
 // ---------- monos ----------
-let zooOn = store.get("zoo", matchMedia("(prefers-reduced-motion: reduce)").matches ? "0" : "1") === "1";
+let zooOn = store.get("zoo", "1") === "1";   // encendidos por defecto; el botón lo recuerda
 function applyZoo() {
   $("btnZoo").textContent = "Monos: " + (zooOn ? "sí" : "no");
   Zoo.setEnabled(zooOn);

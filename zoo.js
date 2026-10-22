@@ -293,6 +293,7 @@ const Zoo = (function () {
       return m;
     });
   }
+  const clear = n => { while (n.firstChild) n.removeChild(n.firstChild); };   // replaceChildren no existe en navegadores viejos
   function frame(now) {
     raf = requestAnimationFrame(frame);
     const dt = Math.min(.05, Math.max(0, (now - last) / 1000)); last = now;
@@ -303,7 +304,7 @@ const Zoo = (function () {
       if (!d || !svg) continue;
       const ctx = { cpu: d.cpu, ram: d.ram, n: d.cores.length };
       const z = zoos[id] || (zoos[id] = { ms: create(ctx), svg: null });
-      if (z.svg !== svg) { svg.replaceChildren(...z.ms.map(m => m.parts.root)); z.svg = svg; }
+      if (z.svg !== svg) { clear(svg); z.ms.forEach(m => svg.appendChild(m.parts.root)); z.svg = svg; }
       for (const m of z.ms) update(m, dt, ctx);
     }
   }
@@ -312,7 +313,7 @@ const Zoo = (function () {
     if (on && !raf) { last = performance.now(); raf = requestAnimationFrame(frame); }
     if (!on) {
       cancelAnimationFrame(raf); raf = 0;
-      document.querySelectorAll(".zoo").forEach(s => s.replaceChildren());
+      document.querySelectorAll(".zoo").forEach(clear);
       for (const id in zoos) zoos[id].svg = null;
     }
   }

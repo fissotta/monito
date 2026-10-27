@@ -15,6 +15,7 @@ const Zoo = (function () {
   const rnd = (a, b) => a + Math.random() * (b - a);
   const pick = a => a[Math.floor(Math.random() * a.length)];
   const lerp = (a, b, t) => a + (b - a) * t;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const wrap = a => ((a % 360) + 360) % 360;
   const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
   const hsl = (h, s, l) => `hsl(${Math.round(wrap(h))} ${Math.round(s)}% ${Math.round(l)}%)`;
@@ -103,10 +104,16 @@ const Zoo = (function () {
       el("ellipse", { cx: -1.1, cy: 1, rx: 1.1, ry: 1.7, fill: c.cheek }, h);
       el("ellipse", { cx: 3.8, cy: 1, rx: 1.1, ry: 1.7, fill: c.cheek }, h);
     }
-    el("circle", { cx: .6, cy: -.4, r: .55, fill: "#111" }, h);
-    el("circle", { cx: 2.7, cy: -.4, r: .55, fill: "#111" }, h);
+    P.eyeOpen = el("g", {}, h);
+    el("circle", { cx: .6, cy: -.4, r: .55, fill: "#111" }, P.eyeOpen);
+    el("circle", { cx: 2.7, cy: -.4, r: .55, fill: "#111" }, P.eyeOpen);
+    P.eyeShut = el("g", { style: "display:none" }, h);
+    for (const ex of [.6, 2.7]) {
+      el("path", { d: `M${ex - .8} -.5Q${ex} .3 ${ex + .8} -.5`, fill: "none", stroke: "#111", "stroke-width": .4 }, P.eyeShut);
+    }
     el("ellipse", { cx: 2.2, cy: 1.2, rx: .7, ry: .5, fill: "#3a2418" }, h);
     el("path", { d: "M1 2.2Q1.8 2.8 2.7 2.2", fill: "none", stroke: "#3a2418", "stroke-width": .4 }, h);
+    P.yawn = el("ellipse", { cx: 2.1, cy: 2.5, rx: .9, ry: 1.1, fill: "#5a2a2a", style: "display:none" }, h);
 
     P.frontLeg = limb(5, c.fur);
     P.frontArm = limb(4.5 * k, c.fur);
@@ -117,22 +124,38 @@ const Zoo = (function () {
       berry: el("g", {}, P.food),
       leaf: el("ellipse", { cx: 1.5, cy: -1, rx: 2.3, ry: 1.1, fill: "#4caf50", transform: "rotate(-35 1.5 -1)" }, P.food),
     };
+    P.cup = el("g", { style: "display:none" }, bob);   // taza de cafe (con vapor)
+    el("path", { d: "M1.4 -1.7q1.5 0 1.5 1.1q0 1.1 -1.5 1.1", fill: "none", stroke: "#cfc9bd", "stroke-width": .5 }, P.cup);
+    el("rect", { x: -1.4, y: -2.4, width: 2.8, height: 2.8, rx: .5, fill: "#f4f1ea", ...edge }, P.cup);
+    el("ellipse", { cx: 0, cy: -2.4, rx: 1.4, ry: .5, fill: "#5b3a1e" }, P.cup);
+    P.steam = [0, 1].map(i => el("path", { d: `M${i ? .5 : -.5} -3q-.8 -1 0 -2q.8 -1 0 -2`, fill: "none",
+                                           stroke: "#9aa4b2", "stroke-width": .4, "stroke-linecap": "round" }, P.cup));
     el("circle", { cx: 1, cy: -1, r: 1.6, fill: "#e53935" }, P.foodShape.berry);
     el("circle", { cx: 1.3, cy: -2.4, r: .6, fill: "#43a047" }, P.foodShape.berry);
+    P.zzz = el("g", { style: "display:none" }, root);   // "z z Z" al dormir (no se espeja ni gira con el mono)
+    P.zs = [0, 1, 2].map(() => {
+      const t = el("text", { "font-weight": 700, style: "fill:var(--muted)" }, P.zzz);
+      t.textContent = "z";
+      return t;
+    });
     return P;
   }
 
   // ---- poses según el modo; m.t = segundos en el modo, m.phase = ciclo de paso ----
   function pose(m) {
-    const P = { legs: [0, 0], arms: [0, 0], tail: 0, bob: 0, lean: 0, headDy: 0, tilt: 0, food: 0, flip: 0 };
-    const s = Math.sin(m.phase), t = m.t;
+    const P = { legs: [0, 0], arms: [0, 0], tail: 0, bob: 0, lean: 0, headDy: 0, tilt: 0, food: 0, flip: 0,
+                shut: false, yawn: false, cup: false, zzz: false };
+    const s = Math.sin(m.phase), t = m.t, mood = m.mood;
     switch (m.mode) {
-      case "walk": case "goto":
-        P.legs = [s * 32, -s * 32]; P.arms = [-s * 28, s * 28];
-        P.bob = -Math.abs(s) * .9; P.tail = Math.sin(m.phase * .5) * 12; break;
+      case "walk": case "goto": {
+        const A = 1 - .45 * mood.low + .25 * mood.high;   // flojos: pasos cortos; a tope: pasos grandes
+        P.legs = [s * 32 * A, -s * 32 * A]; P.arms = [-s * 28 * A, s * 28 * A];
+        P.bob = -Math.abs(s) * .9 * A; P.tail = Math.sin(m.phase * .5) * 12;
+        P.tilt = 9 * mood.low; P.headDy = .5 * mood.low; break;   // cabeza caída de sueño
+      }
       case "run":
         P.legs = [s * 50, -s * 50]; P.arms = [s * 45 - 20, -s * 45 - 20];
-        P.bob = -Math.abs(s) * 2.2; P.lean = 10; P.tail = -10 + Math.sin(m.phase * .7) * 8; break;
+        P.bob = -Math.abs(s) * 2.2; P.lean = 10 + 6 * mood.high; P.tail = -10 + Math.sin(m.phase * .7) * 8; break;
       case "hop": {
         const air = Math.sin(Math.PI * m.hop.u);
         P.legs = [-45 * air + 8, -30 * air]; P.arms = [-140 * air, -120 * air];
@@ -146,6 +169,20 @@ const Zoo = (function () {
       case "rest":
         P.legs = [-70, -62]; P.arms = [-45, -35]; P.bob = 3.2 + Math.sin(t * 2.2) * .2;
         P.tilt = Math.sin(t * .8) * 6; P.tail = Math.sin(t * 1.4) * 14; break;
+      case "sleep":   // tumbado de lado sobre el anillo
+        P.lean = 90; P.bob = -3 + Math.sin(t * 1.6) * .15; P.legs = [-80, -70]; P.arms = [-30, -40];
+        P.tilt = 15; P.tail = Math.sin(t) * 6; P.shut = true; P.zzz = true; break;
+      case "stretch": {
+        const k = Math.sin(Math.PI * Math.min(1, t / m.dur));
+        P.arms = [-170 * k, -165 * k]; P.lean = -8 * k; P.tilt = -12 * k; P.tail = -25 * k;
+        P.yawn = k > .45; P.shut = k > .45; break;
+      }
+      case "coffee": {   // a mayor carga, mas temblor
+        const j = .2 + .8 * mood.high;
+        P.cup = true; P.arms = [-125 + Math.sin(t * 12) * 6, -20];
+        P.bob = Math.sin(t * 38) * .35 * j; P.headDy = Math.sin(t * 33) * .4 * j; P.tilt = Math.sin(t * 29) * 5 * j;
+        P.tail = Math.sin(t * 20) * 14 * j; P.legs = [Math.sin(t * 25) * 10 * j, -Math.sin(t * 25) * 10 * j]; break;
+      }
       case "cross": {
         const u = Math.min(1, m.jump.u), air = Math.sin(Math.PI * u);
         P.legs = [-50 * air, -35 * air]; P.arms = [-150, -140]; P.tail = air * 20;
@@ -167,6 +204,22 @@ const Zoo = (function () {
     p.frontArm.setAttribute("transform", limbT(1.2, -11.5, P.arms[0]));
     p.head.setAttribute("transform", `translate(.8 ${(-15 + P.headDy).toFixed(2)}) rotate(${P.tilt.toFixed(1)})`);
     p.food.setAttribute("transform", `translate(4.2 -12.2) scale(${P.food.toFixed(2)})`);
+    p.eyeOpen.style.display = P.shut ? "none" : "";
+    p.eyeShut.style.display = P.shut ? "" : "none";
+    p.yawn.style.display = P.yawn ? "" : "none";
+    p.cup.setAttribute("transform", "translate(4.6 -13.2)");
+    p.cup.style.display = P.cup ? "" : "none";
+    if (P.cup) p.steam.forEach((e, i) => {
+      e.setAttribute("opacity", (.35 + .35 * Math.sin(m.t * 5 + i * 2)).toFixed(2));
+      e.setAttribute("transform", `translate(0 ${(-((m.t * 2 + i * .5) % 1) * 1.5).toFixed(2)})`);
+    });
+    p.zzz.style.display = P.zzz ? "" : "none";
+    if (P.zzz) p.zs.forEach((z, i) => {
+      const u = (m.t * .45 + i / 3) % 1;
+      z.setAttribute("transform", `translate(${(m.dir * (17 + u * 4) + Math.sin(u * 7) * 2.5).toFixed(2)} ${(-10 - u * 18).toFixed(2)})`);
+      z.setAttribute("font-size", (4 + u * 3.5).toFixed(2));
+      z.setAttribute("opacity", Math.sin(Math.PI * u).toFixed(2));
+    });
     p.food.style.display = P.food > 0 ? "" : "none";
     if (P.food > 0) for (const f in p.foodShape) p.foodShape[f].style.display = f === m.food ? "" : "none";
   }
@@ -188,18 +241,35 @@ const Zoo = (function () {
       case "run": m.dur = rnd(2, 4); if (Math.random() < .5) m.dir *= -1; break;
       case "eat": m.dur = rnd(2.5, 4.5); m.food = pick(FOODS); break;
       case "rest": m.dur = rnd(2, 5); break;
+      case "sleep": m.dur = rnd(7, 14); break;
+      case "stretch": m.dur = rnd(2.2, 3.2); break;
+      case "coffee": m.dur = ctx.cpu > 60 ? rnd(1.5, 2.5) : rnd(2.5, 4); break;
       case "hop":
         if (Math.random() < .4) m.dir *= -1;
         m.hop = { u: 0, n: Math.round(rnd(3, 8)), from: m.theta, to: m.theta + m.dir * hopStep(ctx) }; break;
       case "goto": m.target = x.target; m.after = x.after; break;
-      case "cross": m.jump = { u: 0, r0: LANE[m.lane], r1: LANE[x.to], to: x.to, flip: Math.random() < .35 }; break;
+      case "cross": m.jump = { u: 0, r0: LANE[m.lane], r1: LANE[x.to], to: x.to, flip: Math.random() < .2 + .5 * m.mood.high }; break;
     }
   }
+  // Que hacen segun la carga: flojos (dormir, estirarse) -> normales -> como locos (correr, cafe)
+  const TIERS = {
+    low:  { ram: { sleep: 30, walk: 20, stretch: 18, rest: 12, eat: 8, tip: 8, cross: 4 },
+            cpu: { sleep: 30, walk: 20, stretch: 16, rest: 14, eat: 8, hop: 4, cross: 4 } },
+    mid:  { ram: { walk: 30, eat: 16, rest: 8, tip: 12, cross: 14, run: 8, stretch: 6, coffee: 6 },
+            cpu: { hop: 24, walk: 22, run: 10, eat: 14, rest: 8, cross: 12, coffee: 6, stretch: 4 } },
+    high: { ram: { run: 30, coffee: 26, cross: 20, walk: 6, eat: 6, tip: 4 },
+            cpu: { hop: 34, run: 30, coffee: 24, cross: 14, eat: 4 } },
+  };
+  const mood = cpu => {   // mezcla suave entre estados: bajo < 40 %, alto > 60 %
+    const low = clamp((40 - cpu) / 20, 0, 1), high = clamp((cpu - 60) / 20, 0, 1);
+    return { low, mid: 1 - low - high, high };
+  };
+  const speedOf = cpu => cpu <= 70 ? .3 + cpu / 100 * .9 : .93 + (cpu - 70) / 30 * 1.7;   // .3 .. 2.6
+
   function next(m, ctx) {
-    const load = .5 + ctx.cpu / 50;   // 0.5 (ocioso) .. 2.5 (a tope)
-    const opts = m.lane === "ram"
-      ? [["walk", 30], ["eat", 18], ["rest", 18], ["tip", 14], ["cross", 14], ["run", 6 * load]]
-      : [["hop", 28 * load], ["run", 16 * load], ["eat", 14], ["rest", 16 / load], ["cross", 14], ["walk", 10]];
+    const w = mood(ctx.cpu), tally = {};
+    for (const t in TIERS) for (const k in TIERS[t][m.lane]) tally[k] = (tally[k] || 0) + w[t] * TIERS[t][m.lane][k];
+    const opts = Object.entries(tally).filter(o => o[1] > 0);
     let r = Math.random() * opts.reduce((a, o) => a + o[1], 0), choice = opts[0][0];
     for (const o of opts) { if ((r -= o[1]) <= 0) { choice = o[0]; break; } }
     if (choice === "tip" && m.lane === "ram") {   // sube hasta la punta de la barra de RAM
@@ -222,12 +292,13 @@ const Zoo = (function () {
 
   function update(m, dt, ctx) {
     m.t += dt;
-    const sp = .6 + ctx.cpu / 100, hi = ramMax(ctx);
+    const sp = speedOf(ctx.cpu), hi = ramMax(ctx), pace = clamp(sp, .45, 1.8);
+    m.mood = mood(ctx.cpu);
     let h = 0, r = LANE[m.lane];
     switch (m.mode) {
       case "walk": case "run": case "goto": {
         const run = m.mode === "run";
-        const spd = (m.lane === "ram" ? 16 : 12) * sp * (run ? 2.4 : 1);
+        const spd = (m.lane === "ram" ? 16 : 12) * sp * (run ? 2.4 : 1);   // flojo: muy lento; a tope: muy rapido
         if (m.mode === "goto") {
           const d = shortest(m.theta, m.target);
           if (Math.abs(d) <= spd * dt + .5) {
@@ -238,7 +309,7 @@ const Zoo = (function () {
           }
           m.dir = Math.sign(d);
         }
-        m.theta += m.dir * spd * dt; m.phase += dt * (run ? 15 : 9);
+        m.theta += m.dir * spd * dt; m.phase += dt * (run ? 15 : 9) * pace;
         if (m.lane === "ram") {
           if (m.theta > hi) { m.theta = hi; m.dir = -1; }
           if (m.theta < RAM_LO) { m.theta = RAM_LO; m.dir = 1; }
@@ -248,7 +319,7 @@ const Zoo = (function () {
       }
       case "hop": {
         const H = m.hop;
-        H.u += dt / .45; m.phase += dt * 6;
+        H.u += dt * clamp(sp, .6, 1.9) / .45; m.phase += dt * 6;
         if (H.u >= 1) {
           m.theta = wrap(H.to);
           if (--H.n <= 0) { next(m, ctx); break; }
@@ -261,16 +332,17 @@ const Zoo = (function () {
       }
       case "cross": {
         const J = m.jump;
-        J.u += dt / .8;
+        J.u += dt * clamp(sp, .6, 1.5) / .8;
         const u = Math.min(1, J.u);
         r = lerp(J.r0, J.r1, ease(u)); h = Math.sin(Math.PI * u) * 11;
         m.theta = wrap(m.theta + m.dir * dt * 6);
         if (J.u >= 1) { m.lane = J.to; next(m, ctx); }
         break;
       }
-      default:   // eat / rest
+      default:   // eat / rest / sleep / stretch / coffee
         m.phase += dt * 3;
-        if (m.t > m.dur) next(m, ctx);
+        if (m.mode === "sleep" && ctx.cpu >= 45) { enter(m, "stretch", ctx); break; }   // la carga sube: despiertan
+        if (m.t > m.dur) m.mode === "sleep" ? enter(m, "stretch", ctx) : next(m, ctx);
     }
     if (m.lane === "ram" && m.mode !== "cross" && m.theta > hi && m.theta < 180) m.theta = hi;
     m.theta = wrap(m.theta);
@@ -287,12 +359,14 @@ const Zoo = (function () {
     return species.map((sp, i) => {
       const m = { sp, pal: palette(sp), lane: i < 2 ? "ram" : "cpu", dir: Math.random() < .5 ? 1 : -1,
                   phase: rnd(0, 6), t: 0, dur: 1, mode: "rest" };
+      m.mood = mood(ctx.cpu);
       m.theta = m.lane === "ram" ? rnd(RAM_LO, ramMax(ctx)) : rnd(0, 360);
       m.parts = build(m);
       next(m, ctx);
       return m;
     });
   }
+  const clear = n => { while (n.firstChild) n.removeChild(n.firstChild); };   // replaceChildren no existe en navegadores viejos
   function frame(now) {
     raf = requestAnimationFrame(frame);
     const dt = Math.min(.05, Math.max(0, (now - last) / 1000)); last = now;
@@ -303,7 +377,7 @@ const Zoo = (function () {
       if (!d || !svg) continue;
       const ctx = { cpu: d.cpu, ram: d.ram, n: d.cores.length };
       const z = zoos[id] || (zoos[id] = { ms: create(ctx), svg: null });
-      if (z.svg !== svg) { svg.replaceChildren(...z.ms.map(m => m.parts.root)); z.svg = svg; }
+      if (z.svg !== svg) { clear(svg); z.ms.forEach(m => svg.appendChild(m.parts.root)); z.svg = svg; }
       for (const m of z.ms) update(m, dt, ctx);
     }
   }
@@ -312,7 +386,7 @@ const Zoo = (function () {
     if (on && !raf) { last = performance.now(); raf = requestAnimationFrame(frame); }
     if (!on) {
       cancelAnimationFrame(raf); raf = 0;
-      document.querySelectorAll(".zoo").forEach(s => s.replaceChildren());
+      document.querySelectorAll(".zoo").forEach(clear);
       for (const id in zoos) zoos[id].svg = null;
     }
   }

@@ -30,6 +30,7 @@ button {
   font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--border);
   border-radius: 8px; padding: 7px 12px; cursor: pointer; min-height: 36px;
 }
+#btnTheme { padding: 3px 10px; min-height: 30px; font-size: 13px; }
 button:hover { border-color: var(--accent); }
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .status { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
@@ -65,9 +66,7 @@ footer { max-width: 1200px; margin: 0 auto; padding: 0 16px 24px; color: var(--m
   <h1>MONITO</h1>
   <div class="controls">
     <span class="status" id="status" aria-live="polite">—</span>
-    <button id="btnRefresh" title="Cambiar frecuencia de actualización"></button>
-    <button id="btnZoo" title="Mostrar u ocultar los monos"></button>
-    <button id="btnTheme" title="Cambiar tema"></button>
+    <button id="btnTheme" title="Cambiar color: automático (por hora), día o noche"></button>
   </div>
 </header>
 <main id="grid"></main>
@@ -87,11 +86,7 @@ const MACHINES = [
   { id: "ymir",    label: "Servidor" },
   { id: "inozuke", label: "Servidor" },
 ];
-const INTERVALS = [                    // solo estos tres
-  { s: 3600, label: "1 hora" },
-  { s: 900,  label: "15 min" },
-  { s: 300,  label: "5 min" },
-];
+const REFRESH_S = 300;                 // se actualiza cada 5 minutos
 const DARK_FROM = 19, DARK_TO = 7;     // modo automático: oscuro de 19:00 a 07:00
 const STALE_API = 480, STALE_RAW = 780; // s sin datos nuevos => sin conexión (cron 5 min + caché API 1 min / raw 5 min)
 const WARN = 50, BAD = 80;
@@ -107,7 +102,7 @@ const state = { data: {}, next: 0, timer: null, stale: 300 };
 
 // ---------- tema ----------
 const THEMES = ["auto", "light", "dark"];
-const THEME_LABEL = { auto: "Auto (hora)", light: "Claro", dark: "Oscuro" };
+const THEME_LABEL = { auto: "◐ Auto", light: "☀ Día", dark: "☾ Noche" };
 let theme = store.get("theme", "auto");
 if (!THEMES.includes(theme)) theme = "auto";
 function applyTheme() {
@@ -115,24 +110,13 @@ function applyTheme() {
   const night = h >= DARK_FROM || h < DARK_TO;
   const dark = theme === "dark" || (theme === "auto" && night);
   document.documentElement.dataset.theme = dark ? "dark" : "light";
-  $("btnTheme").textContent = "Tema: " + THEME_LABEL[theme] + (theme === "auto" ? (dark ? " · noche" : " · día") : "");
+  $("btnTheme").textContent = THEME_LABEL[theme];
 }
 $("btnTheme").onclick = () => {
   theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
   store.set("theme", theme); applyTheme();
 };
 setInterval(applyTheme, 60000);
-
-// ---------- frecuencia ----------
-let iv = INTERVALS.findIndex(i => String(i.s) === store.get("interval", "300"));
-if (iv < 0) iv = INTERVALS.length - 1;   // por defecto: 5 min
-function applyInterval() {
-  $("btnRefresh").textContent = "Actualizar cada: " + INTERVALS[iv].label;
-}
-$("btnRefresh").onclick = () => {
-  iv = (iv + 1) % INTERVALS.length;
-  store.set("interval", INTERVALS[iv].s); applyInterval(); refresh();
-};
 
 // ---------- utilidades ----------
 const color = p => p >= BAD ? "var(--bad)" : p >= WARN ? "var(--warn)" : "var(--ok)";
@@ -228,8 +212,8 @@ async function refresh() {
   try { Object.assign(state.data, await loadAll()); } catch (e) { console.warn("monito:", e); }
   render();
   state.last = new Date();
-  state.next = Date.now() + INTERVALS[iv].s * 1000;
-  state.timer = setTimeout(refresh, INTERVALS[iv].s * 1000);
+  state.next = Date.now() + REFRESH_S * 1000;
+  state.timer = setTimeout(refresh, REFRESH_S * 1000);
   tick();
 }
 function tick() {
@@ -246,15 +230,10 @@ document.addEventListener("visibilitychange", () => {
 });
 
 // ---------- monos ----------
-let zooOn = store.get("zoo", "1") === "1";   // encendidos por defecto; el botón lo recuerda
-function applyZoo() {
-  $("btnZoo").textContent = "Monos: " + (zooOn ? "sí" : "no");
-  Zoo.setEnabled(zooOn);
-}
-$("btnZoo").onclick = () => { zooOn = !zooOn; store.set("zoo", zooOn ? "1" : "0"); applyZoo(); };
 Zoo.init(MACHINES.map(m => m.id), () => state.data);
+Zoo.setEnabled(true);
 
-applyTheme(); applyInterval(); applyZoo(); refresh();
+applyTheme(); refresh();
 </script>
 </body>
 </html>

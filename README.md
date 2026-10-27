@@ -48,7 +48,7 @@ crontab -e   # agregar:
 ## Notas
 
 - Color de cada hilo / CPU total / RAM: verde < 50 %, naranja 50–80 %, rojo ≥ 80 %.
-- Monos (`zoo.js`): 5 por equipo, 9 especies (capuchino, tití león, mono ardilla, mandril, mono araña, orangután, macaco de nieve, uacarí y de colores de fantasía). Caminan por la barra de RAM, saltan de hilo en hilo en el anillo de CPU, comen, descansan y cruzan de un anillo a otro; con más carga de CPU corren más. Botón "Monos: sí/no" (se recuerda por navegador; por defecto encendidos).
+- Monos (`zoo.js`): 5 por equipo, 9 especies (capuchino, tití león, mono ardilla, mandril, mono araña, orangután, macaco de nieve, uacarí y de colores de fantasía). Caminan por la barra de RAM, saltan de hilo en hilo en el anillo de CPU, comen, descansan y cruzan de un anillo a otro; su ánimo sigue el CPU de cada equipo: bajo (< ~30 %) duermen con "zzz", caminan lento y se estiran bostezando; medio, todos hacen algo (caminan, algunos saltan, comen, café tranquilo); alto (> ~70 %) corren, saltan y toman café temblando. Con `?demo&cpu=NN` en la URL se fuerza la carga para probarlo. Botón "Monos: sí/no" (se recuerda por navegador; por defecto encendidos).
 - Modo automático de tema: oscuro de 19:00 a 07:00; el botón alterna Auto → Claro → Oscuro.
 - Un equipo sin datos nuevos por más de 8 min (13 si usa raw) aparece atenuado como "sin conexión".
 - Los equipos se turnan para escribir `data.json` con `MONITO_OFFSET` (0, 20 y 40 s) y verifican que su dato quedó; sin ese desfase se pisaban y uno quedaba desactualizado.

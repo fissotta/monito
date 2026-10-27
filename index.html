@@ -200,7 +200,8 @@ function ago(s) {
 // ---------- datos ----------
 function fakeData(id, prev) {
   const n = { akaza: 16, ymir: 32, inozuke: 24 }[id];
-  const cores = Array.from({ length: n }, () => Math.round(Math.random() * 100));
+  const forced = parseFloat(new URLSearchParams(location.search).get("cpu"));   // ?demo&cpu=90 fuerza la carga
+  const cores = Array.from({ length: n }, () => Math.round(isNaN(forced) ? Math.random() * 100 : Math.min(100, Math.max(0, forced + (Math.random() - .5) * 30))));
   return {
     name: id, ts: Date.now() / 1000, uptime: (prev?.uptime ?? 86400 * (3 + n)) + 60,
     cpu: Math.round(cores.reduce((a, b) => a + b) / n), cores,

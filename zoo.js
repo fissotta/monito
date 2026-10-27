@@ -10,6 +10,7 @@ const Zoo = (function () {
   const BAR = 3.6;                      // grados por 1 % de RAM
   const RAM_LO = 4;
   const PER_CARD = 5;
+  const ACC_PER_CARD = 3;               // cuantos monos por equipo llevan accesorio
   const SCALE = 1.25;                   // tamaño general de los monos
 
   const rnd = (a, b) => a + Math.random() * (b - a);
@@ -44,6 +45,76 @@ const Zoo = (function () {
     stub: "M0 0L-3.2 -.8",
   };
   const FOODS = ["banana", "berry", "leaf"];
+  const SAYS = ["¡uh uh!", "¡ah ah!", "¡hola!", "♥", "♪ ♫", "¡wiii!", "¿eh?", "🍌", "¡oye!", "★"];
+
+  // Accesorios para la cabeza (coordenadas de la cabeza: centro 0,0, radio 3.7, mira hacia +x).
+  // a = color de acento al azar, d = version oscura.
+  const ACC = {
+    "gafas de sol": (h, a) => {
+      for (const ex of [.6, 2.7]) el("rect", { x: ex - 1.05, y: -1.3, width: 2.1, height: 1.7, rx: .6, fill: "#151515", stroke: a, "stroke-width": .3 }, h);
+      el("line", { x1: -.45, y1: -.5, x2: -3.3, y2: -1.2, stroke: a, "stroke-width": .4 }, h);
+    },
+    "lentes redondos": (h, a) => {
+      for (const ex of [.6, 2.7]) el("circle", { cx: ex, cy: -.4, r: 1.1, fill: "rgba(255,255,255,.4)", stroke: a, "stroke-width": .4 }, h);
+      el("line", { x1: -.5, y1: -.4, x2: -3.3, y2: -1, stroke: a, "stroke-width": .35 }, h);
+    },
+    "sombrero de copa": (h, a) => {
+      el("rect", { x: -2.3, y: -8.4, width: 4.6, height: 5, rx: .4, fill: "#1f1f1f" }, h);
+      el("rect", { x: -2.3, y: -5, width: 4.6, height: 1, fill: a }, h);
+      el("ellipse", { cx: 0, cy: -3.4, rx: 3.9, ry: .8, fill: "#1f1f1f" }, h);
+    },
+    "gorra": (h, a, d) => {
+      el("path", { d: "M-3.7 -1.2A3.7 3.7 0 0 1 3.7 -1.2Z", fill: a }, h);
+      el("ellipse", { cx: 4.3, cy: -1.3, rx: 2.4, ry: .7, fill: d }, h);
+      el("circle", { cx: 0, cy: -3.8, r: .55, fill: d }, h);
+    },
+    "corona": h => {
+      el("path", { d: "M-2.6 -3.3L-2.9 -6.6L-1.3 -4.9L0 -7L1.3 -4.9L2.9 -6.6L2.6 -3.3Z", fill: "#f4c430", stroke: "#b8860b", "stroke-width": .3 }, h);
+      el("circle", { cx: 0, cy: -4.4, r: .5, fill: "#e53935" }, h);
+    },
+    "sombrero de fiesta": (h, a) => {
+      el("path", { d: "M-1.8 -3.2L.6 -9.6L2.4 -3.4Z", fill: a }, h);
+      el("path", { d: "M-.8 -5.8L1.7 -5.5M-1.3 -4.4L2.1 -4.2", stroke: "#fff", "stroke-width": .5 }, h);
+      el("circle", { cx: .6, cy: -9.7, r: .9, fill: "#ffd54f" }, h);
+    },
+    "corbatín": (h, a, d) => {
+      el("path", { d: "M1 3.7L-1.7 2.2L-1.7 5.2ZM1 3.7L3.7 2.2L3.7 5.2Z", fill: a }, h);
+      el("circle", { cx: 1, cy: 3.7, r: .65, fill: d }, h);
+    },
+    "bufanda": (h, a, d) => {
+      el("path", { d: "M-3 2.6Q.5 4.4 4 2.6L4 4Q.5 5.8 -3 4Z", fill: a }, h);
+      el("rect", { x: -2.9, y: 3.7, width: 1.3, height: 3.2, rx: .3, fill: d }, h);
+    },
+    "audífonos": (h, a) => {
+      el("path", { d: "M-4 -.2A4 4 0 0 1 4 -.2", fill: "none", stroke: "#333", "stroke-width": .8 }, h);
+      for (const ex of [-3.9, 3.9]) el("circle", { cx: ex, cy: -.4, r: 1.5, fill: a, stroke: "#333", "stroke-width": .3 }, h);
+    },
+    "bigote": h => {
+      el("path", { d: "M.8 1.7Q1.6 .7 2.3 1.5Q3 .7 3.8 1.7Q3 2.4 2.3 2Q1.6 2.4 .8 1.7Z", fill: "#2b1b10" }, h);
+    },
+    "flor": (h, a) => {
+      for (let i = 0; i < 5; i++) {
+        const t = i * 72 * Math.PI / 180;
+        el("circle", { cx: -2.7 + Math.cos(t) * 1, cy: -2.7 + Math.sin(t) * 1, r: .8, fill: a }, h);
+      }
+      el("circle", { cx: -2.7, cy: -2.7, r: .6, fill: "#ffd54f" }, h);
+    },
+    "parche pirata": h => {
+      el("path", { d: "M.6 -.4L-3.7 -1.9M.6 -.4L3.6 -2", stroke: "#111", "stroke-width": .45 }, h);
+      el("circle", { cx: .6, cy: -.4, r: 1.15, fill: "#111" }, h);
+    },
+    "sombrero vaquero": (h, a) => {
+      el("path", { d: "M-2.4 -3Q-2.7 -7.2 -.8 -6.5Q0 -5.7 .8 -6.5Q2.7 -7.2 2.4 -3Z", fill: "#8d5a2b" }, h);
+      el("rect", { x: -2.4, y: -4.4, width: 4.8, height: .9, fill: a }, h);
+      el("ellipse", { cx: 0, cy: -3.1, rx: 5.6, ry: 1, fill: "#8d5a2b" }, h);
+    },
+  };
+  let accPool = [];   // un accesorio no se repite entre los monos de toda la pagina
+  function takeAcc() {
+    if (!accPool.length) accPool = Object.keys(ACC).sort(() => Math.random() - .5);
+    const name = accPool.pop(), hue = rnd(0, 360);
+    return { name, a: hsl(hue, 75, 52), d: hsl(hue, 70, 30) };
+  }
 
   function palette(sp) {
     if (sp.fantasy) {
@@ -115,6 +186,8 @@ const Zoo = (function () {
     el("path", { d: "M1 2.2Q1.8 2.8 2.7 2.2", fill: "none", stroke: "#3a2418", "stroke-width": .4 }, h);
     P.yawn = el("ellipse", { cx: 2.1, cy: 2.5, rx: .9, ry: 1.1, fill: "#5a2a2a", style: "display:none" }, h);
 
+    if (m.acc) ACC[m.acc.name](h, m.acc.a, m.acc.d);
+
     P.frontLeg = limb(5, c.fur);
     P.frontArm = limb(4.5 * k, c.fur);
 
@@ -132,7 +205,13 @@ const Zoo = (function () {
                                            stroke: "#9aa4b2", "stroke-width": .4, "stroke-linecap": "round" }, P.cup));
     el("circle", { cx: 1, cy: -1, r: 1.6, fill: "#e53935" }, P.foodShape.berry);
     el("circle", { cx: 1.3, cy: -2.4, r: .6, fill: "#43a047" }, P.foodShape.berry);
-    P.zzz = el("g", { style: "display:none" }, root);   // "z z Z" al dormir (no se espeja ni gira con el mono)
+    // area de toque (mas grande que el mono) para clic / dedo; el resto de la capa no captura eventos
+    root.style.pointerEvents = "all"; root.style.cursor = "pointer";
+    el("circle", { cx: 0, cy: -8, r: 10, fill: "transparent" }, root);
+    P.bubble = el("g", { style: "display:none;pointer-events:none" }, root);   // globo de dialogo (siempre derecho)
+    P.bubbleBg = el("rect", { rx: 3.5, height: 11, y: -7, fill: "#fff", stroke: "#8a94a3", "stroke-width": .5 }, P.bubble);
+    P.bubbleTx = el("text", { y: 1, "font-size": 7.5, "font-weight": 700, style: "fill:#222" }, P.bubble);
+    P.zzz = el("g", { style: "display:none;pointer-events:none" }, root);   // "z z Z" al dormir (siempre derechas)
     P.zs = [0, 1, 2].map(() => {
       const t = el("text", { "font-weight": 700, style: "fill:var(--muted)" }, P.zzz);
       t.textContent = "z";
@@ -183,6 +262,12 @@ const Zoo = (function () {
         P.bob = Math.sin(t * 38) * .35 * j; P.headDy = Math.sin(t * 33) * .4 * j; P.tilt = Math.sin(t * 29) * 5 * j;
         P.tail = Math.sin(t * 20) * 14 * j; P.legs = [Math.sin(t * 25) * 10 * j, -Math.sin(t * 25) * 10 * j]; break;
       }
+      case "react": {   // saltitos de alegria al tocarlo (a veces con voltereta)
+        const u = m.t / m.dur, air = Math.abs(Math.sin(Math.PI * clamp(u * 2.2, 0, 2)));
+        P.legs = [-35 * air, -25 * air]; P.arms = [-150, -140]; P.tail = 20 * air; P.yawn = u < .7;
+        if (m.flip && u < .45) P.flip = ease(u / .45) * 360;
+        break;
+      }
       case "cross": {
         const u = Math.min(1, m.jump.u), air = Math.sin(Math.PI * u);
         P.legs = [-50 * air, -35 * air]; P.arms = [-150, -140]; P.tail = air * 20;
@@ -213,13 +298,28 @@ const Zoo = (function () {
       e.setAttribute("opacity", (.35 + .35 * Math.sin(m.t * 5 + i * 2)).toFixed(2));
       e.setAttribute("transform", `translate(0 ${(-((m.t * 2 + i * .5) % 1) * 1.5).toFixed(2)})`);
     });
+    // zzz y globo se contra-rotan para quedar derechos aunque el mono este en la parte baja del anillo
+    const th = (m.theta || 0) * Math.PI / 180, so = Math.sin(th), co = Math.cos(th), counter = `rotate(${(-(m.theta || 0)).toFixed(1)})`;
     p.zzz.style.display = P.zzz ? "" : "none";
-    if (P.zzz) p.zs.forEach((z, i) => {
-      const u = (m.t * .45 + i / 3) % 1;
-      z.setAttribute("transform", `translate(${(m.dir * (17 + u * 4) + Math.sin(u * 7) * 2.5).toFixed(2)} ${(-10 - u * 18).toFixed(2)})`);
-      z.setAttribute("font-size", (4 + u * 3.5).toFixed(2));
-      z.setAttribute("opacity", Math.sin(Math.PI * u).toFixed(2));
-    });
+    if (P.zzz) {
+      p.zzz.setAttribute("transform", counter);
+      const sx = m.dir * 19 * co + 4 * so, sy = m.dir * 19 * so - 4 * co;   // cabeza del mono tumbado, en pantalla
+      p.zs.forEach((z, i) => {
+        const u = (m.t * .45 + i / 3) % 1;
+        z.setAttribute("transform", `translate(${(sx + Math.sin(u * 7) * 2.5 + u * 3).toFixed(2)} ${(sy - 6 - u * 16).toFixed(2)})`);
+        z.setAttribute("font-size", (4 + u * 3.5).toFixed(2));
+        z.setAttribute("opacity", Math.sin(Math.PI * u).toFixed(2));
+      });
+    }
+    const talking = m.mode === "react" && m.say;
+    p.bubble.style.display = talking ? "" : "none";
+    if (talking) {
+      const u = m.t / m.dur, w = Math.max(14, m.say.length * 4.6 + 6);
+      p.bubble.setAttribute("transform", `${counter} translate(${(so * 27).toFixed(1)} ${(-co * 27).toFixed(1)})`);
+      p.bubble.setAttribute("opacity", clamp(Math.min(u * 10, (1 - u) * 5), 0, 1).toFixed(2));
+      p.bubbleBg.setAttribute("x", (-w / 2).toFixed(1)); p.bubbleBg.setAttribute("width", w.toFixed(1));
+      if (p.bubbleTx.textContent !== m.say) p.bubbleTx.textContent = m.say;
+    }
     p.food.style.display = P.food > 0 ? "" : "none";
     if (P.food > 0) for (const f in p.foodShape) p.foodShape[f].style.display = f === m.food ? "" : "none";
   }
@@ -242,6 +342,7 @@ const Zoo = (function () {
       case "eat": m.dur = rnd(2.5, 4.5); m.food = pick(FOODS); break;
       case "rest": m.dur = rnd(2, 5); break;
       case "sleep": m.dur = rnd(7, 14); break;
+      case "react": m.dur = 1.7; m.flip = Math.random() < .5; break;
       case "stretch": m.dur = rnd(2.2, 3.2); break;
       case "coffee": m.dur = ctx.cpu > 60 ? rnd(1.5, 2.5) : rnd(2.5, 4); break;
       case "hop":
@@ -293,7 +394,7 @@ const Zoo = (function () {
   function update(m, dt, ctx) {
     m.t += dt;
     const sp = speedOf(ctx.cpu), hi = ramMax(ctx), pace = clamp(sp, .45, 1.8);
-    m.mood = mood(ctx.cpu);
+    m.mood = mood(ctx.cpu); m.ctx = ctx;
     let h = 0, r = LANE[m.lane];
     switch (m.mode) {
       case "walk": case "run": case "goto": {
@@ -330,6 +431,12 @@ const Zoo = (function () {
         }
         break;
       }
+      case "react": {
+        const u = m.t / m.dur;
+        h = Math.abs(Math.sin(Math.PI * clamp(u * 2.2, 0, 2))) * 6;   // dos saltitos
+        if (m.t > m.dur) { if (m.wasSleep) { m.wasSleep = false; enter(m, "stretch", ctx); } else next(m, ctx); }
+        break;
+      }
       case "cross": {
         const J = m.jump;
         J.u += dt * clamp(sp, .6, 1.5) / .8;
@@ -354,14 +461,28 @@ const Zoo = (function () {
   const zoos = {};
   let ids = [], getData = () => ({}), enabled = true, raf = 0, last = 0;
 
+  // Al tocarlo: salta, dice algo; si dormia, se sobresalta y luego se estira
+  const FAST_TAP_MS = 3000;
+  function react(m) {
+    if (!m.ctx || m.mode === "cross") return;
+    const now = performance.now(), slept = m.mode === "sleep";
+    m.taps = now - (m.lastTap || 0) < FAST_TAP_MS ? (m.taps || 0) + 1 : 1;
+    m.lastTap = now;
+    if (slept) m.wasSleep = true;
+    enter(m, "react", m.ctx);
+    m.say = slept ? "¡¿?!" : m.taps >= 4 ? "¡basta! 😠" : pick(SAYS);
+  }
+
   function create(ctx) {
     const species = SPECIES.slice().sort(() => Math.random() - .5).slice(0, PER_CARD);
+    const dressed = [0, 1, 2, 3, 4].sort(() => Math.random() - .5).slice(0, ACC_PER_CARD);   // cuales llevan accesorio
     return species.map((sp, i) => {
       const m = { sp, pal: palette(sp), lane: i < 2 ? "ram" : "cpu", dir: Math.random() < .5 ? 1 : -1,
-                  phase: rnd(0, 6), t: 0, dur: 1, mode: "rest" };
-      m.mood = mood(ctx.cpu);
+                  phase: rnd(0, 6), t: 0, dur: 1, mode: "rest", acc: dressed.includes(i) ? takeAcc() : null };
+      m.mood = mood(ctx.cpu); m.ctx = ctx;
       m.theta = m.lane === "ram" ? rnd(RAM_LO, ramMax(ctx)) : rnd(0, 360);
       m.parts = build(m);
+      m.parts.root.addEventListener("click", () => react(m));   // click = toque real (no al hacer scroll)
       next(m, ctx);
       return m;
     });
@@ -392,5 +513,5 @@ const Zoo = (function () {
   }
   function init(machineIds, dataFn) { ids = machineIds; getData = dataFn; }
 
-  return { init, setEnabled, SPECIES, _test: { build, palette, draw, place, enter } };
+  return { init, setEnabled, SPECIES, ACC, _zoos: zoos, _test: { build, palette, draw, place, enter, react } };
 })();

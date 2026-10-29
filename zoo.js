@@ -11,6 +11,7 @@ const Zoo = (function () {
   const RAM_LO = 4;
   const PER_CARD = 5;
   const ACC_PER_CARD = 3;               // cuantos monos por equipo llevan accesorio
+  let CAP = 9;                          // monos por equipo antes de que los nuevos se desborden y caigan
   const SCALE = 1.25;                   // tamaño general de los monos
 
   const rnd = (a, b) => a + Math.random() * (b - a);
@@ -19,6 +20,7 @@ const Zoo = (function () {
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const wrap = a => ((a % 360) + 360) % 360;
   const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const popEase = t => 1 + 2.70158 * Math.pow(t - 1, 3) + 1.70158 * Math.pow(t - 1, 2);
   const hsl = (h, s, l) => `hsl(${Math.round(wrap(h))} ${Math.round(s)}% ${Math.round(l)}%)`;
   function el(tag, attrs, parent) {
     const e = document.createElementNS(NS, tag);
@@ -268,6 +270,21 @@ const Zoo = (function () {
         if (m.flip && u < .45) P.flip = ease(u / .45) * 360;
         break;
       }
+      case "work":   // trabajando: brazos arriba y abajo
+        P.arms = [-100 + s * 70, -100 - s * 70]; P.lean = 14; P.bob = -Math.abs(s) * .8; P.legs = [s * 8, -s * 8]; break;
+      case "cheer": {   // celebrando
+        const hop = Math.abs(Math.sin(t * 7));
+        P.arms = [-165 + Math.sin(t * 14) * 15, -158 - Math.sin(t * 14) * 15]; P.bob = -hop * 3;
+        P.legs = [-30 * hop, -20 * hop]; P.tail = Math.sin(t * 9) * 20; P.yawn = true; break;
+      }
+      case "fight":
+        P.arms = [-90 + s * 60, -120 - s * 50]; P.lean = 12; P.legs = [s * 30, -s * 30];
+        P.bob = -Math.abs(s) * 1.2; P.tail = -15; break;
+      case "fall":   // cayendo
+        P.arms = [-150 + Math.sin(t * 20) * 20, -140 - Math.sin(t * 20) * 20];
+        P.legs = [Math.sin(t * 18) * 40, -Math.sin(t * 18) * 40]; P.tail = Math.sin(t * 15) * 30; P.yawn = true; break;
+      case "ko":   // tumbado sin sentido
+        P.lean = 90; P.bob = -3; P.legs = [-80, -70]; P.arms = [-30, -40]; P.tilt = 15; P.shut = true; break;
       case "cross": {
         const u = Math.min(1, m.jump.u), air = Math.sin(Math.PI * u);
         P.legs = [-50 * air, -35 * air]; P.arms = [-150, -140]; P.tail = air * 20;
@@ -279,7 +296,8 @@ const Zoo = (function () {
   const limbT = (x, y, a) => `translate(${x} ${y}) rotate(${a.toFixed(1)})`;
   function draw(m) {
     const p = m.parts, P = pose(m), sp = m.sp;
-    p.mirror.setAttribute("transform", `scale(${m.dir * (sp.size || 1) * SCALE} ${(sp.size || 1) * SCALE})`);
+    const pop = m.pop === undefined || m.pop >= 1 ? 1 : popEase(m.pop);   // aparece con rebote
+    p.mirror.setAttribute("transform", `scale(${m.dir * (sp.size || 1) * SCALE * pop} ${(sp.size || 1) * SCALE * pop})`);
     p.bob.setAttribute("transform", `translate(0 ${P.bob.toFixed(2)}) rotate(${P.lean.toFixed(1)})` +
       (P.flip ? ` rotate(${P.flip.toFixed(0)} 0 -8)` : ""));
     p.tail.setAttribute("transform", limbT(-2.5, -6, P.tail));
@@ -395,6 +413,7 @@ const Zoo = (function () {
     m.t += dt;
     const sp = speedOf(ctx.cpu), hi = ramMax(ctx), pace = clamp(sp, .45, 1.8);
     m.mood = mood(ctx.cpu); m.ctx = ctx;
+    if (m.pop !== undefined && m.pop < 1) m.pop = Math.min(1, m.pop + dt * 2.2);
     let h = 0, r = LANE[m.lane];
     switch (m.mode) {
       case "walk": case "run": case "goto": {
@@ -473,19 +492,42 @@ const Zoo = (function () {
     m.say = slept ? "¡¿?!" : m.taps >= 4 ? "¡basta! 😠" : pick(SAYS);
   }
 
+  function newMonkey(ctx, lane, sp, acc) {
+    const m = { sp, pal: palette(sp), lane, dir: Math.random() < .5 ? 1 : -1,
+                phase: rnd(0, 6), t: 0, dur: 1, mode: "rest", acc: acc ? takeAcc() : null };
+    m.mood = mood(ctx.cpu); m.ctx = ctx;
+    m.theta = lane === "ram" ? rnd(RAM_LO, ramMax(ctx)) : rnd(0, 360);
+    m.parts = build(m);
+    m.parts.root.addEventListener("click", () => react(m));   // click = toque real (no al hacer scroll)
+    next(m, ctx);
+    return m;
+  }
   function create(ctx) {
     const species = SPECIES.slice().sort(() => Math.random() - .5).slice(0, PER_CARD);
     const dressed = [0, 1, 2, 3, 4].sort(() => Math.random() - .5).slice(0, ACC_PER_CARD);   // cuales llevan accesorio
-    return species.map((sp, i) => {
-      const m = { sp, pal: palette(sp), lane: i < 2 ? "ram" : "cpu", dir: Math.random() < .5 ? 1 : -1,
-                  phase: rnd(0, 6), t: 0, dur: 1, mode: "rest", acc: dressed.includes(i) ? takeAcc() : null };
-      m.mood = mood(ctx.cpu); m.ctx = ctx;
-      m.theta = m.lane === "ram" ? rnd(RAM_LO, ramMax(ctx)) : rnd(0, 360);
-      m.parts = build(m);
-      m.parts.root.addEventListener("click", () => react(m));   // click = toque real (no al hacer scroll)
-      next(m, ctx);
-      return m;
-    });
+    return species.map((sp, i) => newMonkey(ctx, i < 2 ? "ram" : "cpu", sp, dressed.includes(i)));
+  }
+
+  // ---- monos nuevos: aparecen en un equipo; si ya hay muchos, uno se desborda hacia el mundo de abajo ----
+  let onRelease = null;
+  function release(z, m) {
+    z.ms.splice(z.ms.indexOf(m), 1);
+    const rect = z.svg.getBoundingClientRect(), k = rect.width / 300;
+    const a = (m.theta - 90) * Math.PI / 180, r = LANE[m.lane];
+    const x = rect.left + (CX + r * Math.cos(a)) * k, y = rect.top + (CY + r * Math.sin(a)) * k;
+    if (onRelease) onRelease(m, x, y, z.id); else m.parts.root.remove();
+  }
+  function spawn(id) {
+    const z = zoos[id];
+    if (!z || !z.svg || !z.ctx) return null;
+    const m = newMonkey(z.ctx, Math.random() < .4 ? "ram" : "cpu", pick(SPECIES), Math.random() < .5);
+    m.pop = 0;
+    z.svg.appendChild(m.parts.root); z.ms.push(m);
+    if (z.ms.length > CAP) {
+      const vic = z.ms.filter(x => x !== m && x.mode !== "cross");
+      if (vic.length) release(z, pick(vic));
+    }
+    return m;
   }
   const clear = n => { while (n.firstChild) n.removeChild(n.firstChild); };   // replaceChildren no existe en navegadores viejos
   function frame(now) {
@@ -497,7 +539,8 @@ const Zoo = (function () {
       const d = data[id], svg = document.querySelector(`.zoo[data-id="${id}"]`);
       if (!d || !svg) continue;
       const ctx = { cpu: d.cpu, ram: d.ram, n: d.cores.length };
-      const z = zoos[id] || (zoos[id] = { ms: create(ctx), svg: null });
+      const z = zoos[id] || (zoos[id] = { id, ms: create(ctx), svg: null, ctx });
+      z.ctx = ctx;
       if (z.svg !== svg) { clear(svg); z.ms.forEach(m => svg.appendChild(m.parts.root)); z.svg = svg; }
       for (const m of z.ms) update(m, dt, ctx);
     }
@@ -513,5 +556,12 @@ const Zoo = (function () {
   }
   function init(machineIds, dataFn) { ids = machineIds; getData = dataFn; }
 
-  return { init, setEnabled, SPECIES, ACC, _zoos: zoos, _test: { build, palette, draw, place, enter, react } };
+  const api = {
+    SPECIES, SAYS, ACC, build, draw, palette, takeAcc, spawn,
+    ids: () => ids,
+    make: () => newMonkey({ cpu: 50, ram: 50, n: 16 }, "cpu", pick(SPECIES), Math.random() < .5),
+    setReleaseHandler: fn => { onRelease = fn; },
+    setCap: n => { CAP = n; },
+  };
+  return { init, setEnabled, SPECIES, ACC, api, _zoos: zoos, _test: { build, palette, draw, place, enter, react } };
 })();

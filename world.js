@@ -11,7 +11,7 @@ const World = (function () {
   const NS = "http://www.w3.org/2000/svg";
   const Q = new URLSearchParams(location.search);
   const TURBO = Math.min(60, Math.max(1, parseFloat(Q.get("turbo")) || 1));
-  const START_ERA = Math.min(7, Math.max(0, parseInt(Q.get("era"), 10) || 0));
+  const START_ERA = Math.min(8, Math.max(0, parseInt(Q.get("era"), 10) || 0));
   const SPAWN_S = 10, K = 1.1, GROUND_H = 34, MAX_SPRITES = 34;
 
   const rnd = (a, b) => a + Math.random() * (b - a);
@@ -42,17 +42,21 @@ const World = (function () {
   const svg = el("svg", { id: "world", width: W, height: H }, document.body);
   svg.style.cssText = "position:fixed;left:0;top:0;z-index:30;pointer-events:none;overflow:visible";
   const gSky = el("g", {}, svg), gGround = el("g", {}, svg), gStruct = el("g", {}, svg),
-        gMon = el("g", {}, svg), gFx = el("g", {}, svg);
+        gMon = el("g", {}, svg), gCrit = el("g", {}, svg), gFx = el("g", {}, svg);
   for (const g of [gGround, gStruct]) { g.style.opacity = 0; g.style.transition = "opacity 1.6s"; }
   const ground = el("rect", { x: 0, width: W, height: GROUND_H, fill: "#8b7b5c" }, gGround);
   ground.style.transition = "fill 2s";
   const grass = el("rect", { x: 0, width: W, height: 4, fill: "rgba(255,255,255,.18)" }, gGround);
   const rails = el("g", { style: "display:none" }, gGround);
   const dark = el("rect", { x: 0, y: 0, width: W, height: H, fill: "#000", opacity: 0 }, gSky);   // eclipse
+  const gPlanets = el("g", {}, gSky); gSky.insertBefore(gPlanets, dark);
+  const tint = el("rect", { x: 0, y: 0, width: W, height: H, fill: "#000" }, gSky);   // tono del cielo segun la saga
+  tint.style.opacity = 0; tint.style.transition = "opacity 2s";
+  const water = el("rect", { x: 0, width: W, height: 0, fill: "#3b7fbf", opacity: .55 }, gFx);   // inundaciones
   const hud = document.createElement("div"); hud.id = "hud"; hud.style.opacity = 0; document.body.appendChild(hud);
   const banner = document.createElement("div"); banner.id = "eraBanner"; document.body.appendChild(banner);
   const toasts = document.createElement("div"); toasts.id = "toasts"; document.body.appendChild(toasts);
-  let hudOpen = false;
+  let hudOpen = Q.has("hud");
   hud.addEventListener("click", () => { hudOpen = !hudOpen; S.hudT = 0; renderHud(); });
   function layout() {
     svg.setAttribute("width", W); svg.setAttribute("height", H);
@@ -61,7 +65,8 @@ const World = (function () {
     dark.setAttribute("width", W); dark.setAttribute("height", H);
     rails.innerHTML = `<rect x="0" y="${H - 9}" width="${W}" height="2.5" fill="#444"/>` +
       `<line x1="0" y1="${H - 5}" x2="${W}" y2="${H - 5}" stroke="#5a4630" stroke-width="3" stroke-dasharray="3 9"/>`;
-    marsPlace();
+    tint.setAttribute("width", W); tint.setAttribute("height", H); water.setAttribute("width", W);
+    placePlanets();
   }
 
   // ---------- historia: epocas ----------
@@ -74,6 +79,7 @@ const World = (function () {
     { name: "Revolución industrial",    dur: 55, y0: 1760,   y1: 1950,   min: 18, cap: 40, ground: "#6c7a58" },
     { name: "Era moderna",              dur: 55, y0: 1950,   y1: 2030,   min: 24, cap: 52, ground: "#5e6a63" },
     { name: "Era espacial",            dur: 80, y0: 2030,   y1: 2150,   min: 30, cap: 70, ground: "#4f5a66" },
+    { name: "Era galáctica",           dur: 500, y0: 2150,  y1: 2900,   min: 0,  cap: 80, ground: "#3d4655" },
   ];
   const DESTS = [
     { name: "Marte", c1: "#e0714a", c2: "#8f3a22", w: 5 }, { name: "la Luna", c1: "#d9d9d4", c2: "#8c8c88", w: 2 },
@@ -91,7 +97,10 @@ const World = (function () {
     rain: 0, eclipse: 0, colonists: 0, goal: 4 + (Math.random() * 3 | 0), won: false, destSeen: false, log: [], busy: false,
     tribe: nm(), city: nm(), hue: rnd(0, 360), flag: [rnd(0, 360), rnd(0, 360)],
     dest: wpick(DESTS, d => d.w), returnT: 0, returnMon: null, mammothT: 0,
-    stats: { guerras: 0, plagas: 0, hambrunas: 0, terremotos: 0, meteoritos: 0, festivales: 0, cohetes: 0, hitos: 0 },
+    stats: { guerras: 0, plagas: 0, hambrunas: 0, terremotos: 0, meteoritos: 0, festivales: 0, cohetes: 0, hitos: 0, pandemias: 0, devorados: 0, cataclismos: 0, incendios: 0 },
+    planets: [], q: [], crits: [], fleet: [], cycle: 1, saga: null, lastSaga: null, planPause: 0, rel: null, rel2: null, pandemic: null,
+    drought: 0, flood: 0, spice: 0, code: 0, crumble: 0, crumbT: 0, fightBack: false, wormCalm: 0, fastLaunch: 0, station: null, cata: null,
+    planetT: null, hole: null, aurora: 0, locust: 0, strike: 0, music: 0, floodMax: 14, launchT: null,
   };
   S.eraDur = ERAS[0].dur * rnd(.75, 1.35);
 
@@ -120,6 +129,9 @@ const World = (function () {
   const hsl = (h, s, l) => `hsl(${Math.round(h)} ${s}% ${l}%)`;
   const wall = () => hsl(S.hue + rnd(-25, 25), 38, 76), roof = () => hsl(S.hue + 180 + rnd(-20, 20), 42, 40);
 
+  const relColor = i => hsl(i === 0 ? (S.rel ? S.rel.hue : 40) : (S.rel2 ? S.rel2.hue : 200), 55, 52);
+  const relInit = s => { s.rc = relColor(alive(s.kind).length); };
+  const SACRED = ["totem", "pyramid", "temple", "cathedral", "orb"];
   const KINDS = {
     cave: { w: 50, draw: () => Pth("M-42 0Q-38 -38 0 -44Q40 -38 44 0Z", "#857b6e") +
       `<path d="M-34 -8Q-24 -32 -8 -37" fill="none" stroke="#a49a8c" stroke-width="3" stroke-linecap="round"/>` +
@@ -145,7 +157,7 @@ const World = (function () {
       draw: () => R(-32, -5, 64, 5, "#6b4a2a") + Array.from({ length: 9 }, (_, i) =>
         `<line class="cr" x1="${-28 + i * 7}" x2="${-28 + i * 7}" y1="-5" y2="-9" stroke="#4caf50" stroke-width="2" stroke-linecap="round"/>`).join(""),
       tick(s, h) {
-        s.g += h / (S.rain ? 11 : 22);
+        s.g += h / (S.rain || S.flood > 0 ? 11 : S.drought > 0 ? 70 : 22);
         if (s.g > 1.15) { s.g = 0; burst(s.x, floorY() - 8, 6, "#d9b53a", 40); if (chance(.35)) say("cosecha"); }
         const g = Math.min(1, s.g), col = g > .85 ? "#d9b53a" : "#4caf50";
         s.el.querySelectorAll(".cr").forEach((c, i) => {
@@ -176,8 +188,46 @@ const World = (function () {
       tick(s, h) { s.t += h; s.$(".bob").setAttribute("transform", `translate(0 ${(Math.sin(s.t * 2) * 1.6).toFixed(1)}) rotate(${(Math.sin(s.t * 1.4) * 3).toFixed(1)} 0 0)`); } },
     market: { w: 46, draw: s => R(-20, -22, 3, 22, "#6b4a2a") + R(17, -22, 3, 22, "#6b4a2a") + Pth("M-24 -22L24 -22L20 -32L-20 -32Z", hsl(S.flag[1], 70, 50)) +
       R(-18, -10, 36, 4, "#a67c2e") + Cir(-9, -13, 3, "#e53935") + Cir(0, -13, 3, "#f5d033") + Cir(9, -13, 3, "#7cb342") },
-    temple: { w: 56, draw: () => R(-24, -4, 48, 4, "#d8d2c4") + [-18, -9, 0, 9, 18].map(x => R(x - 2, -28, 4, 24, "#eee8dc")).join("") +
-      Pth("M-28 -28L0 -46L28 -28Z", "#cfc6b4") },
+    temple: { w: 58, noflip: true, init: relInit, draw: s => R(-24, -4, 48, 4, "#d8d2c4") + [-18, -9, 0, 9, 18].map(x => R(x - 2, -28, 4, 24, "#eee8dc")).join("") +
+      Pth("M-28 -28L0 -46L28 -28Z", "#cfc6b4") + Cir(0, -33, 3.2, s.rc) },
+    totem: { w: 22, noflip: true, init: relInit,
+      draw: s => R(-5, -44, 10, 44, "#8a5a2b") + [-12, -26, -40].map(y => Cir(0, y, 4.3, y === -40 ? s.rc : "#e8c98a") + R(-2.4, y - 1, 1.5, 1.5, "#222") + R(.9, y - 1, 1.5, 1.5, "#222")).join("") +
+        Pth("M-14 -36L-5 -34L-5 -30L-14 -32Z", s.rc) + Pth("M14 -36L5 -34L5 -30L14 -32Z", s.rc) },
+    pyramid: { w: 74, noflip: true, init: relInit,
+      draw: s => Pth("M-36 0L0 -48L36 0Z", "#d9b66a") + `<path d="M-26 -14L26 -14M-18 -26L18 -26M-10 -37L10 -37" stroke="#b8924a" stroke-width="1.5"/>` + Pth("M-6 0L-6 -10Q0 -15 6 -10L6 0Z", "#3a2a14") + Cir(0, -51, 4, s.rc) },
+    cathedral: { w: 74, noflip: true, init: relInit,
+      draw: s => R(-20, -32, 40, 32, "#cfc6b4") + R(-28, -56, 11, 56, "#c2b8a4") + R(17, -56, 11, 56, "#c2b8a4") + Pth("M-30 -56L-22.5 -80L-15 -56Z", s.rc) + Pth("M15 -56L22.5 -80L30 -56Z", s.rc) +
+        Pth("M-20 -32L0 -50L20 -32Z", "#b0a68f") + Cir(0, -22, 6, "#6fa8dc", 'stroke="#fff" stroke-width="1"') + Pth("M-6 0L-6 -10Q0 -17 6 -10L6 0Z", "#3a2a14") },
+    orb: { w: 46, noflip: true, init: relInit,
+      draw: s => R(-3, -26, 6, 26, "#aab4c2") + Cir(0, -40, 14, s.rc, 'class="ob" opacity=".9"') + Cir(0, -40, 23, s.rc, 'opacity=".18"') + `<ellipse cx="0" cy="-40" rx="23" ry="5" fill="none" stroke="#fff" stroke-width="1.2" opacity=".7"/>`,
+      tick(s, h) { s.t += h; s.$(".ob").setAttribute("r", (14 + Math.sin(s.t * 2) * 1.2).toFixed(1)); } },
+    academia: { w: 64, noflip: true, draw: () => R(-28, -4, 56, 4, "#d8d2c4") + R(-24, -8, 48, 4, "#cfc9bb") + [-20, -10, 0, 10, 20].map(x => R(x - 2, -34, 4, 26, "#f1ede2")).join("") + Pth("M-30 -34L0 -50L30 -34Z", "#c2b8a4") + Cir(0, -40, 3, "#6b7a99") },
+    observatory: { w: 48, noflip: true,
+      draw: () => R(-16, -18, 32, 18, "#d8dde6") + Pth("M-16 -18A16 16 0 0 1 16 -18Z", "#9aa7bd") + `<g class="tl" transform="translate(0 -22) rotate(-35)">${R(-2, -16, 4, 18, "#4a5568")}</g>` + R(-3, -9, 6, 9, "#3a4150"),
+      tick(s, h) { s.t += h; s.$(".tl").setAttribute("transform", `translate(0 -22) rotate(${(-35 + Math.sin(s.t * .3) * 20).toFixed(0)})`); } },
+    university: { w: 74, noflip: true,
+      draw: () => R(-30, -26, 60, 26, "#b36a4e") + R(-8, -52, 16, 52, "#a65a40") + Pth("M-10 -52L0 -64L10 -52Z", "#4a3a30") + Cir(0, -42, 5, "#f4efe2", 'stroke="#555" stroke-width="1"') +
+        `<path d="M0 -42L0 -45M0 -42L2.5 -42" stroke="#333" stroke-width="1"/>` + [-24, -17, 13, 20].map(x => R(x, -19, 4, 8, "#ffe08a")).join("") + R(-4, -12, 8, 12, "#3a2a1a") },
+    laboratory: { w: 52, noflip: true, init: s => { s.bb = 0; },
+      draw: () => R(-20, -24, 40, 24, "#dfe6ee") + R(-20, -28, 40, 4, "#8a97a8") + [-14, 0, 10].map(x => R(x, -18, 8, 8, "#9fe3ff")).join("") +
+        Pth("M-4 -50L-4 -38L-11 -30L11 -30L4 -38L4 -50Z", "#8fe08f", 'opacity=".9" stroke="#4a7a4a" stroke-width="1"') + R(-5, -52, 10, 3, "#8a97a8"),
+      tick(s, h) { s.bb -= h; if (s.bb <= 0) { s.bb = rnd(.4, 1); fx("puff", { x: s.x + rnd(-3, 3), y: floorY() - 48, vy: -rnd(8, 16), r0: 1.5, r1: 4, life: 1, col: "#8fe08f", op: .7 }); } } },
+    hospital: { w: 56, noflip: true, draw: () => R(-24, -30, 48, 30, "#f4f7fa") + R(-24, -34, 48, 4, "#d0d7e0") + R(-4, -27, 8, 22, "#e53935") + R(-11, -20, 22, 8, "#e53935") + R(-19, -14, 6, 8, "#9fd3ff") + R(13, -14, 6, 8, "#9fd3ff") },
+    antenna: { w: 24, noflip: true, draw: () => `<path d="M-8 0L0 -70L8 0M-5 -18L5 -18M-3.5 -34L3.5 -34M-2 -50L2 -50" fill="none" stroke="#8a929c" stroke-width="2"/>` + Cir(0, -72, 3, "#e53935", 'class="bl2"'),
+      tick(s, h) { s.t += h; s.$(".bl2").setAttribute("opacity", Math.sin(s.t * 5) > 0 ? 1 : .2); } },
+    stadium: { w: 94, noflip: true, draw: () => Pth("M-44 0L-40 -20Q0 -30 40 -20L44 0Z", "#aab2bd") + Pth("M-40 -20Q0 -30 40 -20L36 -26Q0 -34 -36 -26Z", "#c9d0d9") + R(-6, -6, 12, 6, "#4caf50") + R(-44, -42, 3, 42, "#777") + R(41, -42, 3, 42, "#777") + Cir(-42, -44, 4, "#ffe9a0") + Cir(42, -44, 4, "#ffe9a0") },
+    statue: { w: 24, noflip: true, draw: () => R(-9, -8, 18, 8, "#9aa0a8") + R(-6, -14, 12, 6, "#b3b9c0") + Ell(0, -24, 4, 7, "#c4a24a") + Cir(0, -33, 3.5, "#c4a24a") + R(3, -42, 2.2, 10, "#c4a24a") + Ell(4, -43, 2.6, 1.6, "#e8c96a") },
+    tower: { w: 26, noflip: true, draw: () => Pth("M-7 0L-3 -96L3 -96L7 0Z", "#e8eff6") + `<ellipse cx="0" cy="-56" rx="11" ry="3.2" fill="none" stroke="#6fe3ff" stroke-width="2"/><ellipse cx="0" cy="-76" rx="9" ry="2.6" fill="none" stroke="#6fe3ff" stroke-width="2"/>` + Cir(0, -98, 3, "#6fe3ff", 'class="bk"'),
+      tick(s, h) { s.t += h; s.$(".bk").setAttribute("opacity", (.5 + .5 * Math.sin(s.t * 4)).toFixed(2)); } },
+    starport: { w: 86, noflip: true, draw: () => R(-40, -4, 80, 4, "#7b8494") + Ell(0, -14, 26, 7, "#aab4c2") + Ell(0, -19, 12, 8, "#9fe3ff", 'opacity=".8"') + [-16, -5, 6, 16].map(x => Cir(x, -12, 1.6, "#ffd23f")).join("") + R(-28, -12, 3, 8, "#5a6270") + R(25, -12, 3, 8, "#5a6270") },
+    hovercar: { w: 24, mobile: true, noflip: true, init: s => { s.dy = -rnd(30, 120); s.v = (chance(.5) ? 1 : -1) * rnd(40, 90); },
+      draw: () => Ell(0, -5, 10, 4, "#dfe9f2") + Ell(0, -6.5, 5, 3, "#8fd3ff") + Ell(0, 0, 8, 1.6, "#6fe3ff", 'opacity=".6"'),
+      tick(s, h) { s.x += s.v * h; s.dy += Math.sin(S.t * 2 + s.x) * h * 6; if (s.x > W + 30) s.x = -30; if (s.x < -30) s.x = W + 30; s.flip = s.v < 0; } },
+    ruin: { w: 46, temp: true, draw: () => Pth("M-20 0L-18 -9L-10 -5L-5 -15L3 -7L10 -12L20 0Z", "#6e6a64") + Pth("M-8 0L-6 -6L0 -3L6 -8L9 0Z", "#8a857d") },
+    wreck: { w: 82, temp: true, noflip: true, draw: () => Pth("M-38 0Q-34 -16 -2 -20L34 -12Q40 -4 30 0Z", "#6e7681") + R(-6, -28, 12, 10, "#4a515b", 'transform="rotate(-18 0 -23)"') + Cir(14, -8, 2.4, "#e53935"),
+      tick(s, h) { s.sm = (s.sm || 0) - h; if (s.sm <= 0) { s.sm = .45; smoke(s.x - 4, floorY() - 22); } } },
+    egg: { w: 14, temp: true, noflip: true, draw: () => Ell(0, -8, 6, 9, "#6f7f3c") + `<path d="M-3 -14L0 -10L3 -14" stroke="#3a4620" stroke-width="1" fill="none"/>` },
+
     library: { w: 46, draw: () => R(-20, -26, 40, 26, "#b08a5b") + Pth("M-24 -26L0 -42L24 -26Z", "#6b4a2a") + R(-14, -20, 8, 10, "#ffe08a") + R(6, -20, 8, 10, "#ffe08a") + R(-3, -12, 6, 12, "#4a2f1a") },
     cart: { w: 36, mobile: true, draw: () => R(-14, -14, 28, 8, "#a67c2e") + Cir(-9, -4, 5, "#5a3b22") + Cir(9, -4, 5, "#5a3b22") +
       Cir(-5, -17, 4, "#e8c96a") + Cir(3, -18, 5, "#d9b53a") },
@@ -220,7 +270,7 @@ const World = (function () {
   // ---------- estructuras ----------
   function addStruct(kind, x, o) {
     const def = KINDS[kind];
-    const s = Object.assign({ kind, x, w: def.w, t: rnd(0, 9), built: 0, dying: 0, flip: chance(.5), mobile: !!def.mobile, _c: {} }, o || {});
+    const s = Object.assign({ kind, x, w: def.w, t: rnd(0, 9), built: 0, dying: 0, flip: chance(.5), mobile: !!def.mobile, temp: !!def.temp, _c: {} }, o || {});
     s.$ = sel => s._c[sel] || (s._c[sel] = s.el.querySelector(sel));
     if (def.init) def.init(s);
     s.el = el("g", {}, gStruct); s.el.innerHTML = def.draw(s);
@@ -236,10 +286,24 @@ const World = (function () {
     return null;
   }
   const alive = k => S.structs.filter(s => s.kind === k && !s.dying);
+  function sacredKind() {   // el tipo de templo depende de la epoca
+    const d = S.done, any = d.templo || d.piramide || d.catedral || d.iglesia_cosmica || d.nuevaera || d.fuego_sagrado;
+    if (!any) return null;
+    if (S.era <= 2) return d.totems || d.fuego_sagrado ? "totem" : null;
+    if (S.era === 3) return d.piramide || S.branch[3] ? "pyramid" : "temple";
+    if (S.era <= 6) return "cathedral";
+    return "orb";
+  }
   function GLOBAL() {   // lo que se conserva en cualquier epoca una vez descubierto
-    const d = S.done;
-    return { cart: d.rueda ? 1 : 0, library: d.escritura || d.imprenta ? 1 : 0, market: d.comercio ? 1 : 0, temple: d.templo ? 1 : 0,
-             lamp: d.electricidad ? Math.min(7, 2 + S.era) : 0, dog: d.lobos ? 1 : 0 };
+    const d = S.done, o = {
+      cart: d.rueda ? 1 : 0, library: d.escritura || d.imprenta ? 1 : 0, market: d.comercio || d.trueque ? 1 : 0, dog: d.lobos ? 1 : 0,
+      lamp: d.electricidad ? Math.min(7, 2 + S.era) : 0, academia: d.academia ? 1 : 0, observatory: d.astronomia || d.telescopio_optico ? 1 : 0,
+      university: d.universidad ? 1 : 0, laboratory: d.laboratorio ? 1 : 0, hospital: d.antibioticos || d.vacunas ? 1 : 0, antenna: d.radio ? 1 : 0,
+      stadium: d.deporte ? 1 : 0, statue: d.heroe ? 1 : 0,
+    };
+    const sk = sacredKind();
+    if (sk) o[sk] = S.rel2 && d.reforma ? 2 : 1;
+    return o;
   }
   const PLAN = [
     p => ({ cave: p > 5 ? 2 : 1, rock: 3, bones: 2, mammoth: 1 }),
@@ -250,6 +314,7 @@ const World = (function () {
     (p, b) => ({ factory: Math.min(4, 1 + (p / 10 | 0)), brickhouse: Math.min(9, 2 + (p / 4 | 0)), train: 1, house: b ? 2 : 0 }),
     (p, b) => ({ skyscraper: Math.min(10, 2 + (p / 5 | 0)), house: 2, car: Math.min(4, 1 + (p / 12 | 0)), plane: 1, factory: b ? 1 : 0 }),
     (p, b) => ({ skyscraper: b ? 6 : 4, pad: 1, dome: Math.min(3, 1 + (p / 15 | 0)), dish: 1, car: 2, plane: 1 }),
+    (p, b) => ({ tower: b ? 6 : 4, skyscraper: 3, dome: 2, starport: 1, dish: 1, hovercar: 4, pad: 1 }),
   ];
   function plan() {
     const want = Object.assign({}, PLAN[S.era](popTotal(), S.branch[S.era]), GLOBAL());
@@ -278,6 +343,9 @@ const World = (function () {
     else if (type === "drop") f.e = el("line", { stroke: "#7fb2e5", "stroke-width": 1.2 }, gFx);
     else if (type === "flake") f.e = el("circle", { r: 1.8, fill: "#fff" }, gFx);
     else if (type === "flash") f.e = el("circle", { r: 4, fill: f.col }, gFx);
+    else if (type === "line") f.e = el("line", { x1: f.x1, y1: f.y1, x2: f.x2, y2: f.y2, stroke: f.col, "stroke-width": f.w || 2, "stroke-linecap": "round" }, gFx);
+    else if (type === "code") { f.e = el("text", { "font-size": 13, style: "fill:#3df57a;font-family:monospace;font-weight:700" }, gFx); f.e.textContent = pick(["0", "1", "ｱ", "ﾊ", "ﾐ", "ｦ", "2", "7"]); }
+    else if (type === "note") { f.e = el("text", { "font-size": 15, style: "fill:" + (f.col || "#7a5af0") + ";font-weight:700" }, gFx); f.e.textContent = pick(["♪", "♫", "♬"]); }
     else if (type === "proj") {
       f.e = f.kind === "stone" ? el("circle", { r: 3, fill: "#6d6a64" }, gFx) : f.kind === "ball" ? el("circle", { r: 3.6, fill: "#222" }, gFx)
         : el("line", { stroke: f.kind === "arrow" ? "#6b4a2a" : f.kind === "laser" ? "#ff4d6d" : "#ffe14d", "stroke-width": f.kind === "laser" ? 2.4 : 1.8, "stroke-linecap": "round" }, gFx);
@@ -316,10 +384,12 @@ const World = (function () {
           if (f.y >= floorY() + 2 || f.x < -20 || f.x > W + 20 || (f.tx != null && Math.abs(f.x - f.tx) < 6)) { f.life = 0; if (f.kind === "ball" || f.kind === "bullet" || f.kind === "laser") boom(f.x, Math.min(f.y, floorY() + 4), false); else dust(f.x, 2); }
           break;
         }
-        case "g": f.e.setAttribute("transform", `translate(${f.x.toFixed(1)} ${f.y.toFixed(1)})`); if (f.tick) f.tick(f, h); break;
+        case "line": e.setAttribute("opacity", clamp(f.life / f.life0, 0, 1).toFixed(2)); break;
+        case "code": case "note": e.setAttribute("x", f.x.toFixed(0)); e.setAttribute("y", f.y.toFixed(0)); e.setAttribute("opacity", clamp(f.life / f.life0 * 1.4, 0, 1).toFixed(2)); break;
+        case "g": f.e.setAttribute("transform", `translate(${f.x.toFixed(1)} ${f.y.toFixed(1)})` + (f.flip ? " scale(-1 1)" : "") + (f.rotate ? ` rotate(${f.rotate.toFixed(0)})` : "")); if (f.tick) f.tick(f, h); break;
       }
     }
-    S.fx = S.fx.filter(f => { if (f.life <= 0) { f.e.remove(); return false; } return true; });
+    S.fx = S.fx.filter(f => { if (f.life <= 0) { if (f.onEnd) f.onEnd(f); f.e.remove(); return false; } return true; });
   }
 
   // ---------- monos del mundo ----------
@@ -376,6 +446,14 @@ const World = (function () {
     if (g.state === "abduct") { g.y -= 55 * h; g.rot += 80 * h; m.mode = "fall"; return; }
     // en el suelo
     if (g.dead > 0) { g.dead -= h; m.mode = "ko"; if (g.dead <= 0) killMon(g); return; }
+    if (S.crits.length && !g.hold) {   // huyen de las criaturas
+      g.fearT = (g.fearT || 0) - h;
+      if (g.fearT <= 0) {
+        g.fearT = .3;
+        const c = nearestCrit(g.x);
+        if (c && Math.abs(c.x - g.x) < 140) { g.tx = clamp(g.x + (g.x < c.x ? -1 : 1) * rnd(120, 220), 18, W - 18); g.act = "run"; g.next = "sit"; g.stayT = .6; g.face = 0; }
+      }
+    }
     if (m.mode === "react") { if (m.t > m.dur) m.mode = "rest"; return; }
     switch (g.act) {
       case "walk": case "run": {
@@ -417,10 +495,11 @@ const World = (function () {
     if (e === 0) { r < .3 ? go(at(["cave", "rock", "bones"], 60), "sit") : r < .5 ? go(at(["cave"], 30), "sleep", rnd(6, 11)) : go(null, "sit"); }
     else if (e === 1) { r < .65 ? go(at(["campfire"], 34), pick(["sit", "sit", "sleep", "eat"]), rnd(4, 9)) : go(null, "sit"); }
     else if (e === 2) { r < .3 ? go(at(["campfire", "tent"], 40), "sit") : go(null, "sit", rnd(1, 3)); }
-    else if (e === 3) { r < .5 ? go(at(["field"], 28), "work", rnd(4, 9)) : r < .75 ? go(at(["hut", "campfire", "temple", "market"], 40), "sit") : go(null, "sit", rnd(1, 3)); }
+    else if (e === 3) { r < .5 ? go(at(["field"], 28), "work", rnd(4, 9)) : r < .75 ? go(at(["hut", "campfire", "temple", "market", "pyramid", "totem"], 40), "sit") : go(null, "sit", rnd(1, 3)); }
     else {
-      const wk = [["field", "windmill", "fort", "ship", "market"], ["factory", "train", "library"], ["skyscraper", "car", "library"], ["pad", "dish", "dome"]][e - 4];
-      const hm = [["house", "hut", "market"], ["brickhouse", "house"], ["house", "skyscraper"], ["dome", "skyscraper", "dish"]][e - 4];
+      const ei = Math.min(e, 7) - 4;
+      const wk = [["field", "windmill", "fort", "ship", "market", "academia", "observatory"], ["factory", "train", "library", "university"], ["skyscraper", "car", "library", "laboratory", "hospital"], ["pad", "dish", "dome", "tower", "starport", "laboratory"]][ei];
+      const hm = [["house", "hut", "market", "cathedral"], ["brickhouse", "house", "cathedral"], ["house", "skyscraper", "cathedral"], ["dome", "skyscraper", "dish", "tower", "orb"]][ei];
       r < .4 ? go(at(wk, 30), "work", rnd(3, 8)) : r < .7 ? go(at(hm, 36), "sit") : go(null, "sit", rnd(1, 3));
     }
   }
@@ -428,45 +507,153 @@ const World = (function () {
 
   // ---------- hitos canonicos y sucesos al azar ----------
   const T = () => S.tribe;
+  const REL_A = ["Sol", "Luna", "Gran Banana", "Árbol Sagrado", "Río Eterno", "Trueno", "Cielo", "Montaña", "Estrellas", "Gran Mono"];
+  const REL_B = ["Hijos del", "Orden del", "Culto del", "Iglesia del", "Camino del", "Los Fieles del"];
+  const newRel = () => ({ name: `${pick(REL_B)} ${pick(REL_A)}`, hue: rnd(0, 360) });
+  const DISEASES = ["Peste Gris", "Fiebre del Plátano", "Tos Simiesca", "Gripe Roja", "Mal del Sueño", "Viruela de los Árboles", "Fiebre Negra", "Sarampión Peludo", "Gripe de la Selva", "Mal de las Pulgas"];
+  const cheerSome = (n, secs) => free().slice(0, n).forEach(g => { g.act = "cheer"; g.stay = secs; g.m.t = 0; });
+  const releaseAll = list => list.forEach(g => { g.hold = false; g.stay = 0; });
+  const M = (era, id, text, run) => ({ id, era, text: typeof text === "function" ? text : () => text, run });
   const MILESTONES = [
-    { id: "herramientas", era: 0, text: () => `${T()}: fabrican las primeras herramientas de piedra` },
-    { id: "pintura", era: 0, text: () => `Pintan las paredes de la cueva`, run: () => alive("cave").forEach(s => s.$(".pt").style.display = "") },
-    { id: "lenguaje", era: 0, text: () => `Nace el lenguaje: se oyen los primeros «uh uh»`, run: () => { for (let i = 0; i < 4; i++) setTimeout(() => say(pick(A.SAYS)), i * 500); } },
-    { id: "fuego", era: 1, text: () => `¡${T()} domina el fuego!`, run: () => dust(W / 2, 4) },
-    { id: "cocina", era: 1, text: () => `Descubren que la comida cocida sabe mejor`, run: () => free().slice(0, 4).forEach(g => { g.act = "eat"; g.stay = 5; g.m.food = "banana"; g.m.dur = 5; g.m.t = 0; }) },
-    { id: "ritual", era: 1, text: () => `Primer ritual bailando alrededor del fuego`, run: () => free().slice(0, 7).forEach(g => { g.act = "cheer"; g.stay = 6; g.m.t = 0; }) },
-    { id: "pieles", era: 1, text: () => `Se abrigan con pieles para el frío` },
-    { id: "lobos", era: 2, text: () => `Domestican al lobo: nace el mejor amigo` },
-    { id: "arco", era: 2, text: () => `Inventan el arco y la flecha` },
-    { id: "jefe", era: 2, text: () => `Aparece un jefe que guía al clan` },
-    { id: "agricultura", era: 3, text: () => `Inventan la agricultura: ¡adiós a vagar!`, run: () => { S.extra += 3; } },
-    { id: "alfareria", era: 3, text: () => `Aprenden alfarería para guardar el grano` },
-    { id: "rueda", era: 3, text: () => `Inventan la rueda`, },
-    { id: "escritura", era: 3, text: () => `Nace la escritura` },
-    { id: "comercio", era: 3, text: () => `Abren el primer mercado` },
-    { id: "templo", era: 3, text: () => `Levantan un templo a la Gran Banana` },
-    { id: "navegacion", era: 4, text: () => `Zarpan hacia tierras desconocidas`, run: () => { const sh = alive("ship")[0]; if (sh) burst(sh.x, floorY() - 20, 8, "#fff", 60); } },
-    { id: "imprenta", era: 4, text: () => `Inventan la imprenta: las ideas viajan rápido` },
-    { id: "colonia", era: 4, text: () => `Fundan la colonia de ${S.city}` },
-    { id: "vapor", era: 5, text: () => `Máquina de vapor: ¡las fábricas no paran!` },
-    { id: "ferrocarril", era: 5, text: () => `Llega el ferrocarril` },
-    { id: "electricidad", era: 5, text: () => `Se hace la luz: llega la electricidad` },
-    { id: "telegrafo", era: 5, text: () => `El telégrafo conecta a la colonia` },
-    { id: "automovil", era: 6, text: () => `Los automóviles llenan las calles` },
-    { id: "aviacion", era: 6, text: () => `Primer vuelo: el mono por fin tiene alas` },
-    { id: "radio", era: 6, text: () => `La radio y la televisión llegan a todos` },
-    { id: "internet", era: 6, text: () => `Nace internet: todos miran videos de bananas` },
-    { id: "vacunas", era: 6, text: () => `Inventan las vacunas`, run: () => { S.extra += 5; } },
-    { id: "satelite", era: 7, text: () => `Lanzan el primer satélite` },
-    { id: "telescopio", era: 7, text: () => `El telescopio divisa ${S.dest.name}`, run: () => { S.destSeen = true; marsPlace(); } },
-    { id: "estacion", era: 7, text: () => `Construyen una estación espacial` },
-    { id: "reutilizables", era: 7, text: () => `Cohetes reutilizables: viajar es barato` },
+    // --- Edad de Piedra ---
+    M(0, "herramientas", () => `${T()}: fabrican las primeras herramientas de piedra`),
+    M(0, "pintura", `Pintan las paredes de la cueva`, () => alive("cave").forEach(s => s.$(".pt").style.display = "")),
+    M(0, "lenguaje", `Nace el lenguaje: se oyen los primeros «uh uh»`, () => { for (let i = 0; i < 4; i++) later(i * .5, () => say(pick(A.SAYS))); }),
+    M(0, "caza_grupo", `Aprenden a cazar en grupo`),
+    M(0, "creencia", `Entierran a sus muertos con flores: nace la primera creencia`),
+    M(0, "tambor", `Inventan el tambor con un tronco hueco`, () => { S.music = 8; }),
+    M(0, "trueno", `Un trueno los aterra: ¿quién lo envía?`, () => bolt(true)),
+    M(0, "estrellas", `Cuentan las estrellas: nace la astronomía`),
+    M(0, "danza", `Danzan bajo la luna`, () => cheerSome(6, 5)),
+    // --- Fuego ---
+    M(1, "fuego", () => `¡${T()} domina el fuego!`, () => dust(W / 2, 4)),
+    M(1, "cocina", `Descubren que la comida cocida sabe mejor`, () => free().slice(0, 4).forEach(g => { g.act = "eat"; g.stay = 5; g.m.food = "banana"; g.m.dur = 5; g.m.t = 0; })),
+    M(1, "ritual", `Primer ritual bailando alrededor del fuego`, () => cheerSome(7, 6)),
+    M(1, "pieles", `Se abrigan con pieles para el frío`),
+    M(1, "fuego_sagrado", `Un fuego eterno arde en la cueva y un chamán lo cuida: nace el «Culto al Fuego Eterno»`, () => { S.rel = { name: "Culto al Fuego Eterno", hue: 20 }; }),
+    M(1, "ceramica", `Cuecen barro en el fuego: nace la cerámica`),
+    M(1, "cobre", `Funden cobre en la hoguera`),
+    M(1, "mitos", `Se cuentan historias junto al fuego: nacen los mitos`, () => say("érase una vez…")),
+    M(1, "antorchas", `Iluminan las cuevas con antorchas`),
+    M(1, "funerales", `Primer funeral con fuego: despiden a los suyos`),
+    // --- Nomadas ---
+    M(2, "lobos", `Domestican al lobo: nace el mejor amigo`),
+    M(2, "arco", `Inventan el arco y la flecha`),
+    M(2, "jefe", `Aparece un jefe que guía al clan`),
+    M(2, "chamanismo", `Un chamán dice hablar con los espíritus`, () => say("¡espíritus!")),
+    M(2, "totems", () => `Tallan tótems: nace la fe en «${S.rel.name}»`, () => { S.rel = { name: `Espíritus del ${pick(["Bosque", "Río", "Viento", "Trueno", "Lobo"])}`, hue: rnd(0, 360) }; }),
+    M(2, "calendario", `Siguen a la luna: nace el primer calendario`),
+    M(2, "balsas", `Cruzan los ríos en balsas`),
+    M(2, "trueque", `Intercambian pieles y comida: nace el trueque`),
+    M(2, "tejido", `Aprenden a tejer fibras`),
+    M(2, "rutas", `Trazan rutas migratorias siguiendo a las bananas`),
+    M(2, "flautas", `Tallan flautas de hueso: nace la música`, () => { S.music = 8; }),
+    M(2, "reglas", `Primeras reglas: nadie roba la comida del vecino`),
+    // --- Sedentarios ---
+    M(3, "agricultura", `Inventan la agricultura: ¡adiós a vagar!`, () => { S.extra += 3; }),
+    M(3, "alfareria", `Aprenden alfarería para guardar el grano`),
+    M(3, "rueda", `Inventan la rueda`),
+    M(3, "escritura", `Nace la escritura`),
+    M(3, "comercio", `Abren el primer mercado`),
+    M(3, "templo", () => `Levantan el primer templo: nace la religión «${S.rel.name}»`, () => { S.rel = newRel(); }),
+    M(3, "astronomia", `Observan los astros: primeros astrónomos`),
+    M(3, "matematicas", `Inventan los números y la geometría`, () => say("1+1=2")),
+    M(3, "filosofia", `Surge el primer filósofo: «¿por qué hay bananas?»`, () => say("¿por qué?")),
+    M(3, "academia", `Fundan la primera academia de sabios`),
+    M(3, "bronce", `Fabrican bronce: comienza la Edad del Bronce`),
+    M(3, "hierro", `Dominan el hierro: armas y arados más fuertes`),
+    M(3, "leyes", `Escriben el primer código de leyes`),
+    M(3, "moneda", `Acuñan las primeras monedas`),
+    M(3, "piramide", `Levantan una gigantesca pirámide para sus dioses`, () => { if (!S.rel) S.rel = newRel(); }),
+    M(3, "curanderos", `Los curanderos descubren plantas medicinales`),
+    M(3, "teatro", `Nace el teatro: los monos se burlan de los reyes`),
+    M(3, "dioses", () => S.branch[3] ? `Creen en muchos dioses: uno para la lluvia, otro para las bananas` : `Surge la idea de un único dios supremo`),
+    M(3, "arquitectura", `Aprenden arquitectura: nacen las primeras ciudades`),
+    // --- Colonial ---
+    M(4, "navegacion", `Zarpan hacia tierras desconocidas`, () => { const sh = alive("ship")[0]; if (sh) burst(sh.x, floorY() - 20, 8, "#fff", 60); }),
+    M(4, "imprenta", `Inventan la imprenta: las ideas viajan rápido`),
+    M(4, "colonia", () => `Fundan la colonia de ${S.city}`),
+    M(4, "catedral", () => `Construyen una gran catedral para «${S.rel.name}»`, () => { if (!S.rel) S.rel = newRel(); }),
+    M(4, "reforma", () => `Una reforma divide a los creyentes: nace «${S.rel2.name}»`, () => { S.rel2 = newRel(); }),
+    M(4, "renacimiento", `Renacimiento: florecen el arte y la ciencia`),
+    M(4, "telescopio_optico", `Inventan el telescopio: la Tierra ya no es el centro`),
+    M(4, "heliocentrismo", `Un sabio afirma que el mundo gira alrededor del sol: ¡escándalo!`, () => say("¡herejía!")),
+    M(4, "universidad", `Fundan la universidad`),
+    M(4, "polvora", `Descubren la pólvora`, () => burst(W / 2, floorY() - 30, 12, "#ffcf6e", 90)),
+    M(4, "brujula", `La brújula inaugura la gran navegación`),
+    M(4, "ilustracion", `Ilustración: la razón desafía a la fe`),
+    M(4, "gravedad", `Un mono descubre la gravedad cuando le cae una banana en la cabeza`, () => say("¡ay!")),
+    M(4, "microscopio", `Con el microscopio ven por primera vez los microbios`),
+    M(4, "imperio", `Se funda un gran imperio colonial`),
+    M(4, "bancos", `Abren el primer banco`),
+    M(4, "independencia", `Las colonias se rebelan y se independizan`),
+    // --- Industrial ---
+    M(5, "vapor", `Máquina de vapor: ¡las fábricas no paran!`),
+    M(5, "ferrocarril", `Llega el ferrocarril`),
+    M(5, "electricidad", `Se hace la luz: llega la electricidad`),
+    M(5, "telegrafo", `El telégrafo conecta a la colonia`),
+    M(5, "evolucion", `Teoría de la evolución: ¿descendemos de otros monos?`, () => say("¿yo?")),
+    M(5, "fotografia", `Inventan la fotografía`),
+    M(5, "telefono", `Suena el primer teléfono`),
+    M(5, "periodicos", `Nacen los periódicos`),
+    M(5, "sindicatos", `Nacen los sindicatos`),
+    M(5, "anestesia", `Descubren la anestesia`),
+    M(5, "democracia", `Nace la democracia moderna`),
+    M(5, "ateismo", `Crece el librepensamiento y el ateísmo`),
+    M(5, "psicologia", `Nace la psicología: los monos se tumban en un diván`),
+    M(5, "motor", `Inventan el motor de combustión`),
+    M(5, "acero", `La era del acero levanta puentes y rascacielos`),
+    M(5, "subterraneo", `Inauguran el metro`),
+    M(5, "higiene", `Descubren la higiene: ¡a lavarse las manos!`, () => { S.done.cuarentena = true; }),
+    M(5, "deporte", `Nacen los deportes modernos`),
+    // --- Moderna ---
+    M(6, "automovil", `Los automóviles llenan las calles`),
+    M(6, "aviacion", `Primer vuelo: el mono por fin tiene alas`),
+    M(6, "radio", `La radio y la televisión llegan a todos`),
+    M(6, "internet", `Nace internet: todos miran videos de bananas`),
+    M(6, "vacunas", `Inventan las vacunas`, () => { S.extra += 5; }),
+    M(6, "relatividad", `Descubren la relatividad: el tiempo no es absoluto`, () => say("E=mc²")),
+    M(6, "atomo", `Dividen el átomo`),
+    M(6, "antibioticos", `Descubren los antibióticos`),
+    M(6, "adn", `Descifran el ADN`),
+    M(6, "computadora", `Aparecen las computadoras`),
+    M(6, "television", `La televisión entra en cada casa`),
+    M(6, "cine", `Nace el cine`),
+    M(6, "rock", `Nace el rock and roll`, () => { S.music = 10; cheerSome(8, 8); }),
+    M(6, "derechos", `Declaran los derechos de todos los monos`),
+    M(6, "naciones", `Fundan la Asamblea de las Naciones Monas`),
+    M(6, "ecologia", `Nace el movimiento ecologista`),
+    M(6, "smartphone", `Todos tienen un teléfono inteligente (y no levantan la vista)`),
+    M(6, "ia", `Primeras inteligencias artificiales`),
+    M(6, "nuevaera", () => `Surgen nuevas espiritualidades: «${S.rel.name}»`, () => { S.rel = newRel(); S.rel2 = null; S.done.reforma = false; }),
+    M(6, "cuantica", `La física cuántica desafía el sentido común`),
+    M(6, "laboratorio", `Enormes laboratorios de investigación`),
+    M(6, "carrera", `Comienza la carrera espacial`),
+    // --- Espacial ---
+    M(7, "satelite", `Lanzan el primer satélite`),
+    M(7, "telescopio", () => `El telescopio divisa ${S.dest.name}`, () => { S.destSeen = true; ensureDest(); }),
+    M(7, "estacion", `Construyen una estación espacial`),
+    M(7, "reutilizables", `Cohetes reutilizables: viajar es barato`),
+    M(7, "luna", `Los primeros monos pisan la Luna`),
+    M(7, "sonda", `Sondas exploran el sistema solar`),
+    M(7, "exoplanetas", `Descubren miles de exoplanetas`),
+    M(7, "fusion", `Logran la energía de fusión`),
+    M(7, "genetica", `Editan los genes: monos a la carta`),
+    M(7, "iglesia_cosmica", () => `Nace una fe cósmica: «${S.rel.name}»`, () => { S.rel = newRel(); S.rel2 = null; S.done.reforma = false; }),
+    M(7, "filosofia_cosmica", `¿Estamos solos en el universo? Los filósofos debaten`, () => say("¿solos?")),
+    M(7, "conciencia_ia", `Una IA pide derechos`),
+    M(7, "ascensor", `Construyen un ascensor espacial`),
+    M(7, "terraformacion", `Comienzan a terraformar otro mundo`),
+    M(7, "seti", `Captan una señal extraña desde muy lejos…`),
   ];
+  const sacredX = () => anchor(SACRED);
   const EVENTS = [
     { id: "guerra", min: 1, w: () => S.traits.war * 1.4 * (free().length >= 6 ? 1 : 0), run: () => startWar() },
     { id: "caceria", max: 2, w: () => alive("mammoth").length && free().length >= 4 ? 1.1 : 0, run: () => startHunt() },
     { id: "festival", min: 1, w: () => 1, run: () => festival() },
-    { id: "plaga", min: 2, w: () => .5 * (2 - S.traits.luck), run: () => hurt(rnd(.15, .35), `Una plaga azota a ${T()}`) },
+    { id: "pandemia", min: 2, w: () => S.pandemic ? 0 : .8 * (2 - S.traits.luck), run: () => pandemic() },
+    { id: "langostas", min: 3, w: () => alive("field").length ? .45 : 0, run: () => locusts() },
+    { id: "sequia", min: 3, w: () => S.drought > 0 ? 0 : .4, run: () => drought() },
     { id: "hambruna", min: 3, w: () => alive("field").length < 2 ? .8 : .25, run: () => hurt(rnd(.1, .22), `Hambruna: la cosecha fracasó`, "hambrunas") },
     { id: "terremoto", min: 1, w: () => .5, run: () => quake() },
     { id: "volcan", max: 4, w: () => .45, run: () => volcano() },
@@ -474,14 +661,39 @@ const World = (function () {
     { id: "eclipse", w: () => .5, run: () => { S.eclipse = 10; logEv(`Eclipse total: ${T()} mira al cielo asustada`); } },
     { id: "lluvia", w: () => .9, run: () => { S.rain = rnd(10, 16); logEv(`Llueve: los cultivos lo agradecen`); } },
     { id: "glaciacion", max: 2, w: () => .35, run: () => { S.snow = 22; S.boost = .6; S.boostT = 30; logEv(`Glaciación: el frío frena a ${T()}`); } },
-    { id: "edadoro", w: () => .4 * S.traits.luck, run: () => { S.boost = 1.5; S.boostT = 40; logEv(`Edad dorada: ${T()} florece`); for (let i = 0; i < 3; i++) setTimeout(() => fireworks(rnd(W * .2, W * .8), rnd(H * .2, H * .5)), i * 700); } },
+    { id: "edadoro", w: () => .4 * S.traits.luck, run: () => { S.boost = 1.5; S.boostT = 40; logEv(`Edad dorada: ${T()} florece`); for (let i = 0; i < 3; i++) later(i * .7, () => fireworks(rnd(W * .2, W * .8), rnd(H * .2, H * .5))); } },
     { id: "edadoscura", min: 2, w: () => .3 * (2 - S.traits.luck), run: () => { S.boost = .55; S.boostT = 32; logEv(`Edad oscura: se pierde conocimiento`); } },
     { id: "ovni", min: 5, w: () => .5, run: () => ufo() },
     { id: "cometa", w: () => .45, run: () => comet() },
     { id: "oro", min: 3, w: () => .4, run: () => { S.extra += 3; logEv(`Hallan una veta de oro: llegan inmigrantes`); } },
+    { id: "incendio", min: 1, w: () => .55, run: () => fire() },
+    { id: "inundacion", min: 2, w: () => .35, run: () => flood(14, `Inundación: el río se desborda`) },
+    { id: "tormenta", w: () => .6, run: () => storm() },
+    { id: "aurora", w: () => .4, run: () => aurora() },
+    { id: "estrellas", w: () => .4, run: () => starShower() },
+    { id: "olimpiadas", min: 3, w: () => free().length >= 5 ? .45 : 0, run: () => olympics() },
+    { id: "concierto", min: 5, w: () => .5, run: () => { S.music = 10; cheerSome(10, 8); logEv(`Gran concierto: ${T()} canta y baila`); } },
+    { id: "exploracion", min: 4, w: () => alive("ship").length ? .4 : 0, run: () => { S.extra += 2; logEv(`Una expedición regresa de ultramar con especias y mapas`); } },
+    { id: "revolucion", min: 4, w: () => .5 * S.traits.war * (free().length >= 6 ? 1 : 0), run: () => startWar(pick([`Revolución: el pueblo derriba al rey`, `Revuelta del pan: los monos toman las calles`])) },
+    { id: "huelga", min: 5, w: () => free().length >= 6 ? .4 : 0, run: () => strike() },
+    { id: "crisis", min: 5, w: () => .35 * (2 - S.traits.luck), run: () => crisis() },
+    { id: "boom", min: 5, w: () => .4 * S.traits.luck, run: () => { S.extra += 3 + (Math.random() * 3 | 0); logEv(`Boom económico: llegan trabajadores y bananas`); burst(W / 2, floorY() - 30, 14, "#ffd23f", 110); } },
+    { id: "genio", min: 2, w: () => .55, run: () => genius() },
+    { id: "arqueologia", min: 4, w: () => .35, run: () => archaeology() },
+    { id: "peregrinacion", min: 1, w: () => sacredX() != null && free().length >= 4 ? .6 : 0, run: () => pilgrimage() },
+    { id: "milagro", min: 3, w: () => sacredX() != null ? .4 : 0, run: () => miracle() },
+    { id: "cisma", min: 4, w: () => S.rel && !S.done.reforma && S.era <= 6 ? .55 : 0, run: () => schism() },
+    { id: "guerrasanta", min: 4, w: () => S.rel2 && S.done.reforma && free().length >= 6 ? .6 * S.traits.war : 0, run: () => startWar(`Guerra santa: «${S.rel.name}» contra «${S.rel2.name}»`) },
+    { id: "profeta", min: 2, w: () => .35, run: () => prophet() },
+    { id: "inmigracion", min: 3, w: () => .5, run: () => { S.extra += 3 + (Math.random() * 4 | 0); logEv(`Llegan inmigrantes de tierras lejanas`); } },
+    { id: "heroe", min: 2, w: () => S.done.heroe ? 0 : .4, run: () => hero() },
+    { id: "tribu", max: 3, w: () => .5, run: () => { S.extra += rnd(2, 4); logEv(`Otra tribu se une a ${T()}`); } },
+    { id: "falsoovni", min: 6, w: () => .3, run: () => logEv(`Falsa alarma: el «ovni» era un globo meteorológico`) },
+    { id: "tsunami", min: 3, w: () => alive("ship").length ? .3 : 0, run: () => flood(18, `Tsunami: una ola gigante golpea la costa`) },
   ];
   function nextMilestone() {
-    const c = MILESTONES.filter(m => m.era === S.era && !S.done[m.id]);
+    let c = MILESTONES.filter(m => m.era === S.era && !S.done[m.id]);
+    if (S.era === 7 && !S.destSeen && S.eraT > S.eraDur * .25) c = c.filter(m => m.id === "telescopio");   // sin esto no hay destino
     const m = wpick(c, () => 1); if (!m) return false;
     S.done[m.id] = true; S.stats.hitos++; if (m.run) m.run(); logEv(m.text()); return true;
   }
@@ -521,18 +733,18 @@ const World = (function () {
     logEv(`Un volcán despierta cerca de ${T()}`);
     groundMons().slice(0, 5).forEach(g => { g.m.mode = "react"; g.m.t = 0; g.m.dur = 1.7; g.m.say = "¡aaah!"; });
   }
-  function meteor() {
+  function meteor(quiet) {
     const x = rnd(W * .15, W * .85), x0 = x + rnd(250, 420);
     fx("g", { x: x0, y: -30, life: 1.3, vx: (x - x0) / 1.3, vy: (floorY() + 6) / 1.3 * 1.0, html: `<circle r="6" fill="#ffd27a"/><circle r="11" fill="#ff9a3c" opacity=".4"/><line x1="0" y1="0" x2="60" y2="-40" stroke="#ff9a3c" stroke-width="5" stroke-linecap="round" opacity=".6"/>`,
-      tick: f => { if (f.life < .05 && !f.hit) { f.hit = true; impact(f.x); } } });
-    logEv(`¡Un meteorito cruza el cielo!`);
+      tick: f => { if (f.life < .05 && !f.hit) { f.hit = true; impact(f.x, quiet); } } });
+    if (!quiet) logEv(`¡Un meteorito cruza el cielo!`);
   }
-  function impact(x) {
+  function impact(x, quiet) {
     S.stats.meteoritos++;
     boom(x, floorY(), true); fx("flash", { x, y: floorY() - 20, r0: 10, r1: 130, life: .6, col: "#fff", op: .5 });
     S.structs.forEach(s => { if (!s.mobile && !s.dying && !s.temp && Math.abs(s.x - x) < 80) s.dying = .001; });
     groundMons().forEach(g => { if (Math.abs(g.x - x) < 100) { g.act = "ko"; g.stay = 3; g.m.t = 0; } });
-    S.shake = 1.4; logEv(`El meteorito cae y arrasa lo que encuentra`);
+    S.shake = 1.4; if (!quiet) logEv(`El meteorito cae y arrasa lo que encuentra`);
   }
   function comet() {
     const y = rnd(H * .12, H * .35), dir = chance(.5) ? 1 : -1;
@@ -583,9 +795,140 @@ const World = (function () {
     } else if (u.ph === "feast" && u.t > 6) { u.hs.forEach(g => { g.hold = false; g.stay = 0; }); S.hunt = null; }
   }
 
+  // --- mas sucesos: pandemias, desastres, religion, ciencia ---
+  function pandemic() {
+    if (S.pandemic) return;
+    const name = pick(DISEASES), med = S.done.vacunas || S.done.antibioticos;
+    S.pandemic = { name, t: 0, dur: med ? rnd(10, 16) : S.era >= 5 ? rnd(18, 26) : rnd(26, 40), dead: 0, sick: 0 };
+    S.stats.pandemias++;
+    logEv(`Pandemia: ${name} se propaga por ${T()}`);
+  }
+  function pandemicStep(h) {
+    const p = S.pandemic; if (!p) return;
+    p.t += h;
+    S.extra = Math.max(0, S.extra - h * (S.done.vacunas ? .15 : .45));
+    if (chance(h * (1.2 + p.t / p.dur * 2.2))) {   // nuevos contagios
+      const g = pick(free().filter(x => !x.sick));
+      if (g) { g.sick = 6 + rnd(0, 4); p.sick++; g.m.parts.root.style.filter = "sepia(1) hue-rotate(50deg) saturate(3)"; g.m.say = "¡achís!"; g.m.mode = "react"; g.m.t = 0; g.m.dur = 1.2; }
+    }
+    for (const g of S.mon) {
+      if (!(g.sick > 0) || g.state !== "ground") continue;
+      g.sick -= h;
+      if (chance(h * 3)) fx("puff", { x: g.x, y: floorY() + g.dy - 14, vy: -12, r0: 2, r1: 6, life: .8, col: "#7fbf3f", op: .6 });
+      if (g.sick <= 0) {
+        g.sick = 0; g.m.parts.root.style.filter = "";
+        if (chance(S.done.antibioticos ? .1 : S.done.vacunas ? .2 : S.era >= 5 ? .3 : .5)) { g.dead = 1.2; p.dead++; }
+      }
+    }
+    if (p.t > p.dur) {
+      S.pandemic = null;
+      logEv(`La pandemia de ${p.name} termina: ${p.dead} muertos` + (S.done.vacunas || S.done.antibioticos || S.done.cuarentena ? " (la medicina ayudó)" : ""));
+    }
+  }
+  function fire() {
+    const t = S.structs.filter(s => !s.mobile && !s.dying && !s.temp && s.built > .8 && !s.fireT);
+    if (!t.length) return;
+    const s = pick(t); S.stats.incendios++;
+    s.fireT = S.era >= 5 ? 5 : 9;
+    logEv(`Incendio: arde una construcción de ${T()}` + (S.era >= 5 ? " (llegan los bomberos)" : ""));
+    free().slice(0, 4).forEach(g => { g.m.say = "¡fuego!"; g.m.mode = "react"; g.m.t = 0; g.m.dur = 1.7; });
+  }
+  function flood(secs, text) {
+    S.flood = S.floodMax = secs; logEv(text);
+    groundMons().slice(0, 6).forEach(g => { g.m.say = "¡agua!"; g.m.mode = "react"; g.m.t = 0; g.m.dur = 1.7; });
+  }
+  function locusts() {
+    S.locust = 9; alive("field").forEach(f => { f.g = 0; });
+    S.extra = Math.max(0, S.extra - 2); logEv(`Una nube de langostas devora los cultivos`);
+  }
+  function drought() {
+    S.drought = 28; logEv(`Sequía: los campos se agrietan`);
+    if (!S.saga) { tint.setAttribute("fill", "#d98c2b"); tint.style.opacity = .12; }
+  }
+  function storm() {
+    S.rain = rnd(9, 14); logEv(`Tormenta eléctrica sobre ${T()}`);
+    for (let i = 0; i < 3 + (Math.random() * 3 | 0); i++) later(1 + i * rnd(1.5, 3), () => bolt());
+  }
+  function bolt(quiet) {
+    const x = rnd(40, W - 40); let d = `M${x.toFixed(0)} -10`, y = -10, cx = x;
+    while (y < floorY()) { y += rnd(30, 60); cx += rnd(-22, 22); d += `L${cx.toFixed(0)} ${Math.min(y, floorY()).toFixed(0)}`; }
+    fx("g", { x: 0, y: 0, life: .25, html: `<path d="${d}" stroke="#bfe3ff" stroke-width="9" fill="none" opacity=".4"/><path d="${d}" stroke="#fff" stroke-width="3" fill="none" stroke-linejoin="round"/>` });
+    fx("flash", { x, y: floorY(), r0: 6, r1: 28, life: .3, col: "#fff", op: .8 });
+    const s = S.structs.find(q => !q.mobile && !q.dying && !q.temp && Math.abs(q.x - x) < 40);
+    if (!quiet && s && !s.fireT && chance(.4)) { s.fireT = 7; logEv(`Un rayo incendia una construcción`); }
+  }
+  function aurora() {
+    S.aurora = 12; logEv(`Aurora boreal: el cielo se ilumina de colores`);
+    fx("g", { x: 0, y: H * .08, life: 12, tick: f => f.e.setAttribute("opacity", (Math.sin(Math.PI * clamp(f.t / 12, 0, 1)) * .9).toFixed(2)),
+      html: `<defs><linearGradient id="au" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7dffb0" stop-opacity="0"/><stop offset=".5" stop-color="#7dffb0" stop-opacity=".5"/><stop offset="1" stop-color="#b57dff" stop-opacity="0"/></linearGradient></defs>` +
+        `<path d="M0 20Q${W * .25} -10 ${W * .5} 25T${W} 15V70Q${W * .75} 95 ${W * .5} 60T0 80Z" fill="url(#au)"/>` });
+    cheerSome(4, 6);
+  }
+  function starShower() {
+    logEv(`Lluvia de estrellas: todos piden un deseo`); cheerSome(5, 5);
+    for (let i = 0; i < 14; i++) later(i * .45, () => fx("g", { x: rnd(0, W), y: rnd(0, H * .3), life: .9, vx: 260, vy: 150,
+      html: `<line x1="0" y1="0" x2="-40" y2="-24" stroke="#fff" stroke-width="2" stroke-linecap="round"/><circle r="2.2" fill="#fff"/>` }));
+  }
+  function olympics() {
+    const gs = free().slice(0, 6); if (gs.length < 4) return;
+    const x0 = rnd(W * .15, W * .35), x1 = x0 + rnd(240, 380);
+    gs.forEach((g, i) => sendTo(g, x0 + i * 10, "idle", 1, 1));
+    logEv(`Olimpiadas: ${gs.length} atletas corren por la gloria`);
+    later(3, () => gs.forEach((g, i) => { g.tx = x1 + i * 6; g.act = "run"; g.next = "cheer"; g.stayT = 4; g.sp = rnd(.9, 1.5); g.m.t = 0; }));
+    later(8, () => { const w = pick(gs); w.m.say = "¡gané!"; w.m.mode = "react"; w.m.t = 0; w.m.dur = 1.7; });
+    later(11, () => gs.forEach(g => { g.hold = false; g.stay = 0; g.sp = rnd(.85, 1.2); }));
+  }
+  function strike() {
+    const x = anchor(["factory", "skyscraper", "market"]) || W / 2, gs = free().slice(0, 8);
+    gs.forEach(g => sendTo(g, x + rnd(-50, 50), "sit", 0, 10));
+    logEv(`Huelga: los trabajadores se sientan frente a la fábrica`);
+    later(2, () => gs.forEach(g => { g.m.say = "¡huelga!"; g.m.mode = "react"; g.m.t = 0; g.m.dur = 1.7; }));
+    later(11, () => releaseAll(gs));
+  }
+  function crisis() {
+    S.extra = Math.max(0, S.extra * .85 - 2);
+    const t = S.structs.filter(q => !q.mobile && !q.dying && !q.temp && q.built > .8);
+    if (t.length > 3) ruinOf(pick(t));
+    logEv(`Crisis económica: quiebran los bancos y cierran negocios`);
+  }
+  function genius() {
+    logEv(`Nace ${nm()}, un genio ${pick(["matemático", "inventor", "poeta", "médico", "filósofo", "músico"])}`);
+    S.msT = Math.min(S.msT, 2); say("¡eureka!");
+  }
+  function archaeology() {
+    const x = freeX(46); if (x == null) return;
+    const rn = addStruct("ruin", x); rn.lifeT = rnd(40, 70);
+    logEv(S.cycle > 1 ? `Hallan ruinas de una civilización anterior... ¿serían ellos mismos?` : `Desentierran ruinas ancestrales`);
+  }
+  function pilgrimage() {
+    const x = sacredX(); if (x == null) return;
+    const gs = free().slice(0, 10);
+    gs.forEach(g => sendTo(g, x + rnd(-44, 44), "sit", 0, 7));
+    logEv(`Peregrinación: ${T()} viaja al templo de «${S.rel.name}»`);
+    later(9, () => releaseAll(gs));
+  }
+  function miracle() {
+    const x = sacredX(); if (x == null) return;
+    fx("line", { x1: x, y1: -10, x2: x, y2: floorY(), col: "#fff7b0", w: 16, life: 2.4 });
+    fx("flash", { x, y: floorY() - 30, r0: 8, r1: 60, life: 1.2, col: "#fff7b0", op: .6 });
+    cheerSome(8, 5); S.extra += 2;
+    logEv(`Milagro en el templo de «${S.rel.name}»: un haz de luz baja del cielo`);
+  }
+  function schism() {
+    S.done.reforma = true; S.rel2 = newRel();
+    logEv(`Cisma: nace «${S.rel2.name}», rival de «${S.rel.name}»`);
+  }
+  function prophet() {
+    logEv(`Un profeta anuncia el fin del mundo para mañana... y no pasa nada`);
+    free().slice(0, 4).forEach(g => { g.m.say = "¿en serio?"; g.m.mode = "react"; g.m.t = 0; g.m.dur = 1.7; });
+  }
+  function hero() {
+    S.done.heroe = true; logEv(`Un héroe salva a ${T()} y le erigen una estatua`); cheerSome(6, 5);
+  }
+
   // --- guerra y paz ---
   const WEAPON = ["stone", "stone", "arrow", "arrow", "ball", "ball", "bullet", "laser"];
-  function startWar() {
+  function startWar(label) {
     const gs = shuffle(free());
     if (gs.length < 6) return false;
     const cx = rnd(W * .3, W * .7), L = [], R2 = [];
@@ -594,9 +937,9 @@ const World = (function () {
       sendTo(g, cx + (left ? -1 : 1) * (60 + side.length * 9), "fight", left ? 1 : -1, 999);
     });
     S.stats.guerras++;
-    S.war = { phase: "march", t: 0, cx, L, R: R2, shot: 0, ko: 3, dur: rnd(11, 17), weapon: WEAPON[S.era] };
+    S.war = { phase: "march", t: 0, cx, L, R: R2, shot: 0, ko: 3, dur: rnd(11, 17), weapon: WEAPON[Math.min(S.era, 7)] };
     S.busy = true;
-    logEv(pick([`Estalla la guerra entre dos bandos de ${T()}`, `Guerra civil: el clan se divide`, `Disputa por el agua: ${T()} toma las armas`]));
+    logEv(label || pick([`Estalla la guerra entre dos bandos de ${T()}`, `Guerra civil: el clan se divide`, `Disputa por el agua: ${T()} toma las armas`]));
   }
   function warStep(h) {
     const w = S.war; if (!w) return;
@@ -632,15 +975,52 @@ const World = (function () {
     if (w.phase === "peace" && w.t > 6) { all.forEach(g => { g.hold = false; g.stay = 0; }); S.war = null; S.busy = false; }
   }
 
-  // --- cohetes y colonizacion ---
+  // --- planetas, cohetes y colonizacion ---
+  let pid = 0;
+  function addPlanet(o) {
+    const i = S.planets.length, r = Math.round((o && o.r) || (i === 0 ? 44 : rnd(13, 22)));
+    const p = Object.assign({ id: ++pid, name: nm() + " " + pick(["b", "c", "IV", "Prime", "X"]), c1: hsl(rnd(0, 360), 55, 62), c2: hsl(rnd(0, 360), 55, 28), ring: chance(.3), col: 0 }, o || {});
+    p.r = r;
+    p.g = el("g", {}, gPlanets);
+    const rr = r * 1.75, rk = r * .38, sw = Math.max(3, r * .14);
+    p.g.innerHTML = `<defs><radialGradient id="pg${p.id}" cx=".35" cy=".35"><stop offset="0" stop-color="${p.c1}"/><stop offset="1" stop-color="${p.c2}"/></radialGradient></defs>` +
+      (p.ring ? `<ellipse rx="${rr}" ry="${rk}" fill="none" stroke="${p.c1}" stroke-width="${sw}" opacity=".55" transform="rotate(-18)"/>` : "") +
+      `<circle r="${r}" fill="url(#pg${p.id})"/><circle cx="${-r * .3}" cy="${-r * .22}" r="${r * .16}" fill="${p.c2}" opacity=".5"/><circle cx="${r * .35}" cy="${r * .3}" r="${r * .2}" fill="${p.c2}" opacity=".45"/>` +
+      (p.ring ? `<path d="M${-rr} 0A${rr} ${rk} 0 0 0 ${rr} 0" fill="none" stroke="${p.c1}" stroke-width="${sw}" opacity=".7" transform="rotate(-18)"/>` : "") +
+      `<g class="col"></g><text y="${r + 13}" text-anchor="middle" font-size="10" font-weight="700" style="fill:var(--muted)">${p.name}</text>`;
+    S.planets.push(p); placePlanets(); renderColonies(p);
+    return p;
+  }
+  function placePlanets() {   // arriba a la derecha primero, luego hacia la izquierda
+    S.planets.forEach((p, i) => {
+      p.x = i === 0 ? W - 88 : 250 + (i - 1) * 105; p.y = i === 0 ? 96 : 30;   // los demas, en la franja libre del encabezado (entre el titulo y el estado)
+      if (i && p.x > W * .6) p.x = 250 + ((i * 97) % Math.max(60, W * .35));
+      p.g.setAttribute("transform", `translate(${p.x} ${p.y})`);
+    });
+  }
+  function renderColonies(p) {
+    const c = p.g.querySelector(".col"), n = Math.min(6, p.col);
+    let html = "";
+    for (let i = 0; i < n; i++) {
+      const a = (-150 + i * 24) * Math.PI / 180, x = p.r * Math.cos(a), y = p.r * Math.sin(a);
+      html += `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${(a * 180 / Math.PI + 90).toFixed(0)})"><path d="M-6 0A6 6 0 0 1 6 0Z" fill="#cfe9ff" stroke="#fff" stroke-width="1"/><line x1="6" y1="0" x2="6" y2="-10" stroke="#555"/><path d="M6 -10L13 -8L6 -6Z" fill="${hsl(S.flag[0], 70, 50)}"/></g>`;
+    }
+    c.innerHTML = html;
+  }
+  function ensureDest() { if (!S.planets.length) addPlanet({ name: S.dest.name, c1: S.dest.c1, c2: S.dest.c2, r: 44, ring: false, dest: true }); }
+  function removePlanet(p) { p.g.remove(); S.planets.splice(S.planets.indexOf(p), 1); S.colonists = S.planets.reduce((a, q) => a + q.col, 0); placePlanets(); }
+  function clearPlanets() { S.planets.forEach(p => p.g.remove()); S.planets = []; S.colonists = 0; }
+  const pickPlanet = () => { const f = S.planets.find(p => p.dest); return f && f.col < S.goal ? f : pick(S.planets.filter(p => !p.alien)) || S.planets[0]; };
+
   function tryLaunch() {
     const pad = alive("pad").find(p => p.ready && p.built > .9), gs = free();
-    if (!pad || gs.length < 4 || !S.destSeen) return false;
+    if (!pad || gs.length < 4 || !S.destSeen || !S.planets.length) return false;
+    const pl = pickPlanet();
     gs.sort((a, b) => Math.abs(a.x - pad.x) - Math.abs(b.x - pad.x));
     const grp = gs.slice(0, 2 + (Math.random() * 3 | 0));
     grp.forEach(g => sendTo(g, pad.x + rnd(-16, 16), "cheer", 1, 99));
-    S.launch = { pad, grp, t: 0 }; S.busy = true;
-    logEv(`Preparan un cohete hacia ${S.dest.name}`);
+    S.launch = { pad, grp, t: 0, pl }; S.busy = true;
+    logEv(`Preparan un cohete hacia ${pl.name}`);
     return true;
   }
   function launchStep(h) {
@@ -649,53 +1029,442 @@ const World = (function () {
     if (L.t > 9 || L.grp.every(g => g.act === "cheer")) {
       L.pad.ready = false; L.pad.readyT = 18 / Math.min(2, S.boost);
       L.grp.forEach(g => { boom(g.x, floorY() - 10, false); killMon(g); });
-      const n = L.grp.length, x0 = L.pad.x + 2, y0 = floorY() - 70;
-      const mp = marsPos();
-      S.flights.push({ x0, y0, x1: mp.x, y1: mp.y, t: 0, dur: 8, n,
-        e: el("g", {}, gFx) });
-      S.flights[S.flights.length - 1].e.innerHTML = `<g transform="rotate(0)">${Pth("M-5 6Q-5 -22 2 -28Q9 -22 9 6Z", "#f4f1ea")}${Pth("M-5 -14Q2 -30 9 -14Z", "#e53935")}${Cir(2, -6, 2.6, "#6fb7ff")}<path class="fl2" d="M-3 6Q2 22 7 6Z" fill="#ff9a3c"/></g>`;
+      const n = L.grp.length, f = { x0: L.pad.x + 2, y0: floorY() - 70, x1: L.pl.x, y1: L.pl.y, pl: L.pl, t: 0, dur: 8, n, e: el("g", {}, gFx) };
+      f.e.innerHTML = `<g>${Pth("M-5 6Q-5 -22 2 -28Q9 -22 9 6Z", "#f4f1ea")}${Pth("M-5 -14Q2 -30 9 -14Z", "#e53935")}${Cir(2, -6, 2.6, "#6fb7ff")}<path d="M-3 6Q2 22 7 6Z" fill="#ff9a3c"/></g>`;
+      S.flights.push(f);
       S.stats.cohetes++;
-      logEv(`¡Despega! ${n} monos viajan a ${S.dest.name}`);
+      logEv(`¡Despega! ${n} monos viajan a ${L.pl.name}`);
       S.launch = null; S.busy = false;
     }
   }
   function flightStep(h) {
     for (const f of S.flights) {
-      f.t += h; const u = clamp(f.t / f.dur, 0, 1), e = u * u * .6 + u * .4;   // acelera
+      f.t += h;
+      if (f.pl && S.planets.includes(f.pl)) { f.x1 = f.pl.x; f.y1 = f.pl.y; }
+      const u = clamp(f.t / f.dur, 0, 1), e = u * u * .6 + u * .4;   // acelera
       const cx = f.x0 + (f.x1 - f.x0) * .15, cy = f.y0 - H * .5;
       const x = (1 - e) * (1 - e) * f.x0 + 2 * (1 - e) * e * cx + e * e * f.x1, y = (1 - e) * (1 - e) * f.y0 + 2 * (1 - e) * e * cy + e * e * f.y1;
       const dx = 2 * (1 - e) * (cx - f.x0) + 2 * e * (f.x1 - cx), dy = 2 * (1 - e) * (cy - f.y0) + 2 * e * (f.y1 - cy);
       f.e.setAttribute("transform", `translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${(Math.atan2(dy, dx) * 180 / Math.PI + 90).toFixed(0)}) scale(${lerp(1, .45, u).toFixed(2)})`);
       if (chance(h * 25)) fx("puff", { x, y, vx: rnd(-8, 8), vy: rnd(-8, 8), r0: 3, r1: 9, life: 1.1, col: "#e8e8e8", op: .6 });
-      if (u >= 1) { f.done = true; arriveMars(f); }
+      if (u >= 1) { f.done = true; arrivePlanet(f); }
     }
     S.flights = S.flights.filter(f => { if (f.done) { f.e.remove(); return false; } return true; });
   }
-  function arriveMars(f) {
-    S.colonists += f.n; boom(f.x1, f.y1, false); marsPlace();
-    logEv(`Llegan ${f.n} colonos a ${S.dest.name}: ya son ${S.colonists}`);
+  function arrivePlanet(f) {
+    if (!S.planets.includes(f.pl)) return;   // el planeta ya no existe
+    f.pl.col += f.n; S.colonists += f.n; boom(f.x1, f.y1, false); renderColonies(f.pl);
+    logEv(`Llegan ${f.n} colonos a ${f.pl.name}: ya son ${S.colonists}`);
     if (!S.won && S.colonists >= S.goal) {
       S.won = true; showBanner(`¡${S.tribe} colonizó ${S.dest.name}!`);
       logEv(`¡${T()} COLONIZÓ ${S.dest.name.toUpperCase()}!`);
-      for (let i = 0; i < 6; i++) setTimeout(() => fireworks(rnd(W * .1, W * .9), rnd(H * .15, H * .5)), i * 500);
+      for (let i = 0; i < 6; i++) later(i * .5, () => fireworks(rnd(W * .1, W * .9), rnd(H * .15, H * .5)));
     }
   }
-  // planeta destino (arriba a la derecha)
-  const gDest = el("g", { style: "display:none" }, gSky);
-  const marsPos = () => ({ x: W - 88, y: 96 });
-  function marsPlace() {
-    const p = marsPos(), d = S.dest;
-    if (!gDest.firstChild) {
-      gDest.innerHTML = `<defs><radialGradient id="dg" cx=".35" cy=".35"><stop offset="0" stop-color="${d.c1}"/><stop offset="1" stop-color="${d.c2}"/></radialGradient></defs>` +
-        `<circle r="44" fill="url(#dg)"/><circle cx="-14" cy="-10" r="7" fill="${d.c2}" opacity=".5"/><circle cx="16" cy="14" r="9" fill="${d.c2}" opacity=".45"/><circle cx="8" cy="-24" r="4" fill="${d.c2}" opacity=".5"/>` +
-        `<g class="col"></g><text y="62" text-anchor="middle" font-size="12" font-weight="700" style="fill:var(--muted)">${d.name}</text>`;
+
+  // ---------- era galactica: sagas de ciencia ficcion ----------
+  const later = (sec, fn) => S.q.push({ at: S.t + sec, fn });
+  function qStep() {
+    if (!S.q.length) return;
+    const due = S.q.filter(e => e.at <= S.t);
+    if (!due.length) return;
+    S.q = S.q.filter(e => e.at > S.t);
+    due.forEach(e => e.fn());
+  }
+  const at = (t, fn) => later(t * rnd(.92, 1.08), fn);
+  const floatText = (x, y, text, col) => fx("g", { x, y, vy: -30, life: 1.1,
+    html: `<text text-anchor="middle" font-size="12" font-weight="800" style="fill:${col || "#e53935"};stroke:#fff;stroke-width:.6px">${text}</text>` });
+  const bigText = txt => fx("g", { x: W / 2, y: H * .4, life: 1, html: `<text text-anchor="middle" font-size="44" font-weight="900" style="fill:#e53935;stroke:#fff;stroke-width:1.4px">${txt}</text>` });
+  const laser = (x0, y0, x1, y1, col, w, life) => fx("line", { x1: x0, y1: y0, x2: x1, y2: y1, col, w: w || 2, life: life || .2 });
+  function ruinOf(s) {
+    if (s.dying) return;
+    s.dying = .001;
+    const r = addStruct("ruin", s.x); r.lifeT = rnd(30, 60);
+    S.planPause = Math.max(S.planPause, 14);
+  }
+  function destroyAt(x, rad, frac) {
+    S.structs.forEach(s => { if (!s.mobile && !s.dying && !s.temp && Math.abs(s.x - x) < rad) ruinOf(s); });
+    groundMons().forEach(g => { if (Math.abs(g.x - x) < rad && chance(frac == null ? .8 : frac)) g.dead = .8 + rnd(0, .6); });
+  }
+
+  // naves (miran hacia +x)
+  const SHIP = {
+    destroyer: () => Pth("M-42 0L26 -11L46 0L26 11Z", "#59606b") + Pth("M-42 0L26 -11L46 0Z", "#6b7380") + Pth("M-12 -7L6 -7L2 -17L-8 -17Z", "#444b55") + Cir(-40, 0, 3.5, "#6fb7ff") + R(-30, -1, 40, 1.6, "#2d323a"),
+    fighter: () => Pth("M-9 0L5 -4L11 0L5 4Z", "#cfd6dd") + Pth("M-3 -3L-8 -10L-1 -4Z", "#9aa4b2") + Pth("M-3 3L-8 10L-1 4Z", "#9aa4b2") + Cir(-9, 0, 2, "#ff9a3c"),
+    saucer: () => Ell(0, 0, 30, 8, "#8d96a3") + Ell(0, -6, 14, 9, "#9fe3ff", 'opacity=".75"') + [-18, -6, 6, 18].map(x => Cir(x, 2, 1.8, "#ffd23f")).join(""),
+    derelict: () => Pth("M-34 0Q-30 -14 0 -16Q34 -14 40 0Q30 8 0 7Q-30 8 -34 0Z", "#6e7681") + R(-4, -22, 10, 7, "#4a515b") + Cir(10, -3, 2.2, "#e53935"),
+    missile: () => Pth("M-8 -1.6L4 -1.6L9 0L4 1.6L-8 1.6Z", "#e8e8e8") + Pth("M-8 -1.6L-12 -4L-5 -1.6Z", "#e53935") + Cir(-9, 0, 2.2, "#ff9a3c"),
+  };
+  function flyShip(kind, x0, y0, x1, y1, dur, o) {
+    o = o || {};
+    return fx("g", Object.assign({ x: x0, y: y0, vx: (x1 - x0) / dur, vy: (y1 - y0) / dur, life: dur, flip: x1 < x0,
+      rotate: Math.atan2(y1 - y0, Math.abs(x1 - x0)) * 180 / Math.PI, html: `<g transform="scale(${o.s || 1})">${SHIP[kind]()}</g>` }, o));
+  }
+  function hoverShip(kind, i, n, home, scale) {
+    const hx = W * (.12 + .76 * (i + .5) / n) + rnd(-20, 20), hy = H * rnd(.15, .3), ph = rnd(0, 6);
+    const x0 = home ? home.x : (chance(.5) ? -60 : W + 60), y0 = home ? home.y : -40;
+    const f = fx("g", { x: x0, y: y0, life: 99999, html: `<g transform="scale(${scale || 1.5})">${SHIP[kind]()}</g>`,
+      tick(f, h) { const u = Math.min(1, f.t / 4); f.x = lerp(x0, hx, out3(u)) + (u >= 1 ? Math.sin(f.t * .4 + ph) * 28 : 0); f.y = lerp(y0, hy, out3(u)) + Math.sin(f.t * .9 + ph) * 4; f.vx = 0; f.vy = 0; } });
+    S.fleet.push(f);
+    return f;
+  }
+  const fleet = (n, home, kind) => { for (let i = 0; i < n; i++) later(i * .6, () => hoverShip(kind || "destroyer", i, n, home, 1.6)); };
+  function shipBeam(f, x) {
+    if (!f) return;
+    laser(f.x, f.y + 8, x, floorY() + 4, "#ff4d4d", 5, .6); boom(x, floorY() - 8, true); destroyAt(x, 70, .85); S.shake = .8;
+  }
+  function dogfight(n) {
+    for (let i = 0; i < n; i++) later(i * rnd(.3, .8), () => {
+      const dir = chance(.5) ? 1 : -1, y = rnd(H * .15, H * .55), x0 = dir > 0 ? -40 : W + 40, x1 = dir > 0 ? W + 40 : -40;
+      const f = flyShip("fighter", x0, y, x1, y + rnd(-60, 60), rnd(3.2, 5), { s: 1.6 });
+      f.sh = rnd(.2, .5);
+      f.tick = (g, h) => {
+        g.sh -= h;
+        if (g.sh <= 0) { g.sh = rnd(.25, .6); laser(g.x, g.y, g.x + dir * rnd(80, 170), g.y + rnd(-40, 40), chance(.5) ? "#ff4d6d" : "#6fd3ff", 2.2, .18); }
+        if (chance(h * .35)) { boom(g.x, g.y, false); g.life = 0; }
+      };
+    });
+  }
+  function station() {
+    const f = fx("g", { x: W * rnd(.22, .45), y: H * .2, life: 99999,
+      html: `<g><circle r="62" fill="#8e96a3"/><path d="M-62 0A62 62 0 0 0 62 0Z" fill="#6b7380" opacity=".6"/><path d="M-62 3Q0 12 62 3" stroke="#4a515b" stroke-width="3" fill="none"/>` +
+        `<circle cx="-22" cy="-20" r="15" fill="#6b7380"/><circle cx="-22" cy="-20" r="10" fill="#3b424d"/><circle cx="-22" cy="-20" r="4" fill="#7dff9a"/><circle cx="20" cy="22" r="3" fill="#ffd23f"/><circle cx="34" cy="10" r="2" fill="#ffd23f"/></g>`,
+      tick(f, h) { f.e.setAttribute("transform", `translate(${f.x.toFixed(1)} ${f.y.toFixed(1)}) scale(${(.1 + .9 * out3(f.t / 3)).toFixed(2)})`); } });
+    S.station = f;
+  }
+  function stationFire(tx, final) {
+    const st = S.station; if (!st) return;
+    const dx = st.x - 22, dy = st.y - 20;
+    fx("flash", { x: dx, y: dy, r0: 3, r1: 26, life: 2.4, col: "#7dff9a", op: .9 });
+    later(2.4, () => {
+      laser(dx, dy, tx, floorY() + 4, "#7dff9a", 10, .9); laser(dx, dy, tx, floorY() + 4, "#d8ffe0", 4, .9);
+      boom(tx, floorY() - 6, true); fx("flash", { x: tx, y: floorY() - 20, r0: 10, r1: 150, life: .8, col: "#bfffcf", op: .6 });
+      destroyAt(tx, final ? 9999 : 170, final ? 1 : .6); S.shake = 2;
+      if (final) later(1.2, () => cataclysm({ title: "La Estrella Negra dispara", text: `El superláser destruye el planeta: solo escapan unas cápsulas`, surv: 4 }));
+    });
+  }
+  function stationExplode() {
+    const st = S.station; if (!st) return;
+    boom(st.x, st.y, true); fx("flash", { x: st.x, y: st.y, r0: 20, r1: 140, life: 1, col: "#fff", op: .8 }); burst(st.x, st.y, 24, "#ffb24d", 160);
+    st.life = 0; S.station = null;
+  }
+
+  // criaturas y enemigos que persiguen a los monos
+  const CRITS = {};
+  function nearestMon(x) { let b = null, d = 1e9; for (const g of groundMons()) { const dd = Math.abs(g.x - x); if (dd < d) { d = dd; b = g; } } return b ? { g: b, d } : null; }
+  function nearestCrit(x) { let b = null, d = 1e9; for (const c of S.crits) { if (c.dying) continue; const dd = Math.abs(c.x - x); if (dd < d) { d = dd; b = c; } } return b; }
+  function devour(c, g) { g.dead = .5; S.stats.devorados++; dust(g.x, 3); floatText(g.x, floorY() - 30, pick(["¡ñam!", "¡crunch!"])); }
+  function shootAt(c, g, col, y0) {
+    laser(c.x + c.dir * 10, floorY() - (y0 || 26), g.x, floorY() + g.dy - 8, col, 3, .25);
+    boom(g.x, floorY() + g.dy - 8, false); g.dead = .6; S.stats.devorados++;
+  }
+  function chomp(x, rad) {
+    boom(x, floorY() - 10, false);
+    groundMons().forEach(g => { if (Math.abs(g.x - x) < rad) { g.dead = .5; S.stats.devorados++; } });
+    S.structs.forEach(s => { if (!s.mobile && !s.dying && !s.temp && Math.abs(s.x - x) < rad * .8) ruinOf(s); });
+    floatText(x, floorY() - 60, "¡ÑAM!"); S.shake = .6;
+  }
+  function killCrit(c, acid) {
+    if (c.dying) return;
+    c.dying = .001;
+    if (acid) for (let i = 0; i < 6; i++) fx("puff", { x: c.x + rnd(-10, 10), y: floorY() - rnd(2, 20), vx: rnd(-20, 20), vy: -rnd(5, 25), r0: 3, r1: 11, life: 1, col: "#7fbf3f", op: .7 });
+    else boom(c.x, floorY() - 14, false);
+  }
+  function critAdd(kind, x, o) {
+    const def = CRITS[kind], c = Object.assign({ kind, x: clamp(x, 12, W - 12), dir: x < W / 2 ? 1 : -1, t: 0, eat: 0, _q: {} }, o || {});
+    c.el = el("g", {}, gCrit); c.el.innerHTML = def.draw(c);
+    c.q = sel => c._q[sel] || (c._q[sel] = c.el.querySelector(sel));
+    if (def.init) def.init(c);
+    S.crits.push(c);
+    return c;
+  }
+  function critStep(c, h) {
+    c.t += h;
+    if (c.dying) { c.dying += h / .5; if (c.dying > 1) { if (c.dots) c.dots.remove(); c.el.remove(); c.gone = true; } return; }
+    CRITS[c.kind].tick(c, h);
+  }
+  function renderCrits() {
+    for (const c of S.crits) {
+      const b = c.dying ? 1 - c.dying : 1, f = c.noflip ? 1 : (c.dir < 0 ? -1 : 1);
+      c.el.setAttribute("transform", `translate(${c.x.toFixed(1)} ${(floorY() + 6).toFixed(1)}) scale(${f * (c.sc || 1)} ${c.sc || 1})`);
+      c.el.style.opacity = ((c.alpha == null ? 1 : c.alpha) * Math.max(0, b)).toFixed(2);
     }
-    gDest.setAttribute("transform", `translate(${p.x} ${p.y})`);
-    gDest.style.display = S.destSeen ? "" : "none";
-    const c = gDest.querySelector(".col"), n = Math.min(6, S.colonists);
-    let html = "";
-    for (let i = 0; i < n; i++) { const a = (-130 + i * 22) * Math.PI / 180, x = 44 * Math.cos(a), y = 44 * Math.sin(a); html += `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${(a * 180 / Math.PI + 90).toFixed(0)})"><path d="M-6 0A6 6 0 0 1 6 0Z" fill="#cfe9ff" stroke="#fff" stroke-width="1"/><line x1="6" y1="0" x2="6" y2="-10" stroke="#555"/><path d="M6 -10L13 -8L6 -6Z" fill="${hsl(S.flag[0], 70, 50)}"/></g>`; }
-    c.innerHTML = html;
+  }
+  CRITS.xeno = {
+    draw: () => `<g class="b"><path d="M-14 -14Q-36 -12 -44 -30Q-40 -14 -22 -8Z" fill="#1d2333" stroke="#0e1220" stroke-width="1.2"/>` +
+      `<ellipse cx="0" cy="-14" rx="15" ry="9" fill="#232b40"/><path d="M8 -20Q16 -34 40 -26Q46 -22 38 -17Q24 -15 14 -12Z" fill="#2a3350"/>` +
+      `<path d="M12 -26Q24 -33 38 -26" stroke="#5a6aa0" stroke-width="1.5" fill="none" opacity=".7"/>` +
+      `<path class="jw" d="M38 -19l5 2l-5 1.6l3 2.2l-6 .6z" fill="#e8e8e8" style="display:none"/>` +
+      `<g stroke="#1d2333" stroke-width="3" stroke-linecap="round" fill="none"><path d="M-6 -8L-10 0"/><path d="M8 -8L12 0"/><path d="M-12 -14L-18 -6M14 -14L20 -4"/></g></g>`,
+    tick(c, h) {
+      const n = nearestMon(c.x); c.eat -= h;
+      if (n && n.d < 22 && c.eat <= 0) { c.eat = 1.1; c.mouth = .5; devour(c, n.g); }
+      else if (n) { c.dir = n.g.x >= c.x ? 1 : -1; if (c.eat <= .6) c.x += c.dir * 135 * h; }
+      else { c.dir = c.x < W / 2 ? 1 : -1; c.x += c.dir * 30 * h; }
+      c.x = clamp(c.x, 10, W - 10); c.mouth = Math.max(0, (c.mouth || 0) - h);
+      c.q(".b").setAttribute("transform", `translate(0 ${(-Math.abs(Math.sin(c.t * 14)) * 2).toFixed(1)})`);
+      c.q(".jw").style.display = c.mouth > 0 ? "" : "none";
+      if (S.fightBack && chance(h * .35) && groundMons().filter(g => Math.abs(g.x - c.x) < 90).length >= 2) killCrit(c, true);
+    } };
+  CRITS.predator = {
+    init(c) { c.alpha = .55; c.aim = null; c.cool = 1.5; c.sc = 1.2; },
+    draw: () => R(-6, -28, 12, 18, "#8a7a4a") + R(-5, -12, 4, 12, "#6b5f3a") + R(1, -12, 4, 12, "#6b5f3a") + R(-11, -28, 4, 16, "#7d6e42") + R(7, -28, 4, 16, "#7d6e42") +
+      Cir(0, -34, 6, "#a79a68") + R(-3, -36, 6, 2.4, "#444") + `<path d="M-4 -30L-6 -26M4 -30L6 -26M0 -29L0 -25" stroke="#d8cfa0" stroke-width="1.4"/>` +
+      `<path d="M-5 -38L-14 -30M-3 -39L-11 -24M3 -39L11 -24M5 -38L14 -30" stroke="#3a3320" stroke-width="1.6"/>` + R(6, -36, 11, 4, "#444") + Cir(16, -34, 1.4, "#e53935") +
+      `<path d="M-6 -22L6 -22M-6 -18L6 -18" stroke="#c9b97a" stroke-width="1"/>`,
+    tick(c, h) {
+      c.alpha = .4 + .2 * Math.sin(c.t * 3); c.cool -= h;
+      let tg = c.target && S.mon.includes(c.target) && !(c.target.dead > 0) && c.target.state === "ground" ? c.target : null;
+      if (!tg) { const n = nearestMon(c.x); tg = c.target = n ? n.g : null; c.aim = null; if (c.dots) { c.dots.remove(); c.dots = null; } }
+      if (!tg) { c.x += c.dir * 25 * h; if (c.x < 20 || c.x > W - 20) c.dir *= -1; return; }
+      const d = tg.x - c.x; c.dir = d >= 0 ? 1 : -1;
+      if (c.duel) return;
+      if (Math.abs(d) > 170) { c.x += c.dir * 70 * h; return; }
+      if (c.cool > 0) return;
+      if (c.aim == null) { c.aim = .9; c.dots = el("g", {}, gFx); c.dots.innerHTML = [-4, 0, 4].map(o => Cir(o, 0, 1.6, "#ff2a2a")).join(""); }
+      c.aim -= h; c.dots.setAttribute("transform", `translate(${tg.x.toFixed(0)} ${(floorY() + tg.dy - 20).toFixed(0)})`);
+      if (c.aim <= 0) {
+        shootAt(c, tg, "#7dff9a", 34); c.dots.remove(); c.dots = null; c.aim = null; c.cool = rnd(3, 5); c.target = null;
+        c.trophies = (c.trophies || 0) + 1; floatText(c.x, floorY() - 60, "☠" + c.trophies, "#7a6a3a");
+      }
+    } };
+  CRITS.robot = {
+    init(c) { c.cool = rnd(.5, 1.5); },
+    draw: () => R(-5, -28, 10, 14, "#8a929c") + `<path d="M-4 -24L4 -24M-4 -20L4 -20M-4 -16L4 -16" stroke="#444" stroke-width="1"/>` + Cir(0, -34, 6, "#c9d1d9") + Cir(-2.2, -34.5, 1.6, "#ff2a2a") + Cir(2.2, -34.5, 1.6, "#ff2a2a") + R(-3, -31, 6, 2, "#444") +
+      `<g stroke="#6b737d" stroke-width="3" stroke-linecap="round" fill="none"><path class="rl1" d="M-3 -14L-6 0"/><path class="rl2" d="M3 -14L6 0"/><path d="M-5 -26L-10 -14"/></g>` + R(5, -26, 13, 3, "#444") + Cir(18, -24.5, 1.6, "#ff4d4d"),
+    tick(c, h) {
+      const n = nearestMon(c.x); c.cool -= h;
+      if (!n) { c.x += c.dir * 25 * h; if (c.x < 20 || c.x > W - 20) c.dir *= -1; return; }
+      c.dir = n.g.x >= c.x ? 1 : -1;
+      if (n.d > 160) c.x += c.dir * 50 * h; else if (c.cool <= 0) { c.cool = rnd(1.8, 3); shootAt(c, n.g, "#ff4d4d", 24); }
+      c.x = clamp(c.x, 10, W - 10);
+      c.q(".rl1").setAttribute("transform", `rotate(${(Math.sin(c.t * 8) * 18).toFixed(0)} -3 -14)`); c.q(".rl2").setAttribute("transform", `rotate(${(-Math.sin(c.t * 8) * 18).toFixed(0)} 3 -14)`);
+    } };
+  CRITS.tripod = {
+    init(c) { c.shot = rnd(1.5, 3); c.sc = 1.25; },
+    draw: () => `<path class="lg" d="M-7 -46L-26 0M0 -46L0 0M7 -46L28 0" stroke="#5a606c" stroke-width="3" fill="none" stroke-linecap="round"/>` + Ell(0, -52, 14, 10, "#7a7f8c") + Cir(7, -52, 3.2, "#ff4d4d") + `<path d="M-14 -50L-24 -40M14 -50L22 -42" stroke="#5a606c" stroke-width="2"/>`,
+    tick(c, h) {
+      if (c.disabled) { killCrit(c, false); return; }
+      const n = nearestMon(c.x), tx = n ? n.g.x : W / 2; c.dir = tx >= c.x ? 1 : -1;
+      if (Math.abs(tx - c.x) > 80) c.x += c.dir * 28 * h;
+      c.x = clamp(c.x, 10, W - 10); c.q(".lg").setAttribute("transform", `skewX(${(Math.sin(c.t * 3) * 7).toFixed(1)})`);
+      c.shot -= h;
+      if (c.shot <= 0) { c.shot = rnd(2.5, 4); const x2 = (n ? n.g.x : c.x + c.dir * 120) + rnd(-30, 30); laser(c.x + c.dir * 8, floorY() - 80, x2, floorY() + 4, "#ff4d4d", 5, .5); boom(x2, floorY() - 6, false); destroyAt(x2, 60, .9); }
+    } };
+  CRITS.worm = {
+    noflip: true,
+    init(c) { c.st = "under"; c.tx = rnd(W * .15, W * .85); c.h = 0; c.hit = false; },
+    draw: () => `<path class="wb" d="" fill="#a8743a" stroke="#6b4521" stroke-width="2"/><g class="wr" stroke="#7a5128" stroke-width="1.4" fill="none"></g><g class="wm"><ellipse rx="14" ry="7" fill="#6d1616"/><g class="wt" fill="#f4efe2"></g></g>`,
+    tick(c, h) {
+      if (c.st === "under") {
+        const d = c.tx - c.x; c.x += Math.sign(d) * Math.min(Math.abs(d), 170 * h);
+        if (chance(h * 14)) dust(c.x, 1);
+        c.h = 0;
+        if (Math.abs(d) < 3) { c.st = "rise"; c.t = 0; c.hit = false; dust(c.x, 8); S.shake = .5; }
+      } else if (c.st === "rise") { c.h = 100 * out3(c.t / .55); if (c.t > .55) { c.st = "bite"; c.t = 0; } }
+      else if (c.st === "bite") {
+        c.h = 100 - 14 * Math.sin(c.t * 12);
+        if (!c.hit) { c.hit = true; if (S.wormCalm > 0) floatText(c.x, floorY() - 110, "…", "#a8743a"); else chomp(c.x, 60); }
+        if (c.t > .7) { c.st = "sink"; c.t = 0; }
+      } else {
+        c.h = 100 * (1 - out3(c.t / .6));
+        if (c.t > .6) { c.st = "under"; c.t = 0; const n = nearestMon(c.x + rnd(-200, 200)); c.tx = n ? clamp(n.g.x + rnd(-40, 40), 30, W - 30) : rnd(W * .15, W * .85); }
+      }
+      const hh = c.h, wb = c.q(".wb"), wm = c.q(".wm"), wr = c.q(".wr"), wt = c.q(".wt");
+      if (hh < 3) { wb.setAttribute("d", ""); wm.style.display = "none"; wr.innerHTML = ""; return; }
+      wm.style.display = ""; wb.setAttribute("d", `M-15 0Q-17 ${-hh * .6} 0 ${-hh}Q17 ${-hh * .6} 15 0Z`);
+      wm.setAttribute("transform", `translate(0 ${-hh}) scale(1 ${(.5 + .5 * Math.abs(Math.sin(c.t * 10))).toFixed(2)})`);
+      wr.innerHTML = [.2, .4, .6, .8].map(f => `<path d="M${-14 * (1 - f * .1)} ${-hh * f}Q0 ${-hh * f + 5} ${14 * (1 - f * .1)} ${-hh * f}"/>`).join("");
+      wt.innerHTML = Array.from({ length: 8 }, (_, i) => { const a = i / 8 * 6.283; return `<path d="M${(Math.cos(a) * 12).toFixed(1)} ${(Math.sin(a) * 5.5).toFixed(1)}l${(Math.cos(a) * -3).toFixed(1)} ${(Math.sin(a) * -2).toFixed(1)}l2 2z"/>`; }).join("");
+    } };
+
+  // piezas de las sagas
+  function alienWorld(c1, c2, name) { ensureDest(); return addPlanet({ alien: true, name: name || nm() + " Prime", c1, c2, r: 34, ring: chance(.4) }); }
+  function crash(x) {
+    const f = flyShip("derelict", x + 220, -40, x, floorY() - 8, 2.2, { s: 1.5 });
+    f.onEnd = () => { boom(x, floorY() - 10, true); S.shake = 1.2; const w = addStruct("wreck", x); w.lifeT = 400; };
+  }
+  function eggs(x) { for (let i = 0; i < 4; i++) { const e = addStruct("egg", clamp(x + (i - 1.5) * 18, 20, W - 20)); e.lifeT = 200; } }
+  function orbitalStrike() {
+    for (let i = 0; i < 10; i++) later(i * .5, () => { const x = rnd(40, W - 40); laser(x, -10, x, floorY(), "#ff9a3c", 8, .5); boom(x, floorY() - 6, true); destroyAt(x, 90, .9); S.shake = 1; });
+  }
+  function missiles() {
+    for (let i = 0; i < 12; i++) later(i * .45, () => {
+      const x = rnd(40, W - 40), f = fx("g", { x: x - 140, y: -20, life: .9, vx: 155, vy: (floorY() + 20) / .9, rotate: 48, html: `<g transform="scale(1.6)">${SHIP.missile()}</g>` });
+      f.onEnd = () => { boom(x, floorY() - 6, true); destroyAt(x, 90, .8); S.shake = 1; fx("flash", { x, y: floorY() - 20, r0: 10, r1: 90, life: .5, col: "#fff", op: .5 }); };
+    });
+  }
+  function blackhole() {
+    S.hole = fx("g", { x: W * rnd(.35, .6), y: H * .2, life: 99999,
+      html: `<ellipse class="ad" rx="1" ry="1" fill="none" stroke="#ffb24d" stroke-width="5" opacity=".85"/><circle class="bc" r="1" fill="#000"/>`,
+      tick(f, h) {
+        const r = 8 + Math.min(1, f.t / 90) * 62, ad = f.e.querySelector(".ad");
+        f.e.querySelector(".bc").setAttribute("r", r.toFixed(1)); ad.setAttribute("rx", (r * 2).toFixed(1)); ad.setAttribute("ry", (r * .45).toFixed(1));
+        ad.setAttribute("transform", `rotate(${(-12 + Math.sin(f.t) * 3).toFixed(1)})`);
+        if (chance(h * 30)) { const a = rnd(0, 6.28), d = rnd(120, 260); fx("spark", { x: f.x + Math.cos(a) * d, y: f.y + Math.sin(a) * d * .5, vx: -Math.cos(a) * d * .9, vy: -Math.sin(a) * d * .45, life: 1, col: "#ffb24d", r: 1.8 }); }
+      } });
+  }
+  function eatPlanet() {
+    const p = pick(S.planets.filter(q => !q.dest)) || S.planets[S.planets.length - 1];
+    if (!p) return;
+    boom(p.x, p.y, true); fx("flash", { x: p.x, y: p.y, r0: 10, r1: 80, life: .8, col: "#ffb24d", op: .7 }); removePlanet(p);
+  }
+  function followLeader() {
+    const gs = free().slice(0, 12); if (gs.length < 4) return;
+    const tx = rnd(W * .55, W * .85);
+    sendTo(gs[0], tx, "cheer", 1, 6);
+    gs.slice(1).forEach((g, i) => sendTo(g, tx - 14 - i * 12, "cheer", 1, 6));
+    later(12, () => releaseAll(gs));
+  }
+  function duel() {
+    const c = S.crits.find(k => k.kind === "predator" && !k.dying), g = pick(free());
+    if (!c || !g) return;
+    c.duel = true; sendTo(g, c.x + 42, "fight", -1, 6);
+    later(5, () => {
+      if (chance(.5) && !c.dying) { killCrit(c, false); logEv(`¡El mono derrota al cazador en un duelo cuerpo a cuerpo!`); }
+      else { g.dead = .8; c.duel = false; logEv(`El cazador gana el duelo y se lleva otro trofeo`); }
+    });
+  }
+  function countdown() { [3, 2, 1].forEach((n, i) => later(i, () => bigText(n))); }
+
+  // ---------- sagas ----------
+  const SAGAS = [
+    { id: "imperio", name: "Guerra de las galaxias", look: ["grayscale(.5) brightness(.85)", "#3a3f4a", "#000", .12],
+      go() {
+        const home = alienWorld("#c9c9d6", "#4a4a5a", "Capital Imperial"), win = chance(.5);
+        at(0, () => { logEv(`Una flota de ${home.name} cubre el cielo: el Imperio exige obediencia`); fleet(3, home); });
+        at(16, () => { logEv(`${T()} se divide en rebeldes e imperiales`); startWar(); });
+        at(40, () => { logEv(`Combate espacial sobre la ciudad`); dogfight(7); });
+        at(64, () => { logEv(`Aparece la Estrella Negra, una estación del tamaño de una luna`); station(); });
+        at(88, () => { logEv(`La Estrella Negra destruye una ciudad`); stationFire(rnd(W * .2, W * .8), false); });
+        at(114, () => { logEv(`Los rebeldes atacan su punto débil`); dogfight(9); });
+        at(136, () => {
+          if (win) {
+            logEv(`¡Los rebeldes destruyen la Estrella Negra! Pero sus restos caen sobre el planeta`); stationExplode();
+            for (let i = 0; i < 8; i++) later(2 + i * .8, () => meteor(true));
+            later(11, () => cataclysm({ title: "Lluvia de escombros", text: `Los restos de la Estrella Negra arrasan el planeta`, surv: 5 }));
+          } else { logEv(`La Estrella Negra dispara una última vez`); stationFire(W / 2, true); }
+        });
+      } },
+    { id: "arrakis", name: "El planeta de arena", look: ["sepia(.75) saturate(1.3)", "#b98a4a", "#d98c2b", .16],
+      go() {
+        at(0, () => { logEv(`El planeta se vuelve un desierto: la especia vale más que el oro`); S.spice = 200; });
+        at(14, () => { logEv(`Dos casas rivales pelean por la especia`); startWar(); });
+        at(34, () => { logEv(`La arena tiembla: despierta un gusano gigante`); critAdd("worm", rnd(W * .15, W * .85)); });
+        at(76, () => { logEv(`Un joven mono profetizado calma al gusano y lo cabalga`); S.wormCalm = 16; cheerSome(8, 6); });
+        at(100, () => { logEv(`La profecía fracasa y los gusanos se multiplican`); critAdd("worm", rnd(W * .1, W * .9)); critAdd("worm", rnd(W * .1, W * .9)); });
+        at(138, () => cataclysm({ title: "Los gusanos devoran el mundo", text: `Los gusanos gigantes devoran lo que queda de ${T()}`, surv: 5 }));
+      } },
+    { id: "fundacion", name: "La Fundación", look: ["hue-rotate(-20deg) saturate(.9)", "#4a4a58", "#3a5ac0", .08],
+      go() {
+        at(0, () => { logEv(`El Imperio galáctico tambalea: el sabio Seldon predice treinta mil años de oscuridad`); S.crumble = 95; S.crumbT = 4; });
+        at(22, () => { const p = addPlanet({}); logEv(`Plan Seldon: se funda la Fundación en ${p.name}, un planeta remoto`); });
+        at(48, () => { logEv(`Primera crisis: bárbaros asaltan la ciudad`); startWar(); });
+        at(78, () => { logEv(`La Fundación prospera comerciando`); festival(); });
+        at(104, () => { logEv(`El Mulo, un mono mutante, hace que todos lo sigan`); followLeader(); });
+        at(132, () => cataclysm({ title: "Cae el Imperio", text: `Cae el Imperio: la Fundación guarda la Enciclopedia y la civilización renacerá desde la era colonial`, surv: 12, era: 4, extra: 8 }));
+      } },
+    { id: "alien", name: "El octavo pasajero", look: ["hue-rotate(70deg) contrast(1.1) brightness(.85)", "#2f3b34", "#0a2a1a", .16],
+      go() {
+        const x = rnd(W * .25, W * .75);
+        at(0, () => { logEv(`Una señal de socorro guía a ${T()} hasta una nave abandonada`); crash(x); });
+        at(14, () => { logEv(`Dentro de la nave hay huevos extraños`); eggs(x); });
+        at(26, () => { logEv(`¡Un xenomorfo escapa y empieza a devorar monos!`); critAdd("xeno", x); });
+        at(52, () => { logEv(`${T()} se arma con lanzallamas`); S.fightBack = true; });
+        at(70, () => { logEv(`Segunda oleada: eclosionan más huevos`); critAdd("xeno", x - 30); critAdd("xeno", x + 30); });
+        at(100, () => { logEv(`La reina se esconde en el nido y los huevos se multiplican`); for (let i = 0; i < 3; i++) critAdd("xeno", rnd(30, W - 30)); });
+        at(126, () => { logEv(`Última opción: arrasar todo desde la órbita`); orbitalStrike(); later(6, () => cataclysm({ title: "Bombardeo orbital", text: `${T()} arrasa su propio mundo para frenar a los xenomorfos`, surv: 4 })); });
+      } },
+    { id: "predator", name: "El cazador", look: ["sepia(.35) hue-rotate(60deg) brightness(.9)", "#35452f", "#1a3a12", .14],
+      go() {
+        const x = rnd(W * .2, W * .8);
+        at(0, () => { logEv(`Una nave invisible aterriza en la selva`); const f = flyShip("saucer", x + 160, -40, x, floorY() - 30, 2.4, { s: 1.4 }); f.onEnd = () => boom(x, floorY() - 20, false); });
+        at(10, () => { logEv(`Un cazador interestelar desciende: se oyen clics en la oscuridad`); critAdd("predator", x); });
+        at(40, () => { logEv(`Los monos se cubren de barro para esconderse`); cheerSome(4, 4); });
+        at(56, () => { logEv(`Un mono valiente desafía al cazador`); duel(); });
+        at(84, () => { logEv(`El cazador activa su autodestrucción`); countdown(); });
+        at(88, () => cataclysm({ title: "Explosión nuclear", text: `La autodestrucción del cazador arrasa la selva`, surv: 4 }));
+      } },
+    { id: "maquinas", name: "La rebelión de las máquinas", look: ["hue-rotate(120deg) saturate(.7) brightness(.8)", "#26332b", "#00ff66", .1],
+      go() {
+        at(0, () => { logEv(`Despierta una inteligencia artificial: «Red Neural» toma el control`); S.code = 120; });
+        at(14, () => { logEv(`Los robots salen de las fábricas`); for (let i = 0; i < 3; i++) critAdd("robot", chance(.5) ? rnd(20, W * .3) : rnd(W * .7, W - 20)); });
+        at(46, () => logEv(`Los monos se esconden en bunkers`));
+        at(60, () => { logEv(`Un héroe viaja al pasado para detener a Red Neural`); fx("flash", { x: W / 2, y: floorY() - 40, r0: 6, r1: 70, life: 1, col: "#9fe3ff", op: .8 }); cheerSome(5, 4); });
+        at(84, () => { logEv(`Fallan: Red Neural lanza los misiles nucleares`); missiles(); });
+        at(106, () => cataclysm({ title: "Invierno nuclear", text: `Invierno nuclear: apenas sobreviven unos pocos monos`, surv: 4 }));
+      } },
+    { id: "invasion", name: "La guerra de los mundos", look: ["hue-rotate(-40deg) saturate(1.2) brightness(.9)", "#4a3a3a", "#ff3a3a", .12],
+      go() {
+        const home = alienWorld("#d8603a", "#6a1f10", "Mundo Rojo"), virus = chance(.5);
+        at(0, () => { logEv(`Cilindros metálicos caen del cielo`); for (let i = 0; i < 3; i++) later(i * .8, () => meteor(true)); });
+        at(14, () => { logEv(`De los cilindros emergen trípodes gigantes`); critAdd("tripod", rnd(30, W * .3)); critAdd("tripod", rnd(W * .7, W - 30)); });
+        at(40, () => { logEv(`Platillos enormes cubren las ciudades`); fleet(3, home, "saucer"); for (let i = 0; i < 4; i++) later(3 + i * 4, () => shipBeam(pick(S.fleet), rnd(W * .1, W * .9))); });
+        at(62, () => { logEv(`Contraataque militar de ${T()}`); startWar(); });
+        at(92, () => {
+          if (virus) { logEv(`Los invasores caen enfermos: los frenó un virus microbiano`); S.crits.forEach(c => { c.disabled = true; }); S.fleet.forEach(f => { f.life = 0; }); }
+          else logEv(`Nada los detiene: las armas no sirven`);
+        });
+        at(118, () => cataclysm({ title: "Mundo devastado", text: virus ? `Los invasores caen, pero el planeta queda devastado` : `Los invasores devastan el planeta`, surv: 5 }));
+      } },
+    { id: "agujero", name: "Horizonte de sucesos", look: ["brightness(.8) contrast(1.15)", "#2a2a36", "#000", .2],
+      go() {
+        at(0, () => { logEv(`Un agujero negro se acerca al sistema solar`); blackhole(); });
+        at(18, () => { logEv(`Las mareas gravitatorias sacuden las ciudades`); quake(); });
+        at(36, () => { logEv(`Evacuación: los cohetes parten sin parar`); S.fastLaunch = 70; S.launchT = 0; });
+        at(60, () => { logEv(`El agujero negro devora un planeta`); eatPlanet(); });
+        at(84, () => { logEv(`Algunos cruzan un agujero de gusano hacia lo desconocido`); fx("flash", { x: W * .75, y: floorY() - 60, r0: 8, r1: 80, life: 1.4, col: "#9fe3ff", op: .8 }); });
+        at(106, () => cataclysm({ title: "Horizonte de sucesos", text: `El agujero negro se traga la Tierra; los que cruzaron el agujero de gusano empiezan de nuevo`, surv: 5 }));
+      } },
+  ];
+  function setLook(look) {
+    gStruct.style.transition = "filter 2s"; gStruct.style.filter = look ? look[0] : "";
+    if (look) { ground.setAttribute("fill", look[1]); tint.setAttribute("fill", look[2]); tint.style.opacity = look[3]; }
+    else { ground.setAttribute("fill", ERAS[Math.min(S.era, 8)].ground); tint.style.opacity = 0; }
+  }
+  function startSaga(id) {
+    const def = SAGAS.find(q => q.id === id) || wpick(SAGAS.filter(q => q.id !== S.lastSaga), () => 1);
+    S.saga = { def }; S.lastSaga = def.id; setLook(def.look);
+    showBanner(`Saga: ${def.name}`); logEv(`Comienza la saga «${def.name}»`);
+    def.go();
+  }
+  function cataclysm(o) {
+    if (S.cata) return;
+    o = o || {}; S.cata = o; S.busy = true; S.planPause = 999; S.shake = 4; S.stats.cataclismos++;
+    showBanner(o.title || "¡Catástrofe!"); logEv(o.text || `Una catástrofe arrasa el mundo`);
+    fx("flash", { x: W / 2, y: H / 2, r0: 20, r1: Math.max(W, H) * 1.2, life: 1.6, col: "#fff", op: .95 });
+    S.structs.forEach((q, i) => { if (!q.mobile && !q.temp) later(.2 + i * .12, () => { if (!q.dying) { q.dying = .001; boom(q.x, floorY() - 12, true); } }); });
+    const surv = o.surv == null ? 3 + (Math.random() * 3 | 0) : o.surv;
+    shuffle(groundMons()).slice(surv).forEach((g, i) => { g.dead = 1 + i * .12; });
+    S.crits.forEach(c => { c.dying = c.dying || .001; });
+    S.fleet.forEach(f => { f.life = 0; }); S.fleet = [];
+    for (let i = 0; i < 9; i++) later(i * .6, () => boom(rnd(40, W - 40), floorY() - rnd(0, 30), true));
+    later(8, () => resetWorld(o));
+  }
+  function resetWorld(o) {
+    S.q.length = 0;
+    S.fx.forEach(f => f.e.remove()); S.fx = [];
+    S.flights.forEach(f => f.e.remove()); S.flights = [];
+    S.structs.forEach(q => q.el.remove()); S.structs = [];
+    S.crits.forEach(c => { if (c.dots) c.dots.remove(); c.el.remove(); }); S.crits = []; S.fleet = [];
+    clearPlanets();
+    if (S.ufo) { S.ufo.e.remove(); S.ufo.beam.remove(); S.ufo = null; }
+    S.war = S.hunt = S.launch = S.saga = S.cata = S.station = S.hole = S.pandemic = null; S.busy = false;
+    S.fightBack = false; S.wormCalm = S.spice = S.code = S.crumble = S.rain = S.snow = S.eclipse = S.shake = S.fastLaunch = 0;
+    S.flood = S.locust = S.drought = S.aurora = S.music = 0;
+    water.setAttribute("height", 0); dark.setAttribute("opacity", 0);
+    groundMons().forEach(g => { g.sick = 0; g.hold = false; g.stay = 0; g.m.parts.root.style.filter = ""; });
+    S.cycle++;
+    S.era = o.era || 0; S.eraT = 0; S.eraDur = ERAS[S.era].dur * rnd(.75, 1.35); S.extra = o.extra || 0;
+    S.done = {}; S.recent = {}; S.won = false; S.destSeen = false; S.dest = wpick(DESTS, d => d.w); S.goal = 4 + (Math.random() * 3 | 0);
+    S.traits = { war: rnd(.25, 1.8), curious: rnd(.7, 1.5), luck: rnd(.6, 1.4) };
+    S.branch = [0, 0, 0, 0, 0, 0, 0, 0, 0].map(() => chance(.5) ? 1 : 0);
+    S.rel = S.rel2 = null; S.tribe = nm(); S.city = nm(); S.hue = rnd(0, 360); S.flag = [rnd(0, 360), rnd(0, 360)];
+    S.planPause = 0; S.planT = 0; S.msT = 6; S.evT = 12; S.launchT = null; S.mammothT = 0; S.planetT = null;
+    setLook(null); rails.style.display = "none";
+    showBanner(o.era ? "El conocimiento sobrevive" : "Los supervivientes empiezan de nuevo");
+    logEv(`— Ciclo ${S.cycle}: ${S.tribe} ${o.era ? "reconstruye la civilización" : "vuelve a la Edad de Piedra"} —`);
+    S.hudT = 0;
   }
 
   // ---------- poblacion, eras y reloj ----------
@@ -708,9 +1477,10 @@ const World = (function () {
     S.era++; S.eraT = 0; S.eraDur = ERAS[S.era].dur * rnd(.75, 1.35); S.msT = 4;
     ground.setAttribute("fill", ERAS[S.era].ground);
     showBanner(ERAS[S.era].name); logEv(`Comienza: ${ERAS[S.era].name}`);
-    if (S.era >= 3) logEv(`Nace ${S.city}, la primera aldea de ${T()}`);
+    if (S.era === 3) logEv(`Nace ${S.city}, la primera aldea de ${T()}`);
     burst(W / 2, floorY() - 20, 14, "#ffd23f", 100);
     if (S.era === 7) { S.msT = 6; }
+    if (S.era === 8) startSaga();
   }
   function step(h) {
     S.t += h;
@@ -725,16 +1495,31 @@ const World = (function () {
     if (S.eclipse > 0) { S.eclipse -= h; dark.setAttribute("opacity", (Math.sin(Math.PI * clamp(1 - S.eclipse / 10, 0, 1)) * .55).toFixed(2)); }
     if (S.rain > 0) { S.rain -= h; for (let i = 0; i < h * 90; i++) fx("drop", { x: rnd(0, W), y: -10, vy: rnd(500, 700), vx: -40, life: 3 }); }
     if (S.snow > 0) { S.snow -= h; for (let i = 0; i < h * 30; i++) fx("flake", { x: rnd(0, W), y: -10, vy: rnd(40, 80), life: 8 }); }
+    qStep(); pandemicStep(h);
+    if (S.flood > 0) S.flood -= h;
+    { const k = S.flood > 0 ? Math.sin(Math.PI * clamp(1 - S.flood / S.floodMax, 0, 1)) : 0; water.setAttribute("height", (k * 30).toFixed(1)); water.setAttribute("y", (H - k * 30).toFixed(1)); }
+    if (S.locust > 0) { S.locust -= h; for (let i = 0; i < h * 90; i++) fx("spark", { x: -10, y: rnd(H * .2, H * .8), vx: rnd(150, 260), vy: rnd(-20, 20), life: 4, col: "#3a2a14", r: 1.8 }); }
+    if (S.drought > 0) { S.drought -= h; if (S.drought <= 0) { logEv(`La sequía termina: vuelve la lluvia`); S.rain = 8; if (!S.saga) tint.style.opacity = 0; } }
+    if (S.music > 0) { S.music -= h; if (chance(h * 5)) { const g = pick(groundMons()); if (g) fx("note", { x: g.x, y: floorY() - 20, vy: -30, vx: rnd(-10, 10), life: 1.6, col: `hsl(${rnd(0, 360)} 70% 55%)` }); } }
+    if (S.wormCalm > 0) S.wormCalm -= h;
+    if (S.fastLaunch > 0) S.fastLaunch -= h;
+    if (S.spice > 0) { S.spice -= h; if (chance(h * 8)) fx("spark", { x: rnd(0, W), y: floorY() - rnd(0, 50), vy: -rnd(5, 20), life: 1.5, col: "#ffb24d", r: 2 }); }
+    if (S.code > 0) { S.code -= h; for (let i = 0; i < h * 36; i++) fx("code", { x: rnd(0, W), y: -10, vy: rnd(60, 140), life: rnd(3, 6) }); }
+    if (S.crumble > 0) { S.crumble -= h; S.crumbT -= h; if (S.crumbT <= 0) { S.crumbT = 6; const t = S.structs.filter(q => !q.mobile && !q.dying && !q.temp && q.built > .8); if (t.length > 2) ruinOf(pick(t)); } }
+    for (const c of S.crits) critStep(c, h);
+    S.crits = S.crits.filter(c => !c.gone);
     for (const g of S.mon.slice()) stepMon(g, h);
     if (S.started) {
       S.eraT += h * S.boost;
       const ground2 = groundMons().length;
       if (ground2 >= 2 && popTotal() < ERAS[S.era].cap) S.extra += h * (.12 + ground2 * .012) * S.traits.luck;
       if (S.era < 7 && S.eraT >= S.eraDur && popTotal() >= ERAS[S.era + 1].min) eraUp();
-      S.planT -= h; if (S.planT <= 0) { S.planT = 1.1; plan(); }
-      S.msT -= h; if (S.msT <= 0) { S.msT = rnd(9, 18) / S.traits.curious / S.boost; nextMilestone(); }
-      if (!S.busy) { S.evT -= h; if (S.evT <= 0) { S.evT = rnd(14, 28) / Math.sqrt(S.boost); nextEvent(); } }
-      if (S.era === 7 && S.destSeen && !S.busy && !S.launch) { S.launchT = (S.launchT == null ? 8 : S.launchT) - h; if (S.launchT <= 0) { S.launchT = rnd(14, 22); tryLaunch(); } }
+      else if (S.era === 7 && ((S.won && S.eraT >= S.eraDur * .5) || S.eraT >= S.eraDur * 3)) eraUp();   // tras colonizar viene la era galactica
+      S.planT -= h; if (S.planT <= 0) { S.planT = 1.1; if (S.planPause > 0) S.planPause -= 1.1; else plan(); }
+      S.msT -= h; if (S.msT <= 0) { S.msT = rnd(7, 14) / S.traits.curious / S.boost; nextMilestone(); }
+      if (!S.busy && !S.saga) { S.evT -= h; if (S.evT <= 0) { S.evT = rnd(11, 22) / Math.sqrt(S.boost); nextEvent(); } }
+      if (S.era >= 7 && S.destSeen && !S.busy && !S.launch && !S.cata) { S.launchT = (S.launchT == null ? 8 : S.launchT) - h; if (S.launchT <= 0) { S.launchT = S.fastLaunch > 0 ? rnd(5, 8) : rnd(14, 22); tryLaunch(); } }
+      if (S.era >= 7 && S.destSeen && !S.cata) { S.planetT = (S.planetT == null ? 20 : S.planetT) - h; if (S.planetT <= 0 && S.planets.length < 5) { S.planetT = rnd(24, 40); const pl = addPlanet({}); logEv(`El telescopio descubre ${pl.name}`); } }
       if (S.mammothT > 0) { S.mammothT -= h; }
       if (S.returnT > 0) { S.returnT -= h; if (S.returnT <= 0 && S.returnMon) { const m = S.returnMon; S.returnMon = null; gMon.appendChild(m.parts.root); const g = { m, state: "ground", x: 0, y: 0, rot: 0, vx: 0, vy: 0, vr: 0, dy: rnd(6, GROUND_H - 12), sp: 1, act: "idle", stay: 0 }; g.x = rnd(60, W - 60); g.y = -40; S.mon.push(g); fall(g); m.say = "¡¿?!"; logEv(`El mono abducido regresó... con cara de susto`); } }
     }
@@ -742,6 +1527,12 @@ const World = (function () {
       const def = KINDS[s.kind];
       if (s.dying) s.dying += h / .7; else s.built = Math.min(1, s.built + h / .8);
       if (s.lifeT != null) { s.lifeT -= h; if (s.lifeT <= 0 && !s.dying) s.dying = .001; }
+      if (s.fireT > 0 && !s.dying) {
+        s.fireT -= h;
+        if (chance(h * 22)) fx("spark", { x: s.x + rnd(-s.w / 3, s.w / 3), y: floorY() - rnd(4, 30), vy: -rnd(30, 70), life: rnd(.4, .9), col: chance(.5) ? "#ff7a1a" : "#ffd23f", r: 2.4 });
+        if (chance(h * 3)) smoke(s.x, floorY() - 30);
+        if (s.fireT <= 0) ruinOf(s);
+      }
       if (def.tick && !s.dying) def.tick(s, h);
       if (s.kind === "mammoth" || s.kind === "sheep" || s.kind === "dog" || s.kind === "cart") wander(s, h);
     }
@@ -777,12 +1568,14 @@ const World = (function () {
     if (!S.started || S.hudT > 0) return;
     S.hudT = .3;
     const e = ERAS[S.era], pop = popTotal(), st = S.stats;
-    let h = `<b>${e.name}</b> · ${fmtYear(curYear())} ${hudOpen ? "▾" : "▸"}<br>Población ${pop} · ${S.tribe}` +
+    let h = `<b>${e.name}</b> · ${fmtYear(curYear())} ${hudOpen ? "▾" : "▸"}<br>Población ${pop} · ${S.tribe}` + (S.cycle > 1 ? ` · Ciclo ${S.cycle}` : "") +
+      (S.saga ? `<br>Saga: ${S.saga.def.name}` : "") +
       (S.era === 7 && S.destSeen ? ` · ${S.dest.name}: ${S.colonists}${S.won ? " ✔" : "/" + S.goal}` : "");
     if (hudOpen) {
       h += `<div class="ev" style="margin-top:4px;max-height:42vh;overflow:auto">` +
         S.log.slice(0, 14).map(l => `${l.y}: ${l.text}`).join("<br>") + `</div>` +
-        `<div style="margin-top:4px;border-top:1px solid var(--border);padding-top:3px">Guerras ${st.guerras} · Plagas ${st.plagas} · Hambrunas ${st.hambrunas} · Terremotos ${st.terremotos} · Meteoritos ${st.meteoritos} · Fiestas ${st.festivales} · Cohetes ${st.cohetes} · Hitos ${st.hitos}</div>`;
+        (S.rel ? `<div style="margin-top:4px">Religión: ${S.rel.name}${S.rel2 && S.done.reforma ? " · rival: " + S.rel2.name : ""}</div>` : "") +
+        `<div style="margin-top:4px;border-top:1px solid var(--border);padding-top:3px">Guerras ${st.guerras} · Plagas ${st.plagas} · Hambrunas ${st.hambrunas} · Terremotos ${st.terremotos} · Meteoritos ${st.meteoritos} · Fiestas ${st.festivales} · Cohetes ${st.cohetes} · Pandemias ${st.pandemias} · Incendios ${st.incendios} · Bajas ${st.devorados} · Cataclismos ${st.cataclismos} · Hitos ${st.hitos}</div>`;
     }
     hud.innerHTML = h + (Q.has("debug") ? `<br>t=${S.t.toFixed(1)} fx=${S.fx.length} mon=${S.mon.length} st=${S.structs.length}` : "");
     toasts.style.display = hudOpen ? "none" : "";
@@ -797,24 +1590,33 @@ const World = (function () {
     for (const k in rectOf) delete rectOf[k];
     let rem = real * TURBO;
     while (rem > 1e-4) { const h = Math.min(.05, rem); step(h); rem -= h; }
-    renderStructs(); renderMons(); renderHud();
+    renderStructs(); renderCrits(); renderMons(); renderHud();
   }
   addEventListener("resize", () => { const ow = W; W = innerWidth; H = innerHeight; S.structs.forEach(s => { s.x *= W / ow; }); layout(); });
 
   // ---------- pruebas (?era=N, ?do=...) ----------
   function testSetup() {
     if (!START_ERA && !Q.get("do")) return;
-    S.era = START_ERA; S.eraDur = ERAS[S.era].dur * 2; S.extra = ERAS[S.era].cap; S.destSeen = S.era === 7;
+    S.era = START_ERA; S.eraDur = ERAS[S.era].dur * 2; S.extra = ERAS[S.era].cap; S.destSeen = S.era >= 7; S.won = S.era >= 8;
+    const flags = [[1, ["fuego_sagrado"]], [2, ["totems", "trueque"]], [3, ["rueda", "escritura", "comercio", "templo", "academia", "astronomia"]], [4, ["catedral", "universidad", "reforma", "imprenta"]],
+      [5, ["electricidad", "deporte", "heroe"]], [6, ["radio", "laboratorio", "antibioticos", "vacunas"]]];
+    flags.forEach(([e, fl]) => { if (S.era >= e) fl.forEach(f => { S.done[f] = true; }); });
+    if (S.era >= 1) S.rel = newRel();
+    if (S.era >= 4) S.rel2 = newRel();
     ground.setAttribute("fill", ERAS[S.era].ground);
     S.started = true; gGround.style.opacity = 1; gStruct.style.opacity = 1; hud.style.opacity = 1;
     for (let i = 0; i < 14; i++) {
       const m = A.make(); gMon.appendChild(m.parts.root); m.mood = { low: 0, mid: 1, high: 0 }; m.theta = 0;
       S.mon.push({ m, state: "ground", x: rnd(40, W - 40), y: 0, rot: 0, vx: 0, vy: 0, vr: 0, dy: rnd(6, GROUND_H - 12), sp: rnd(.85, 1.2), act: "idle", stay: rnd(0, 3) });
     }
+    if (S.era >= 7) { ensureDest(); for (let i = 0; i < 3; i++) addPlanet({}); }
     for (let i = 0; i < 6; i++) plan();
     S.structs.forEach(s => s.built = 1);
-    const DO = { guerra: startWar, caceria: startHunt, cohete: () => { S.destSeen = true; marsPlace(); tryLaunch(); }, meteorito: meteor, ovni: ufo, plaga: () => hurt(.25, "Plaga"),
+    const DO = { guerra: startWar, caceria: startHunt, cohete: () => { S.destSeen = true; ensureDest(); tryLaunch(); }, meteorito: meteor, ovni: ufo, plaga: () => hurt(.25, "Plaga"),
       terremoto: quake, volcan: volcano, festival, eclipse: () => { S.eclipse = 10; }, lluvia: () => { S.rain = 12; }, cometa: comet };
+    Object.assign(DO, { cataclismo: () => cataclysm({ surv: 4 }), pandemia: pandemic, incendio: fire, inundacion: () => flood(14, "Inundación"), tormenta: storm, aurora, estrellas: starShower,
+      olimpiadas: olympics, peregrinacion: pilgrimage, milagro: miracle, cisma: schism, huelga: strike, crisis, langostas: locusts, sequia: drought, genio: genius, concierto: () => { S.music = 10; cheerSome(10, 8); } });
+    if (START_ERA === 8) setTimeout(() => startSaga(Q.get("saga")), 600);
     const d = Q.get("do"); if (d && DO[d]) setTimeout(DO[d], 2500);
   }
 

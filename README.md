@@ -54,3 +54,12 @@ crontab -e   # agregar:
 - La temperatura es el promedio de los cores (`coretemp` / `k10temp`); si el equipo no la expone, muestra `—`.
 - El CPU % es el promedio de 1 s al momento de medir (cada 5 min), no un promedio del intervalo completo.
 - Retraso típico del dato: hasta ~6 min con la API (hasta ~11 min si se agota su cupo y cae a raw).
+
+## Sociedad de monos (`world.js`)
+
+- Cada 10 s nace un mono en un equipo al azar. Cada tarjeta aguanta 9 monos en sus anillos; los que sobran se desbordan, caminan tapando los textos y caen al "suelo" (borde inferior de la pantalla).
+- Abajo arman una civilización que avanza por 8 eras: piedra, fuego, nómadas, sedentarios (aldeas y cultivos), colonial, industrial, moderna y espacial, hasta colonizar otro mundo (Marte, la Luna, Europa o Titán).
+- **No es siempre la misma historia:** en cada carga se sortean el temperamento de la tribu (más guerrera o más pacífica), el nombre de la tribu y la ciudad, la paleta de las casas, la variante de cada era, el destino espacial y la duración de cada época. Dentro de cada era los hitos canónicos (domar el fuego, la rueda, la escritura, el vapor, internet, el telescopio…) salen en orden aleatorio, mezclados con sucesos al azar: guerras y paces, cacerías, fiestas y fuegos artificiales, plagas, hambrunas, terremotos, volcanes, meteoritos, eclipses, lluvia, glaciaciones, edad dorada u oscura, cometas y hasta un ovni.
+- Al recargar la página todo vuelve a cero (no se guarda nada).
+- Panel de crónica abajo a la izquierda: tócalo para ver el historial y las estadísticas.
+- Pruebas: `?demo&turbo=20` acelera el tiempo, `?era=N` empieza en esa era, `?warp=300` adelanta 300 s, `?do=guerra|cohete|meteorito|ovni|plaga|terremoto|volcan|festival|eclipse|lluvia|cometa|caceria` dispara un suceso, `?debug` muestra contadores.

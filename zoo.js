@@ -681,7 +681,8 @@ const Zoo = (function () {
     }
     if (m.lane === "ram" && m.mode !== "cross" && m.theta > hi && m.theta < 180) m.theta = hi;
     m.theta = wrap(m.theta);
-    draw(m);
+    if (!LOW || NOCAP) draw(m);
+    else { m._k = (m._k || 0) + 1; if (m._k % (m.mode === "walk" || m.mode === "run" || m.mode === "goto" || m.mode === "cross" || m.mode === "hop" ? 2 : 6) === 0 || m.mode !== m._lm) { draw(m); m._lm = m.mode; } }   // TV: en movimiento a 15 Hz, en reposo a 5 Hz
     place(m, m.theta, r + h);
   }
 
@@ -729,7 +730,7 @@ const Zoo = (function () {
   // ---- monos nuevos: aparecen en un equipo; si ya hay muchos, uno se desborda hacia el mundo de abajo ----
   let onRelease = null, onCeleb = null;
   function release(z, m) {
-    z.ms.splice(z.ms.indexOf(m), 1);
+    z.ms.splice(z.ms.indexOf(m), 1); z.v = (z.v || 0) + 1;
     const rect = z.svg.getBoundingClientRect(), k = rect.width / 300;
     const a = (m.theta - 90) * Math.PI / 180, r = LANE[m.lane];
     const x = rect.left + (CX + r * Math.cos(a)) * k, y = rect.top + (CY + r * Math.sin(a)) * k;
@@ -741,7 +742,7 @@ const Zoo = (function () {
     const m = newMonkey(z.ctx, Math.random() < .4 ? "ram" : "cpu", pick(SPECIES_BY_KIND[kindOf(id)]), Math.random() < .5, rollCeleb(.09));
     if (m.celeb && onCeleb) onCeleb(m, id);
     m.pop = 0;
-    z.svg.appendChild(m.parts.root); z.ms.push(m);
+    z.svg.appendChild(m.parts.root); z.ms.push(m); z.v = (z.v || 0) + 1;
     if (z.ms.length > CAP) {
       const vic = z.ms.filter(x => x !== m && x.mode !== "cross");
       if (vic.length) release(z, pick(vic));
@@ -749,6 +750,17 @@ const Zoo = (function () {
     return m;
   }
   const clear = n => { while (n.firstChild) n.removeChild(n.firstChild); };   // replaceChildren no existe en navegadores viejos
+  // cuando empieza la civilizacion, los anillos solo monitorean: los animales se quedan quietos y en fila (parejos sobre el anillo exterior);
+  // si llegan mas, los de sobra caen a la civilizacion (el mecanismo de siempre). Asi no hay nada moviendose ni redibujandose en las tarjetas.
+  let STATIC = false;
+  function layoutStatic(z) {
+    const ms = z.ms.filter(m => m.mode !== "cross"), n = Math.max(1, ms.length);
+    ms.forEach((m, i) => {
+      m.lane = "cpu"; m.mode = "rest"; m.t = 0; m.phase = 1; m.pop = 1; m.say = null; m.thinkT = 0; m.mood = mood(z.ctx.cpu); m.ctx = z.ctx;
+      m.theta = wrap(20 + i * 360 / n); draw(m); place(m, m.theta, LANE.cpu);
+    });
+    z.sv = z.v;
+  }
   function frame(now) {
     raf = requestAnimationFrame(frame);
     if (!probe.done) {   // medicion inicial: se ignoran los primeros 2 s (la pagina esta cargando) y se miran 4 s
@@ -767,6 +779,14 @@ const Zoo = (function () {
       const z = zoos[id] || (zoos[id] = { id, ms: create(ctx, id), svg: null, ctx });
       z.ctx = ctx;
       if (z.svg !== svg) { clear(svg); z.ms.forEach(m => svg.appendChild(m.parts.root)); z.svg = svg; }
+      if (STATIC) {
+        if (z.sv !== z.v || z.ms.some(m => m.mode !== "rest" && m.mode !== "react" && m.mode !== "cross")) layoutStatic(z);
+        for (const m of z.ms) {
+          if (m.mode === "cross") update(m, dt, ctx);   // los que estan cruzando terminan su camino
+          else if (m.mode === "react") { m.t += dt; draw(m); if (m.t >= m.dur) { m.mode = "rest"; m.say = null; draw(m); } }   // al tocarlos, el globo
+        }
+        continue;
+      }
       for (const m of z.ms) update(m, dt, ctx);
     }
   }
@@ -788,6 +808,7 @@ const Zoo = (function () {
     kindOf, CELEBS, SPECIES_BY_KIND,
     setCelebHandler: fn => { onCeleb = fn; },
     setFestive: names => { FEST = names || []; },
+    setStatic: on => { STATIC = !!on && !/[?&]anillos=vivos/.test(location.search); if (!STATIC) for (const id in zoos) zoos[id].sv = null; },
     low: LOW, off: isOff, minDt: () => MIN_DT,
     reprobe: () => { if (LOW && !NOCAP) { probe.done = false; probe.t0 = 0; probe.s = 0; probe.skip = 500; MIN_DT = 0; } },   // vuelve a medir sin limite unos segundos (la primera medicion cae justo cuando la pagina carga)
     probe: () => (probe.done ? (LOW ? probe.fps : 0) : -1),

@@ -111,6 +111,16 @@ Al tocar un paper de la cinta se abre una ventana con tema, título, autores, re
 
 El cielo ya no es plano: de día hay sol, nubes que pasan despacio (más lejos = más chicas y lentas), bandadas de pájaros en V y mariposas cerca del suelo; de noche hay luna, estrellas que titilan, estrellas fugaces ocasionales y luciérnagas. Se apagan en la era espacial y durante las sagas. Prueba: `?do=pajaros`.
 
+## Fiestas y estaciones
+
+Las decoraciones salen solas según la fecha del navegador: **en el suelo de la civilización** (calabazas, árboles de Navidad con luces, regalos, huevos, banderas chilenas y fondas, flores, tréboles), **gorros en los animales nuevos** (Santa, bruja, conejo, chupalla…) y **cosas en el cielo** (volantines, murciélagos, fantasmas, corazones, globos, linternas, bacterias, ADN, π, naves, fuegos artificiales). Las fiestas grandes empiezan **una semana antes**: Navidad, Halloween, Fiestas Patrias, Pascua, San Valentín y Año Nuevo chino; Año Nuevo y los días de la madre, el padre y el niño, unos días antes; el resto, solo el día.
+
+- Chile: Año Nuevo, Pascua, Día del Trabajo, Día de la Madre, Glorias Navales, Pueblos Indígenas, Día del Padre, Día del Niño, Fiestas Patrias, Día del Profesor, Halloween, Navidad. (No se incluyen las fiestas religiosas fuera de Pascua y Navidad.)
+- Internacionales: San Valentín, Año Nuevo chino, Día de la Mujer, Pi (14 mar), San Patricio, Inocentes, Día de la Tierra, Star Wars (4 may).
+- Ciencia: Mujer y Niña en la Ciencia (11 feb), Darwin (12 feb), ADN (25 abr), Microbioma (27 jun), cumpleaños de Pasteur (27 dic).
+- **Estaciones** (hemisferio sur): otoño (hojas que caen), invierno (más nubes y llovizna), primavera (flores y más mariposas), verano (sol más grande y menos nubes).
+- Pruebas: `?fecha=2026-10-28` simula esa fecha, `?fiesta=halloween,navidad` fuerza fiestas.
+
 ## Popups
 
 Clic en la fecha/hora abre el calendario; clic en «Próximo seminario» abre la lista completa de seminarios. Las ventanas se cierran con ×, tocando fuera o solas: el calendario a los 10 s, el tiempo y la lista de seminarios a los 30 s, el resumen de época a 1 min, planetas 15 s y edificios 5 s.

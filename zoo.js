@@ -130,6 +130,38 @@ const Zoo = (function () {
     },
   };
   let accPool = [];   // un accesorio no se repite entre los monos de toda la pagina
+  // gorros de fiesta: aparecen solo en fechas especiales (FEST), no en el sorteo normal
+  const FACC = {
+    "gorro de santa": h => {
+      el("path", { d: "M-3.8 -2.4Q-4 -8 1 -9.6Q4.6 -8 3.8 -2.4Z", fill: "#d32f2f" }, h);
+      el("rect", { x: -4.2, y: -3.6, width: 8.4, height: 1.8, rx: .9, fill: "#fff" }, h);
+      el("circle", { cx: 2.6, cy: -9.8, r: 1.3, fill: "#fff" }, h);
+    },
+    "sombrero de bruja": h => {
+      el("ellipse", { cx: 0, cy: -3.2, rx: 5.2, ry: 1, fill: "#2b1b3a" }, h);
+      el("path", { d: "M-2.6 -3.4L-.4 -10.4L2.6 -3.4Z", fill: "#3d2552" }, h);
+      el("rect", { x: -2.7, y: -4.8, width: 5.4, height: 1, fill: "#f58a1f" }, h);
+    },
+    "orejas de conejo": h => {
+      for (const ex of [-1.6, 1.8]) { el("ellipse", { cx: ex, cy: -7.2, rx: 1.1, ry: 3.6, fill: "#f4f1ea", stroke: "#c9c3b5", "stroke-width": .25 }, h); el("ellipse", { cx: ex, cy: -7.2, rx: .5, ry: 2.6, fill: "#ffb6c8" }, h); }
+    },
+    "chupalla": h => {
+      el("ellipse", { cx: 0, cy: -3, rx: 5.4, ry: 1.1, fill: "#e8d29a", stroke: "#b8923a", "stroke-width": .3 }, h);
+      el("path", { d: "M-2.4 -3.1Q-2.5 -5.8 0 -5.9Q2.5 -5.8 2.4 -3.1Z", fill: "#f0dca6" }, h);
+      el("rect", { x: -2.4, y: -4.3, width: 4.8, height: .7, fill: "#c62828" }, h);
+    },
+    "duende": h => {
+      el("rect", { x: -2.3, y: -8.2, width: 4.6, height: 5, rx: .4, fill: "#1b8a3a" }, h);
+      el("rect", { x: -2.3, y: -5, width: 4.6, height: 1, fill: "#111" }, h);
+      el("rect", { x: -.8, y: -5.1, width: 1.6, height: 1.2, fill: "#f4c430" }, h);
+      el("ellipse", { cx: 0, cy: -3.4, rx: 3.9, ry: .8, fill: "#1b8a3a" }, h);
+    },
+    "corazones": h => {
+      el("path", { d: "M-1 -4.5C-3 -6.5 -1.5 -8.2 0 -6.6C1.5 -8.2 3 -6.5 1 -4.5L0 -3.6Z", fill: "#ff4d6d" }, h);
+      el("path", { d: "M2.6 -6.2C1.8 -7.2 2.6 -8 3.3 -7.2C4 -8 4.8 -7.2 4 -6.2L3.3 -5.6Z", fill: "#ff8fb3" }, h);
+    },
+  };
+  let FEST = [];   // nombres de gorros activos hoy
   function takeAcc() {
     if (!accPool.length) accPool = Object.keys(ACC).sort(() => Math.random() - .5);
     const name = accPool.pop(), hue = rnd(0, 360);
@@ -336,7 +368,7 @@ const Zoo = (function () {
     el("path", { d: K === "jirafa" ? "M2.9 2.3Q3.9 2.9 4.9 2.3" : "M1 2.2Q1.8 2.8 2.7 2.2", fill: "none", stroke: "#3a2418", "stroke-width": .4 }, h);
     P.yawn = el("ellipse", { cx: K === "jirafa" ? 3.6 : 2.1, cy: 2.5, rx: .9, ry: 1.1, fill: "#5a2a2a", style: "display:none" }, h);
 
-    if (m.celeb) m.celeb.deco(h, K); else if (m.acc) ACC[m.acc.name](h, m.acc.a, m.acc.d);
+    if (m.celeb) m.celeb.deco(h, K); else if (m.acc) (ACC[m.acc.name] || FACC[m.acc.name])(h, m.acc.a, m.acc.d);
 
     P.frontLeg = limb(bp.legLen, c.fur, legFoot);
     P.frontArm = limb(armLen, c.fur);
@@ -672,7 +704,7 @@ const Zoo = (function () {
 
   function newMonkey(ctx, lane, sp, acc, celeb) {
     const m = { sp, kind: sp.kind || "mono", pal: palette(sp), lane, dir: Math.random() < .5 ? 1 : -1, seed: 1 + Math.floor(Math.random() * 9000),
-                phase: rnd(0, 6), t: 0, dur: 1, mode: "rest", celeb: celeb || null, acc: acc && !celeb ? takeAcc() : null };
+                phase: rnd(0, 6), t: 0, dur: 1, mode: "rest", celeb: celeb || null, acc: celeb ? null : (FEST.length && Math.random() < .7) ? { name: FEST[Math.floor(Math.random() * FEST.length)], a: hsl(rnd(0, 360), 75, 52), d: hsl(rnd(0, 360), 70, 30) } : acc ? takeAcc() : null };
     m.mood = mood(ctx.cpu); m.ctx = ctx;
     m.theta = lane === "ram" ? rnd(RAM_LO, ramMax(ctx)) : rnd(0, 360);
     m.parts = build(m);
@@ -741,6 +773,7 @@ const Zoo = (function () {
     make: kind => newMonkey({ cpu: 50, ram: 50, n: 16 }, "cpu", pick(SPECIES_BY_KIND[kind || pick(["mono", "jirafa", "foca"])]), Math.random() < .5, rollCeleb(.03)),
     kindOf, CELEBS, SPECIES_BY_KIND,
     setCelebHandler: fn => { onCeleb = fn; },
+    setFestive: names => { FEST = names || []; },
     setLunch: on => { LUNCH = on; if (on) for (const id in zoos) for (const m of zoos[id].ms) if (m.mode !== "cross" && m.ctx) enter(m, "eat", m.ctx); },
     setReleaseHandler: fn => { onRelease = fn; },
     setCap: n => { CAP = n; },

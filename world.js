@@ -611,13 +611,16 @@ const World = (function () {
   let skyDeck = [];
   function skyMessage(fixed, atX) {
     if (!skyDeck.length) skyDeck = shuffle(SKY_MSGS.concat(SKY_MSGS_MORE));
-    const txt = typeof fixed === "string" ? fixed : skyDeck.pop(), w = txt.length * 9.2 + 64, dir = chance(.5) ? 1 : -1, y0 = skyY(rnd(.22, .5)), dur = rnd(22, 30);
-    // una nube con el mensaje: base alargada y varias bolitas encima
-    const n = Math.max(3, Math.round(w / 64)), bumps = Array.from({ length: n }, (_, i) => `<circle cx="${(-w / 2 + w * (i + .5) / n).toFixed(1)}" cy="${-5 - (i % 2) * 4}" r="${16 + ((i * 7) % 3) * 4}"/>`).join("");
+    const txt = typeof fixed === "string" ? fixed : skyDeck.pop(), w = txt.length * 9 + 104, dir = chance(.5) ? 1 : -1, y0 = skyY(rnd(.42, .68)), dur = rnd(24, 32);
+    // una nube gordita: base redondeada, ruedas de esponja arriba (mas grandes al centro) y una sombra azulada abajo para dar volumen
+    const n = Math.max(3, Math.round(w / 78)), lo = -w / 2 + 40, hi = w / 2 - 40;
+    const puffs = Array.from({ length: n }, (_, i) => { const t = n === 1 ? .5 : i / (n - 1), r = 24 + 16 * Math.sin(Math.PI * t) + ((i * 5) % 3) * 3; return [lo + (hi - lo) * t, -4 - r * .5, r]; });
+    puffs.push([-w / 2 + 30, 10, 26], [w / 2 - 30, 10, 26]);
+    const shapes = dy => `<rect x="${-w / 2 + 22}" y="${-8 + dy}" width="${w - 44}" height="44" rx="22"/>` + puffs.map(([x, y, r]) => `<circle cx="${x.toFixed(1)}" cy="${y + dy}" r="${r.toFixed(1)}"/>`).join("");
     fx("g", { x: atX != null ? atX : dir > 0 ? -w / 2 - 10 : W + w / 2 + 10, y: y0, vx: dir * (W + w + 20) / dur, life: dur,
-      html: `<g style="fill:var(--card);filter:drop-shadow(0 3px 4px rgba(0,0,0,.14))" opacity=".95"><rect x="${-w / 2 + 8}" y="-9" width="${w - 16}" height="31" rx="15.5"/>${bumps}</g>` +
-        `<text text-anchor="middle" y="11" style="fill:var(--text);font-size:15px;font-weight:700">${txt}</text>`,
-      tick: g => { g.y = y0 + Math.sin(g.t * .9) * 6; } });
+      html: `<g style="fill:#9db2d3" opacity=".35">${shapes(7)}</g><g style="fill:var(--cloud);filter:drop-shadow(0 3px 5px rgba(0,0,0,.12))" opacity=".97">${shapes(0)}</g>` +
+        `<text text-anchor="middle" y="19" style="fill:var(--text);font-size:15px;font-weight:700">${txt}</text>`,
+      tick: g => { g.y = y0 + Math.sin(g.t * .8) * 6; } });
   }
   const THOUGHTS = {
     any: ["Hmm… ¿y si…?", "¡Qué buen día!", "Tengo sueño…", "Me pica la espalda", "¿Qué estarán pensando los demás?", "Qué linda tribu tenemos", "¿Habrá algo de comer?", "¿Y si descansamos un poco?", "Mañana será mejor", "¡Cómo pasa el tiempo!", "¿Habrá terminado mi job?", "Me falta un párrafo del paper", "¿Y si repito el experimento?", "Tengo que hacer backup", "¿Quedará café en el lab?", "Mi tesis me espera"],

@@ -9,12 +9,12 @@
 :root {
   --bg: #f4f6f9; --card: #ffffff; --text: #1b2430; --muted: #6b7686; --track: #e3e8ef; --border: #dde3ec;
   --ok: #16a34a; --warn: #f59e0b; --bad: #dc2626; --off: #9aa4b2; --accent: #2563eb; --we: #c2410c;
-  --sky1: #cfe4ff; --sky2: #f2f8ff; --sky-text: #4a5a78; --stars: 0;
+  --sky1: #cfe4ff; --sky2: #f2f8ff; --sky-text: #4a5a78; --stars: 0; --cloud: #ffffff;
 }
 :root[data-theme="dark"] {
   --bg: #0d1117; --card: #161b22; --text: #e6edf3; --muted: #8b96a5; --track: #262d38; --border: #2a313c;
   --ok: #3fb950; --warn: #f0a030; --bad: #f85149; --off: #6b7686; --accent: #58a6ff; --we: #fb923c;
-  --sky1: #070d1f; --sky2: #16264a; --sky-text: #a9bbdc; --stars: 1;
+  --sky1: #070d1f; --sky2: #16264a; --sky-text: #a9bbdc; --stars: 1; --cloud: #3b4d73;
 }
 * { box-sizing: border-box; }
 body {
@@ -53,6 +53,20 @@ h1 { font-size: 20px; margin: 0; letter-spacing: .12em; }
 #semPop { position: fixed; z-index: 50; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(520px, 94vw); max-height: 86vh; overflow: auto; padding: 12px 14px;
   background: var(--card); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,.35); font-size: 14px; }
 #semPop[hidden] { display: none; }
+#papPop { position: fixed; z-index: 50; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(820px, 94vw); max-height: 88vh; overflow: auto; padding: 14px 16px;
+  background: var(--card); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,.4); font-size: 14px; }
+#papPop[hidden] { display: none; }
+#papPop .x { float: right; margin: 0 0 6px 8px; padding: 0 9px; min-height: 26px; font-size: 18px; line-height: 1; }
+#papPop .pp-body { display: flex; gap: 18px; align-items: flex-start; }
+#papPop .pp-txt { flex: 1; min-width: 0; }
+#papPop .pp-tag { display: inline-block; font-size: 11px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: .05em; }
+#papPop h3 { margin: 2px 0 6px; font-size: 18px; line-height: 1.25; }
+#papPop .pp-meta { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+#papPop .pp-ab { line-height: 1.5; max-height: 46vh; overflow: auto; margin: 0; }
+#papPop .pp-qr { flex: none; width: 168px; text-align: center; font-size: 12px; color: var(--muted); }
+#papPop .pp-qr .qr { background: #fff; border-radius: 10px; padding: 6px; border: 1px solid var(--border); }
+#papPop .pp-qr svg { display: block; width: 100%; height: auto; }
+@media (max-width: 700px) { #papPop .pp-body { flex-direction: column-reverse; } #papPop .pp-qr { align-self: center; } }
 #semPop .x { float: right; padding: 0 9px; min-height: 26px; font-size: 18px; line-height: 1; }
 #semPop h3 { margin: 0 0 8px; font-size: 16px; }
 #semPop table { width: 100%; border-collapse: collapse; }
@@ -230,12 +244,14 @@ svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
   <div class="eraRow"><div id="papers" class="news" hidden><span class="news-tag" id="papersTag">Papers</span><div class="news-view"><div class="news-track" id="papersTrack"></div></div></div></div>
 </div>
 </div>
+<div id="papPop" role="dialog" aria-label="Paper" hidden></div>
 <div id="semPop" role="dialog" aria-label="Seminarios" hidden></div>
 <div id="wxPop" role="dialog" aria-label="El tiempo" hidden></div>
 
 
-<script src="zoo.js?v=20261030n"></script>
-<script src="world.js?v=20261030n"></script>
+<script src="qrcode.min.js?v=1"></script>
+<script src="zoo.js?v=20261030p"></script>
+<script src="world.js?v=20261030p"></script>
 <script>
 // ====== Configuración ======
 const REPO = "fissotta/monito"; // "usuario/monito"  (vacío = modo demo)
@@ -256,7 +272,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
 const demo = !REPO || new URLSearchParams(location.search).has("demo");
-const BUILD = "20261030n";   // subir junto con los ?v= de los <script> en cada publicacion
+const BUILD = "20261030p";   // subir junto con los ?v= de los <script> en cada publicacion
 const state = { data: {}, next: 0, timer: null, stale: 300 };
 // si se publica una version nueva, la pagina (p. ej. en la TV) se recarga sola; revisa cada 10 min
 setInterval(async () => {
@@ -583,10 +599,28 @@ async function loadNews() {
   if (!REPO) return;
   const d = await fetchFeed("news", "news.json"); if (d) renderNews(d);
 }
+let PAPERS = [];
+function showPaper(i) {   // ventana con revista, fecha, abstract y un QR para abrir el paper en el celular
+  const p = PAPERS[i]; if (!p) return;
+  const dt = new Date(p.ts * 1000), fecha = `${dt.getDate()} ${MESES[dt.getMonth()].slice(0, 3)} ${dt.getFullYear()}`;
+  let qr = "";
+  try { const q = qrcode(0, "M"); q.addData(p.u); q.make(); qr = q.createSvgTag({ cellSize: 4, margin: 0, scalable: true }); } catch { /* sin QR: no se muestra */ }
+  $("papPop").innerHTML = `<button class="x" aria-label="Cerrar">×</button><div class="pp-body"><div class="pp-txt"><span class="pp-tag">${esc(p.k)}${p.p ? " · preprint" : ""}</span><h3>${esc(p.t)}</h3>` +
+    `<div class="pp-meta">${esc(p.a ? p.a + " · " : "")}<b>${esc(p.s)}</b> · ${fecha}</div><p class="pp-ab">${p.ab ? esc(p.ab) : '<span style="color:var(--muted)">Sin abstract disponible: escanea el QR para ver el paper.</span>'}</p></div>` +
+    `<div class="pp-qr"><div class="qr">${qr}</div><div style="margin-top:6px">Escanea con el celular para abrirlo</div></div></div>`;
+  $("papPop").hidden = false; armPop($("papPop"));
+}
+$("papersTrack").addEventListener("click", e => { const a = e.target.closest && e.target.closest("a[data-i]"); if (!a) return; e.preventDefault(); e.stopPropagation(); showPaper(+a.dataset.i); });
+$("papPop").addEventListener("click", e => { e.stopPropagation(); if (e.target.classList && e.target.classList.contains("x")) $("papPop").hidden = true; });
+document.addEventListener("click", () => { $("papPop").hidden = true; });
+document.addEventListener("keydown", e => { if (e.key === "Escape") $("papPop").hidden = true; });
+for (const ev of ["pointermove", "touchstart", "wheel"]) $("papPop").addEventListener(ev, () => { if (!$("papPop").hidden) armPop($("papPop")); }, { passive: true });
+if (new URLSearchParams(location.search).has("paper")) setTimeout(() => showPaper(0), 3500);   // prueba: abre el primer paper
 async function loadPapers() {   // papers nuevos de los temas del laboratorio (PubMed y preprints)
   if (!REPO) return;
   const d = await fetchFeed("papers", "papers.json"); if (!d) return;
-  const html = d.items.map(i => `<a href="${esc(i.u)}" target="_blank" rel="noopener" title="${esc(i.t)}"><b>${esc(i.k)}</b>${i.q ? '<span class="st">★</span>' : ""}${esc(i.t)}<i>${esc(i.a ? i.a + " · " : "")}${esc(i.s)}${i.p ? " (preprint)" : ""}</i></a>`).join(""), tr = $("papersTrack");
+  PAPERS = d.items;
+  const html = d.items.map((i, n) => `<a href="${esc(i.u)}" data-i="${n}" title="${esc(i.t)}"><b>${esc(i.k)}</b>${i.q ? '<span class="st">★</span>' : ""}${esc(i.t)}<i>${esc(i.a ? i.a + " · " : "")}${esc(i.s)}${i.p ? " (preprint)" : ""}</i></a>`).join(""), tr = $("papersTrack");
   tr.innerHTML = html + html;
   $("papers").hidden = false;
   tr.style.animationDuration = Math.max(90, tr.scrollWidth / 2 / 60) + "s";   // ~60 px/s

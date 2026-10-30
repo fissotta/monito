@@ -99,6 +99,10 @@ Segunda cinta bajo los monitores, con papers nuevos de los temas del laboratorio
 - `papers.py` consulta PubMed y Europe PMC **una vez al día** (~07:00, dentro del cron de `news.py`; las noticias, cada 20 min). La página relee `papers.json` cada 3 horas. Para forzar una consulta: `python3 news.py --papers`.
 - La pastilla de época queda bajo el tiempo; la cinta de papers parte desde el borde izquierdo de akaza.
 
+## Papers: ventana con abstract y QR
+
+Al tocar un paper de la cinta se abre una ventana con tema, título, autores, revista, fecha y abstract, y a un lado un **QR** del enlace para abrirlo en el celular (en vez de abrir una pestaña en la TV). Se cierra con ×, tocando fuera o solo a los 30 s. El QR lo genera `qrcode.min.js` (librería MIT [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) 1.4.4, incluida en el repo). Prueba: `?paper`.
+
 ## Popups
 
 Clic en la fecha/hora abre el calendario; clic en «Próximo seminario» abre la lista completa de seminarios. Las ventanas se cierran con ×, tocando fuera o solas: el calendario a los 10 s, el tiempo y la lista de seminarios a los 30 s, el resumen de época a 1 min, planetas 15 s y edificios 5 s.

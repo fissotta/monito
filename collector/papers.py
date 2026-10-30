@@ -103,7 +103,7 @@ def pubmed(label, term, need):
     for a in root.iter("PubmedArticle"):
         pmid = a.findtext(".//PMID")
         title = " ".join("".join(a.find(".//ArticleTitle").itertext()).split())
-        abstract = " ".join("".join(x.itertext()) for x in a.iter("AbstractText"))
+        abstract = " ".join((x.get("Label") + ": " if x.get("Label") else "") + "".join(x.itertext()) for x in a.iter("AbstractText"))
         authors = [au.findtext("LastName") for au in a.iter("Author") if au.findtext("LastName")]
         y = a.findtext(".//ArticleDate/Year") or a.findtext(".//PubDate/Year") or (a.findtext(".//PubDate/MedlineDate") or "")[:4]
         mo = a.findtext(".//ArticleDate/Month") or a.findtext(".//PubDate/Month") or "1"
@@ -115,7 +115,7 @@ def pubmed(label, term, need):
             ts = int(time.time())
         out.append({"t": title[:200], "u": "https://pubmed.ncbi.nlm.nih.gov/%s/" % pmid, "ts": ts, "s": (a.findtext(".//Journal/ISOAbbreviation") or "PubMed")[:40],
                     "a": (authors[0] + (" et al." if len(authors) > 1 else "")) if authors else "", "k": tag_of(title + " " + abstract, label),
-                    "x": any(e in authors for e in EXCLUDE), "n": score(title + " " + abstract), "need": need})
+                    "x": any(e in authors for e in EXCLUDE), "n": score(title + " " + abstract), "need": need, "ab": " ".join(abstract.split())[:1500]})
     return out
 
 
@@ -124,7 +124,7 @@ def europepmc():   # preprints (bioRxiv, etc.)
     since = time.strftime("%Y-%m-%d", time.gmtime(time.time() - DAYS * 86400))
     for label, q in EPMC_TOPICS:
         try:
-            d = get(EPMC, {"query": "%s AND SRC:PPR AND FIRST_PDATE:[%s TO 2100-01-01]" % (q, since), "format": "json", "pageSize": 8, "sort": "P_PDATE_D desc", "resultType": "lite"})
+            d = get(EPMC, {"query": "%s AND SRC:PPR AND FIRST_PDATE:[%s TO 2100-01-01]" % (q, since), "format": "json", "pageSize": 8, "sort": "P_PDATE_D desc", "resultType": "core"})
         except (urllib.error.URLError, OSError, ValueError) as e:
             print("sin datos de Europe PMC (%s): %s" % (label, e), file=sys.stderr)
             continue
@@ -138,7 +138,8 @@ def europepmc():   # preprints (bioRxiv, etc.)
                 ts = int(time.time())
             au = (r.get("authorString") or "").split(",")[0].strip().rstrip(".")
             out.append({"t": " ".join(re.sub(r"<[^>]+>", "", r["title"]).split())[:200], "u": link, "ts": ts, "s": (r.get("bookOrReportDetails") or {}).get("publisher") or "Preprint",
-                        "a": au + (" et al." if "," in (r.get("authorString") or "") else ""), "k": tag_of(r["title"], label), "x": any(e in (r.get("authorString") or "") for e in EXCLUDE), "p": 1, "n": score(r["title"]) + 3, "need": 4})
+                        "a": au + (" et al." if "," in (r.get("authorString") or "") else ""), "k": tag_of(r["title"], label), "x": any(e in (r.get("authorString") or "") for e in EXCLUDE), "p": 1, "n": score(r["title"]) + 3, "need": 4,
+                        "ab": " ".join(re.sub(r"<[^>]+>", " ", r.get("abstractText") or "").split())[:1500]})
         time.sleep(.4)
     return out
 

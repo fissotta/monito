@@ -39,6 +39,8 @@ const World = (function () {
   // ---------- capa del mundo ----------
   let W = innerWidth, H = innerHeight;
   const floorY = () => H - GROUND_H;
+  let SKY = 0;   // borde superior del panel de la civilizacion (0 = sin division, como en el celular)
+  const skyH = () => floorY() - SKY, skyY = f => SKY + skyH() * f;
   const svg = el("svg", { id: "world", width: W, height: H }, document.body);
   svg.style.cssText = "position:fixed;left:0;top:0;z-index:30;pointer-events:none;overflow:visible";
   const gSky = el("g", {}, svg), gGround = el("g", {}, svg), gStruct = el("g", {}, svg),
@@ -48,6 +50,9 @@ const World = (function () {
   ground.style.transition = "fill 2s";
   const grass = el("rect", { x: 0, width: W, height: 4, fill: "rgba(255,255,255,.18)" }, gGround);
   const rails = el("g", { style: "display:none" }, gGround);
+  const skyBg = el("g", {}); gSky.insertBefore(skyBg, gSky.firstChild);   // fondo del panel (degradado, estrellas de noche)
+  skyBg.innerHTML = `<defs><linearGradient id="skyg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--sky1)"/><stop offset="1" style="stop-color:var(--sky2)"/></linearGradient></defs>` +
+    `<rect class="sb" fill="url(#skyg)"/><line class="sl" style="stroke:var(--border)" stroke-width="2"/><g class="stars" style="opacity:var(--stars)"></g>`;
   const dark = el("rect", { x: 0, y: 0, width: W, height: H, fill: "#000", opacity: 0 }, gSky);   // eclipse
   const gPlanets = el("g", {}, gSky); gSky.insertBefore(gPlanets, dark);
   const tint = el("rect", { x: 0, y: 0, width: W, height: H, fill: "#000" }, gSky);   // tono del cielo segun la saga
@@ -65,8 +70,21 @@ const World = (function () {
     dark.setAttribute("width", W); dark.setAttribute("height", H);
     rails.innerHTML = `<rect x="0" y="${H - 9}" width="${W}" height="2.5" fill="#444"/>` +
       `<line x1="0" y1="${H - 5}" x2="${W}" y2="${H - 5}" stroke="#5a4630" stroke-width="3" stroke-dasharray="3 9"/>`;
-    tint.setAttribute("width", W); tint.setAttribute("height", H); water.setAttribute("width", W);
+    SKY = measureSky();
+    dark.setAttribute("y", SKY); dark.setAttribute("height", H - SKY); tint.setAttribute("y", SKY);
+    tint.setAttribute("width", W); tint.setAttribute("height", H - SKY); water.setAttribute("width", W);
+    const sb = skyBg.querySelector(".sb"), sl = skyBg.querySelector(".sl"), st = skyBg.querySelector(".stars");
+    skyBg.style.display = SKY > 0 ? "" : "none";
+    sb.setAttribute("x", 0); sb.setAttribute("y", SKY); sb.setAttribute("width", W); sb.setAttribute("height", H - SKY);
+    sl.setAttribute("x1", 0); sl.setAttribute("x2", W); sl.setAttribute("y1", SKY); sl.setAttribute("y2", SKY);
+    st.innerHTML = SKY > 0 ? Array.from({ length: 70 }, () => `<circle cx="${(Math.random() * W).toFixed(0)}" cy="${(SKY + 6 + Math.random() * Math.max(10, skyH() - 40)).toFixed(0)}" r="${(.5 + Math.random() * 1.1).toFixed(1)}" fill="#fff"/>`).join("") : "";
     placePlanets();
+  }
+  function measureSky() {   // la pantalla se reparte: informacion arriba, civilizacion abajo
+    const lay = document.querySelector(".layout"), foot = document.querySelector("footer");
+    if (!lay || matchMedia("(max-width: 900px)").matches) return 0;
+    const b = Math.max(lay.getBoundingClientRect().bottom, foot ? foot.getBoundingClientRect().bottom : 0) + scrollY;
+    return b > H * .74 ? 0 : Math.round(b + 8);
   }
 
   // ---------- historia: epocas ----------
@@ -530,9 +548,9 @@ const World = (function () {
     "Tesis, tesis, tesis…", "¿Ya escribiste los métodos?", "¿Y la reproducibilidad, eh?", "¡Un párrafo más y descansas!", "¿Hoy toca bioinformática o bañera?",
   ];
   let skyDeck = [];
-  function skyMessage() {
+  function skyMessage(fixed) {
     if (!skyDeck.length) skyDeck = shuffle(SKY_MSGS.slice());
-    const txt = skyDeck.pop(), w = txt.length * 9.6 + 40, dir = chance(.5) ? 1 : -1, y0 = rnd(H * .1, H * .36), dur = rnd(16, 22);
+    const txt = typeof fixed === "string" ? fixed : skyDeck.pop(), w = txt.length * 9.6 + 40, dir = chance(.5) ? 1 : -1, y0 = skyY(rnd(.1, .42)), dur = rnd(16, 22);
     fx("g", { x: dir > 0 ? -w / 2 - 10 : W + w / 2 + 10, y: y0, vx: dir * (W + w + 20) / dur, life: dur,
       html: `<rect x="${-w / 2}" y="-17" width="${w}" height="34" rx="17" style="fill:var(--card);stroke:var(--accent);stroke-width:1.6px" opacity=".94"/>` +
         `<text text-anchor="middle" y="6" style="fill:var(--text);font-size:16px;font-weight:700">${txt}</text>`,
@@ -659,6 +677,7 @@ const World = (function () {
   }
   const anchor = (kinds, t) => { const c = S.structs.filter(s => kinds.includes(s.kind) && !s.dying && s.built > .5 && (t == null || S.unified || s.tribe == null || s.tribe === t)); return c.length ? pick(c).x : null; };
   function think(g) {
+    if (S.lunch) { g.act = "eat"; g.stay = rnd(20, 50); g.m.t = 0; g.m.dur = g.stay; g.m.food = pick(["banana", "berry", "leaf"]); return; }   // hora de almuerzo
     const e = S.era, r = Math.random(), z = zone(g.tribe), go = (x, act, stay, face) => {
       g.tx = clamp(x == null ? (chance(.07) && !S.unified ? rnd(30, W - 30) : rnd(z[0] + 22, z[1] - 22)) : x, 18, W - 18); g.next = act; g.stayT = stay == null ? rnd(2, 6) : stay; g.face = face || 0;
       g.act = chance(.12) ? "run" : "walk"; g.m.t = 0;
@@ -843,7 +862,7 @@ const World = (function () {
     { id: "eclipse", w: () => .5, run: () => { S.eclipse = 10; logEv(`Eclipse total: ${T()} mira al cielo asustada`); } },
     { id: "lluvia", w: () => .9, run: () => { S.rain = rnd(10, 16); logEv(`Llueve: los cultivos lo agradecen`); } },
     { id: "glaciacion", max: 2, w: () => .35, run: () => { S.snow = 22; S.boost = .6; S.boostT = 30; logEv(`Glaciación: el frío frena a ${T()}`); } },
-    { id: "edadoro", w: () => .4 * S.traits.luck, run: () => { S.boost = 1.5; S.boostT = 40; logEv(`Edad dorada: ${T()} florece`); for (let i = 0; i < 3; i++) later(i * .7, () => fireworks(rnd(W * .2, W * .8), rnd(H * .2, H * .5))); } },
+    { id: "edadoro", w: () => .4 * S.traits.luck, run: () => { S.boost = 1.5; S.boostT = 40; logEv(`Edad dorada: ${T()} florece`); for (let i = 0; i < 3; i++) later(i * .7, () => fireworks(rnd(W * .2, W * .8), skyY(rnd(.15, .6)))); } },
     { id: "edadoscura", min: 2, w: () => .3 * (2 - S.traits.luck), run: () => { S.boost = .55; S.boostT = 32; logEv(`Edad oscura: se pierde conocimiento`); } },
     { id: "ovni", min: 5, w: () => .5, run: () => ufo() },
     { id: "cometa", w: () => .45, run: () => comet() },
@@ -915,7 +934,7 @@ const World = (function () {
     const g = free(); if (g.length < 3) return;
     S.stats.festivales++;
     g.slice(0, 12).forEach(x => { x.act = "cheer"; x.stay = rnd(4, 7); x.m.t = 0; });
-    if (S.era >= 4) for (let i = 0; i < 3; i++) setTimeout(() => fireworks(rnd(W * .15, W * .85), rnd(H * .2, H * .55)), i * 600);
+    if (S.era >= 4) for (let i = 0; i < 3; i++) setTimeout(() => fireworks(rnd(W * .15, W * .85), skyY(rnd(.15, .6))), i * 600);
     else burst(W / 2, floorY() - 30, 20, "#ffd23f", 120);
     logEv(pick([`Gran fiesta en ${T()}`, `Celebran la cosecha con música`, `Se casan dos monos y todos bailan`]));
   }
@@ -941,7 +960,7 @@ const World = (function () {
   }
   function meteor(quiet) {
     const x = rnd(W * .15, W * .85), x0 = x + rnd(250, 420);
-    fx("g", { x: x0, y: -30, life: 1.3, vx: (x - x0) / 1.3, vy: (floorY() + 6) / 1.3 * 1.0, html: `<circle r="6" fill="#ffd27a"/><circle r="11" fill="#ff9a3c" opacity=".4"/><line x1="0" y1="0" x2="60" y2="-40" stroke="#ff9a3c" stroke-width="5" stroke-linecap="round" opacity=".6"/>`,
+    fx("g", { x: x0, y: SKY - 30, life: 1.3, vx: (x - x0) / 1.3, vy: (floorY() + 6) / 1.3 * 1.0, html: `<circle r="6" fill="#ffd27a"/><circle r="11" fill="#ff9a3c" opacity=".4"/><line x1="0" y1="0" x2="60" y2="-40" stroke="#ff9a3c" stroke-width="5" stroke-linecap="round" opacity=".6"/>`,
       tick: f => { if (f.life < .05 && !f.hit) { f.hit = true; impact(f.x, quiet); } } });
     if (!quiet) logEv(`¡Un meteorito cruza el cielo!`);
   }
@@ -953,7 +972,7 @@ const World = (function () {
     S.shake = 1.4; if (!quiet) logEv(`El meteorito cae y arrasa lo que encuentra`);
   }
   function comet() {
-    const y = rnd(H * .12, H * .35), dir = chance(.5) ? 1 : -1;
+    const y = skyY(rnd(.1, .4)), dir = chance(.5) ? 1 : -1;
     fx("g", { x: dir > 0 ? -60 : W + 60, y, life: 6, vx: dir * (W + 120) / 6, vy: 40, html: `<circle r="4" fill="#fff"/><circle r="9" fill="#bfe3ff" opacity=".35"/><line x1="0" y1="0" x2="${-dir * 70}" y2="-12" stroke="#bfe3ff" stroke-width="4" stroke-linecap="round" opacity=".5"/>` });
     free().slice(0, 4).forEach(g => { g.act = "cheer"; g.stay = 4; g.m.t = 0; });
     logEv(`Un cometa cruza el cielo: ¿buen augurio?`);
@@ -963,7 +982,7 @@ const World = (function () {
     S.busy = true; g.hold = true; g.act = "idle"; g.stay = 99;
     const dir = chance(.5) ? 1 : -1;
     S.ufo = { x: dir > 0 ? -50 : W + 50, tx: g.x, g, state: "in", t: 0,
-      e: el("g", { }, gFx), y: floorY() - 190 };
+      e: el("g", { }, gFx), y: Math.max(SKY + 40, floorY() - 190) };
     S.ufo.e.innerHTML = `<ellipse cx="0" cy="0" rx="26" ry="8" fill="#9aa4b2"/><ellipse cx="0" cy="-5" rx="12" ry="8" fill="#9fe3ff" opacity=".8"/><circle cx="-15" cy="1" r="2" fill="#ffd23f"/><circle cx="0" cy="3" r="2" fill="#ffd23f"/><circle cx="15" cy="1" r="2" fill="#ffd23f"/>`;
     S.ufo.beam = el("path", { fill: "#fff6a8", opacity: 0 }, gFx);
     logEv(`¡Un objeto desconocido aparece en el cielo!`);
@@ -1057,7 +1076,7 @@ const World = (function () {
     for (let i = 0; i < 3 + (Math.random() * 3 | 0); i++) later(1 + i * rnd(1.5, 3), () => bolt());
   }
   function bolt(quiet) {
-    const x = rnd(40, W - 40); let d = `M${x.toFixed(0)} -10`, y = -10, cx = x;
+    const x = rnd(40, W - 40); let d = `M${x.toFixed(0)} ${SKY - 10}`, y = SKY - 10, cx = x;
     while (y < floorY()) { y += rnd(30, 60); cx += rnd(-22, 22); d += `L${cx.toFixed(0)} ${Math.min(y, floorY()).toFixed(0)}`; }
     fx("g", { x: 0, y: 0, life: .25, html: `<path d="${d}" stroke="#bfe3ff" stroke-width="9" fill="none" opacity=".4"/><path d="${d}" stroke="#fff" stroke-width="3" fill="none" stroke-linejoin="round"/>` });
     fx("flash", { x, y: floorY(), r0: 6, r1: 28, life: .3, col: "#fff", op: .8 });
@@ -1066,14 +1085,14 @@ const World = (function () {
   }
   function aurora() {
     S.aurora = 12; logEv(`Aurora boreal: el cielo se ilumina de colores`);
-    fx("g", { x: 0, y: H * .08, life: 12, tick: f => f.e.setAttribute("opacity", (Math.sin(Math.PI * clamp(f.t / 12, 0, 1)) * .9).toFixed(2)),
+    fx("g", { x: 0, y: SKY + 10, life: 12, tick: f => f.e.setAttribute("opacity", (Math.sin(Math.PI * clamp(f.t / 12, 0, 1)) * .9).toFixed(2)),
       html: `<defs><linearGradient id="au" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7dffb0" stop-opacity="0"/><stop offset=".5" stop-color="#7dffb0" stop-opacity=".5"/><stop offset="1" stop-color="#b57dff" stop-opacity="0"/></linearGradient></defs>` +
         `<path d="M0 20Q${W * .25} -10 ${W * .5} 25T${W} 15V70Q${W * .75} 95 ${W * .5} 60T0 80Z" fill="url(#au)"/>` });
     cheerSome(4, 6);
   }
   function starShower() {
     logEv(`Lluvia de estrellas: todos piden un deseo`); cheerSome(5, 5);
-    for (let i = 0; i < 14; i++) later(i * .45, () => fx("g", { x: rnd(0, W), y: rnd(0, H * .3), life: .9, vx: 260, vy: 150,
+    for (let i = 0; i < 14; i++) later(i * .45, () => fx("g", { x: rnd(0, W), y: SKY + rnd(0, skyH() * .3), life: .9, vx: 260, vy: 150,
       html: `<line x1="0" y1="0" x2="-40" y2="-24" stroke="#fff" stroke-width="2" stroke-linecap="round"/><circle r="2.2" fill="#fff"/>` }));
   }
   function olympics() {
@@ -1217,7 +1236,7 @@ const World = (function () {
     later(11, () => { const l = pick(ships); l.sunk = .01; boom(l.x, floorY() + 8, true); logEv(`Un galeón se hunde: la flota rival gana la batalla`); });
   }
   function dragon() {
-    const dir = chance(.5) ? 1 : -1, y = H * rnd(.2, .35), x0 = dir > 0 ? -90 : W + 90, x1 = dir > 0 ? W + 90 : -90, dur = 9, tx = rnd(W * .25, W * .75);
+    const dir = chance(.5) ? 1 : -1, y = skyY(rnd(.15, .4)), x0 = dir > 0 ? -90 : W + 90, x1 = dir > 0 ? W + 90 : -90, dur = 9, tx = rnd(W * .25, W * .75);
     fx("g", { x: x0, y, vx: (x1 - x0) / dur, life: dur, flip: dir < 0,
       html: `<g transform="scale(1.1)"><path d="M-30 0Q-52 -10 -66 6Q-48 -2 -34 8Z" fill="#2f7a3a"/><ellipse rx="30" ry="9" fill="#3f9a4a"/><g class="wg"><path d="M-6 -6Q-14 -42 12 -48Q4 -26 8 -6Z" fill="#2f7a3a"/></g><path d="M26 -2Q44 -8 52 0Q44 6 28 4Z" fill="#3f9a4a"/><circle cx="46" cy="-3" r="1.8" fill="#ffd23f"/><path d="M52 0L60 -2L54 3Z" fill="#e53935"/></g>`,
       tick(g, h) {
@@ -1235,7 +1254,7 @@ const World = (function () {
   }
   function bombers(n) {
     for (let i = 0; i < n; i++) later(2 + i * 1.5, () => {
-      const dir = chance(.5) ? 1 : -1, y = rnd(H * .2, H * .4), x0 = dir > 0 ? -50 : W + 50, x1 = dir > 0 ? W + 50 : -50;
+      const dir = chance(.5) ? 1 : -1, y = skyY(rnd(.15, .45)), x0 = dir > 0 ? -50 : W + 50, x1 = dir > 0 ? W + 50 : -50;
       const f = flyShip("bomber", x0, y, x1, y + 30, 6, { s: 1.4 });
       f.bt = rnd(.3, 1);
       f.tick = (g, h) => {
@@ -1309,9 +1328,9 @@ const World = (function () {
         all.forEach(g => { g.act = "cheer"; g.stay = 6; g.m.t = 0; });
         fx("g", { x: w.cx, y: floorY() - 20, life: 9, html: `<line x1="0" y1="0" x2="0" y2="-36" stroke="#6b4a2a" stroke-width="2"/><path d="M0 -36L22 -32L0 -26Z" fill="#fff" stroke="#ccc"/>` });
         const dir = chance(.5) ? 1 : -1;
-        fx("g", { x: dir > 0 ? -20 : W + 20, y: H * .3, vx: dir * 120, vy: 0, life: (W + 40) / 120, html: `<ellipse rx="6" ry="3.5" fill="#fff" stroke="#ddd"/><path class="wg" d="M-2 0Q-6 -12 2 -8Z" fill="#fff"/><path d="M2 0Q6 -12 -2 -8Z" fill="#fff"/>`,
+        fx("g", { x: dir > 0 ? -20 : W + 20, y: skyY(.3), vx: dir * 120, vy: 0, life: (W + 40) / 120, html: `<ellipse rx="6" ry="3.5" fill="#fff" stroke="#ddd"/><path class="wg" d="M-2 0Q-6 -12 2 -8Z" fill="#fff"/><path d="M2 0Q6 -12 -2 -8Z" fill="#fff"/>`,
           tick: f => { f.e.setAttribute("transform", `translate(${f.x.toFixed(1)} ${(f.y + Math.sin(f.t * 9) * 6).toFixed(1)}) scale(${dir} 1)`); } });
-        for (let i = 0; i < 45; i++) fx("conf", { x: w.cx + rnd(-160, 160), y: rnd(-40, H * .3), vy: rnd(40, 90), life: 6, col: `hsl(${rnd(0, 360)} 85% 60%)` });
+        for (let i = 0; i < 45; i++) fx("conf", { x: w.cx + rnd(-160, 160), y: SKY + rnd(-40, skyH() * .3), vy: rnd(40, 90), life: 6, col: `hsl(${rnd(0, 360)} 85% 60%)` });
         if (w.tribes) tribalOutcome(w); else logEv(pick([`Firman la paz: ${T()} vuelve a ser una sola`, `Tregua y abrazos: se acabó la guerra`, `La paloma llega y los bandos hacen las paces`]));
       }
       return;
@@ -1379,7 +1398,7 @@ const World = (function () {
     const pr = pairFor(2); if (!pr) return;
     const [a, b] = pr, gs = alive2(a).slice(0, 4).concat(alive2(b).slice(0, 4)), cx = (zone(Math.min(a, b))[1] + zone(Math.max(a, b))[0]) / 2;
     gs.forEach((g, i) => sendTo(g, cx + (i - 4) * 12, "cheer", 0, 7));
-    fireworks(cx, H * .4); dipAdd(a, b, 2);
+    fireworks(cx, skyY(.4)); dipAdd(a, b, 2);
     logEv(`Boda real: se casan un príncipe de ${tn(a)} y una princesa de ${tn(b)}`);
     later(9, () => releaseAll(gs));
   }
@@ -1407,7 +1426,7 @@ const World = (function () {
     S.unified = true; S.structs.forEach(q => { if (q.kind === "tflag") q.dying = .001; });
     showBanner(`Un solo pueblo: ${S.nation}`);
     logEv(`${S.tribes.map((t, i) => tn(i)).join(", ")} se unen en un solo pueblo: ${S.nation}`);
-    for (let i = 0; i < 4; i++) later(i * .5, () => fireworks(rnd(W * .15, W * .85), rnd(H * .2, H * .5)));
+    for (let i = 0; i < 4; i++) later(i * .5, () => fireworks(rnd(W * .15, W * .85), skyY(rnd(.15, .6))));
   }
 
   // --- planetas, cohetes y colonizacion ---
@@ -1458,17 +1477,20 @@ const World = (function () {
       (p.ring ? `<ellipse rx="${rr}" ry="${rk}" fill="none" stroke="${p.c1}" stroke-width="${sw}" opacity=".55" transform="rotate(-18)"/>` : "") +
       `<circle r="${r}" fill="url(#pg${p.id})"/><circle cx="${-r * .3}" cy="${-r * .22}" r="${r * .16}" fill="${p.c2}" opacity=".5"/><circle cx="${r * .35}" cy="${r * .3}" r="${r * .2}" fill="${p.c2}" opacity=".45"/>` +
       (p.ring ? `<path d="M${-rr} 0A${rr} ${rk} 0 0 0 ${rr} 0" fill="none" stroke="${p.c1}" stroke-width="${sw}" opacity=".7" transform="rotate(-18)"/>` : "") +
-      `<g class="col"></g><text y="${r + 13}" text-anchor="middle" font-size="10" font-weight="700" style="fill:var(--muted)">${p.name}</text>`;
+      `<g class="col"></g><text y="${r + 13}" text-anchor="middle" font-size="10" font-weight="700" style="fill:var(--sky-text)">${p.name}</text>`;
     p.info = planetInfo(p); p.disc = fmtYear(curYear());
     p.g.style.pointerEvents = "all"; p.g.style.cursor = "pointer";
     p.g.addEventListener("click", e => { e.stopPropagation(); showPlanet(p); });
     S.planets.push(p); placePlanets(); renderColonies(p);
     return p;
   }
-  function placePlanets() {   // arriba a la derecha primero, luego hacia la izquierda
+  function placePlanets() {
     S.planets.forEach((p, i) => {
-      p.x = i === 0 ? W - 88 : 340 + (i - 1) * 105; p.y = i === 0 ? 96 : 30;   // los demas, en la franja libre del encabezado (entre el titulo y el estado)
-      if (i && p.x > W * .6) p.x = 340 + ((i * 97) % Math.max(60, W * .25));
+      if (SKY > 0) { p.x = W - 80 - i * 125; p.y = SKY + 50 + (i % 2) * 52; if (p.x < 60) { p.x = 60 + (i * 131) % Math.max(60, W - 120); p.y = SKY + 100; } }   // en el cielo del panel
+      else {   // sin division: arriba a la derecha y en la franja libre del encabezado
+        p.x = i === 0 ? W - 88 : 340 + (i - 1) * 105; p.y = i === 0 ? 96 : 30;
+        if (i && p.x > W * .6) p.x = 340 + ((i * 97) % Math.max(60, W * .25));
+      }
       p.g.setAttribute("transform", `translate(${p.x} ${p.y})`);
     });
   }
@@ -1516,7 +1538,7 @@ const World = (function () {
       f.t += h;
       if (f.pl && S.planets.includes(f.pl)) { f.x1 = f.pl.x; f.y1 = f.pl.y; }
       const u = clamp(f.t / f.dur, 0, 1), e = u * u * .6 + u * .4;   // acelera
-      const cx = f.x0 + (f.x1 - f.x0) * .15, cy = f.y0 - H * .5;
+      const cx = f.x0 + (f.x1 - f.x0) * .15, cy = f.y0 - skyH() * .7;
       const x = (1 - e) * (1 - e) * f.x0 + 2 * (1 - e) * e * cx + e * e * f.x1, y = (1 - e) * (1 - e) * f.y0 + 2 * (1 - e) * e * cy + e * e * f.y1;
       const dx = 2 * (1 - e) * (cx - f.x0) + 2 * e * (f.x1 - cx), dy = 2 * (1 - e) * (cy - f.y0) + 2 * e * (f.y1 - cy);
       f.e.setAttribute("transform", `translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${(Math.atan2(dy, dx) * 180 / Math.PI + 90).toFixed(0)}) scale(${lerp(1, .45, u).toFixed(2)})`);
@@ -1532,7 +1554,7 @@ const World = (function () {
     if (!S.won && S.colonists >= S.goal) {
       S.won = true; showBanner(`¡${natName()} colonizó ${S.dest.name}!`);
       logEv(`¡${T()} COLONIZÓ ${S.dest.name.toUpperCase()}!`);
-      for (let i = 0; i < 6; i++) later(i * .5, () => fireworks(rnd(W * .1, W * .9), rnd(H * .15, H * .5)));
+      for (let i = 0; i < 6; i++) later(i * .5, () => fireworks(rnd(W * .1, W * .9), skyY(rnd(.15, .6))));
     }
   }
 
@@ -1548,7 +1570,7 @@ const World = (function () {
   const at = (t, fn) => later(t * rnd(.92, 1.08), fn);
   const floatText = (x, y, text, col) => fx("g", { x, y, vy: -30, life: 1.1,
     html: `<text text-anchor="middle" font-size="12" font-weight="800" style="fill:${col || "#e53935"};stroke:#fff;stroke-width:.6px">${text}</text>` });
-  const bigText = txt => fx("g", { x: W / 2, y: H * .4, life: 1, html: `<text text-anchor="middle" font-size="44" font-weight="900" style="fill:#e53935;stroke:#fff;stroke-width:1.4px">${txt}</text>` });
+  const bigText = txt => fx("g", { x: W / 2, y: skyY(.4), life: 1, html: `<text text-anchor="middle" font-size="44" font-weight="900" style="fill:#e53935;stroke:#fff;stroke-width:1.4px">${txt}</text>` });
   const laser = (x0, y0, x1, y1, col, w, life) => fx("line", { x1: x0, y1: y0, x2: x1, y2: y1, col, w: w || 2, life: life || .2 });
   function ruinOf(s) {
     if (s.dying) return;
@@ -1580,7 +1602,7 @@ const World = (function () {
       rotate: Math.atan2(y1 - y0, Math.abs(x1 - x0)) * 180 / Math.PI, html: `<g transform="scale(${o.s || 1})">${SHIP[kind]()}</g>` }, o));
   }
   function hoverShip(kind, i, n, home, scale) {
-    const hx = W * (.12 + .76 * (i + .5) / n) + rnd(-20, 20), hy = H * rnd(.15, .3), ph = rnd(0, 6);
+    const hx = W * (.12 + .76 * (i + .5) / n) + rnd(-20, 20), hy = skyY(rnd(.12, .3)), ph = rnd(0, 6);
     const x0 = home ? home.x : (chance(.5) ? -60 : W + 60), y0 = home ? home.y : -40;
     const f = fx("g", { x: x0, y: y0, life: 99999, html: `<g transform="scale(${scale || 1.5})">${SHIP[kind]()}</g>`,
       tick(f, h) { const u = Math.min(1, f.t / 4); f.x = lerp(x0, hx, out3(u)) + (u >= 1 ? Math.sin(f.t * .4 + ph) * 28 : 0); f.y = lerp(y0, hy, out3(u)) + Math.sin(f.t * .9 + ph) * 4; f.vx = 0; f.vy = 0; } });
@@ -1594,7 +1616,7 @@ const World = (function () {
   }
   function dogfight(n) {
     for (let i = 0; i < n; i++) later(i * rnd(.3, .8), () => {
-      const dir = chance(.5) ? 1 : -1, y = rnd(H * .15, H * .55), x0 = dir > 0 ? -40 : W + 40, x1 = dir > 0 ? W + 40 : -40;
+      const dir = chance(.5) ? 1 : -1, y = skyY(rnd(.1, .6)), x0 = dir > 0 ? -40 : W + 40, x1 = dir > 0 ? W + 40 : -40;
       const f = flyShip("fighter", x0, y, x1, y + rnd(-60, 60), rnd(3.2, 5), { s: 1.6 });
       f.sh = rnd(.2, .5);
       f.tick = (g, h) => {
@@ -1605,7 +1627,7 @@ const World = (function () {
     });
   }
   function station() {
-    const f = fx("g", { x: W * rnd(.22, .45), y: H * .2, life: 99999,
+    const f = fx("g", { x: W * rnd(.22, .45), y: skyY(.24), life: 99999,
       html: `<g><circle r="62" fill="#8e96a3"/><path d="M-62 0A62 62 0 0 0 62 0Z" fill="#6b7380" opacity=".6"/><path d="M-62 3Q0 12 62 3" stroke="#4a515b" stroke-width="3" fill="none"/>` +
         `<circle cx="-22" cy="-20" r="15" fill="#6b7380"/><circle cx="-22" cy="-20" r="10" fill="#3b424d"/><circle cx="-22" cy="-20" r="4" fill="#7dff9a"/><circle cx="20" cy="22" r="3" fill="#ffd23f"/><circle cx="34" cy="10" r="2" fill="#ffd23f"/></g>`,
       tick(f, h) { f.e.setAttribute("transform", `translate(${f.x.toFixed(1)} ${f.y.toFixed(1)}) scale(${(.1 + .9 * out3(f.t / 3)).toFixed(2)})`); } });
@@ -1769,12 +1791,12 @@ const World = (function () {
   }
   function missiles() {
     for (let i = 0; i < 12; i++) later(i * .45, () => {
-      const x = rnd(40, W - 40), f = fx("g", { x: x - 140, y: -20, life: .9, vx: 155, vy: (floorY() + 20) / .9, rotate: 48, html: `<g transform="scale(1.6)">${SHIP.missile()}</g>` });
+      const x = rnd(40, W - 40), f = fx("g", { x: x - 140, y: SKY - 20, life: .9, vx: 155, vy: (floorY() + 20) / .9, rotate: 48, html: `<g transform="scale(1.6)">${SHIP.missile()}</g>` });
       f.onEnd = () => { boom(x, floorY() - 6, true); destroyAt(x, 90, .8); S.shake = 1; fx("flash", { x, y: floorY() - 20, r0: 10, r1: 90, life: .5, col: "#fff", op: .5 }); };
     });
   }
   function blackhole() {
-    S.hole = fx("g", { x: W * rnd(.35, .6), y: H * .2, life: 99999,
+    S.hole = fx("g", { x: W * rnd(.35, .6), y: skyY(.25), life: 99999,
       html: `<ellipse class="ad" rx="1" ry="1" fill="none" stroke="#ffb24d" stroke-width="5" opacity=".85"/><circle class="bc" r="1" fill="#000"/>`,
       tick(f, h) {
         const r = 8 + Math.min(1, f.t / 90) * 62, ad = f.e.querySelector(".ad");
@@ -1972,21 +1994,23 @@ const World = (function () {
     for (const k in S.recent) { S.recent[k] -= h; if (S.recent[k] <= 0) delete S.recent[k]; }
     if (S.boostT > 0) { S.boostT -= h; if (S.boostT <= 0) S.boost = 1; }
     if (S.eclipse > 0) { S.eclipse -= h; dark.setAttribute("opacity", (Math.sin(Math.PI * clamp(1 - S.eclipse / 10, 0, 1)) * .55).toFixed(2)); }
-    if (S.rain > 0) { S.rain -= h; for (let i = 0; i < h * 90; i++) fx("drop", { x: rnd(0, W), y: -10, vy: rnd(500, 700), vx: -40, life: 3 }); }
-    if (S.snow > 0) { S.snow -= h; for (let i = 0; i < h * 30; i++) fx("flake", { x: rnd(0, W), y: -10, vy: rnd(40, 80), life: 8 }); }
+    if (S.rain > 0) { S.rain -= h; for (let i = 0; i < h * 90; i++) fx("drop", { x: rnd(0, W), y: SKY - 10, vy: rnd(500, 700), vx: -40, life: 3 }); }
+    if (S.snow > 0) { S.snow -= h; for (let i = 0; i < h * 30; i++) fx("flake", { x: rnd(0, W), y: SKY - 10, vy: rnd(40, 80), life: 8 }); }
     S.skyT = (S.skyT == null ? rnd(14, 26) : S.skyT) - h; if (S.skyT <= 0) { S.skyT = rnd(35, 80); skyMessage(); }
+    if (S.lunch) { S.lunchMsgT -= h; if (S.lunchMsgT <= 0) { S.lunchMsgT = rnd(110, 200); skyMessage(pick(LUNCH_MSGS)); } }
+    S.skyChk = (S.skyChk || 0) - h; if (S.skyChk <= 0) { S.skyChk = 2; const n = measureSky(); if (Math.abs(n - SKY) > 3) layout(); }   // el reparto de la pantalla sigue al tamaño de la informacion
     qStep(); pandemicStep(h);
     if (S.flood > 0) S.flood -= h;
     if (S.sea > 0) S.sea -= h;
     { const k = S.flood > 0 ? Math.sin(Math.PI * clamp(1 - S.flood / S.floodMax, 0, 1)) : 0, target = Math.max(k * 30, S.sea > 0 ? 17 : 0);
       S.waterH += (target - S.waterH) * Math.min(1, h * 3); water.setAttribute("height", S.waterH.toFixed(1)); water.setAttribute("y", (H - S.waterH).toFixed(1)); }
-    if (S.locust > 0) { S.locust -= h; for (let i = 0; i < h * 90; i++) fx("spark", { x: -10, y: rnd(H * .2, H * .8), vx: rnd(150, 260), vy: rnd(-20, 20), life: 4, col: "#3a2a14", r: 1.8 }); }
+    if (S.locust > 0) { S.locust -= h; for (let i = 0; i < h * 90; i++) fx("spark", { x: -10, y: skyY(rnd(.1, .9)), vx: rnd(150, 260), vy: rnd(-20, 20), life: 4, col: "#3a2a14", r: 1.8 }); }
     if (S.drought > 0) { S.drought -= h; if (S.drought <= 0) { logEv(`La sequía termina: vuelve la lluvia`); S.rain = 8; if (!S.saga) tint.style.opacity = 0; } }
     if (S.music > 0) { S.music -= h; if (chance(h * 5)) { const g = pick(groundMons()); if (g) fx("note", { x: g.x, y: floorY() - 20, vy: -30, vx: rnd(-10, 10), life: 1.6, col: `hsl(${rnd(0, 360)} 70% 55%)` }); } }
     if (S.wormCalm > 0) S.wormCalm -= h;
     if (S.fastLaunch > 0) S.fastLaunch -= h;
     if (S.spice > 0) { S.spice -= h; if (chance(h * 8)) fx("spark", { x: rnd(0, W), y: floorY() - rnd(0, 50), vy: -rnd(5, 20), life: 1.5, col: "#ffb24d", r: 2 }); }
-    if (S.code > 0) { S.code -= h; for (let i = 0; i < h * 36; i++) fx("code", { x: rnd(0, W), y: -10, vy: rnd(60, 140), life: rnd(3, 6) }); }
+    if (S.code > 0) { S.code -= h; for (let i = 0; i < h * 36; i++) fx("code", { x: rnd(0, W), y: SKY - 10, vy: rnd(60, 140), life: rnd(3, 6) }); }
     if (S.crumble > 0) { S.crumble -= h; S.crumbT -= h; if (S.crumbT <= 0) { S.crumbT = 6; const t = S.structs.filter(q => !q.mobile && !q.dying && !q.temp && q.built > .8); if (t.length > 2) ruinOf(pick(t)); } }
     for (const c of S.crits) critStep(c, h);
     S.crits = S.crits.filter(c => !c.gone);
@@ -2000,7 +2024,7 @@ const World = (function () {
       else if (S.era === 7 && ((S.won && S.eraT >= S.eraDur * .5) || S.eraT >= S.eraDur * 3)) eraUp();   // tras colonizar viene la era galactica
       S.planT -= h; if (S.planT <= 0) { S.planT = 1.1; if (S.planPause > 0) S.planPause -= 1.1; else plan(); }
       S.msT -= h; if (S.msT <= 0) { S.msT = rnd(7, 14) / S.traits.curious / S.boost; nextMilestone(); }
-      if (!S.busy && !S.saga) { S.evT -= h; if (S.evT <= 0) { S.evT = rnd(11, 22) / Math.sqrt(S.boost); nextEvent(); } }
+      if (!S.busy && !S.saga && !S.lunch) { S.evT -= h; if (S.evT <= 0) { S.evT = rnd(11, 22) / Math.sqrt(S.boost); nextEvent(); } }
       if (S.era >= 7 && S.destSeen && !S.busy && !S.launch && !S.cata) { S.launchT = (S.launchT == null ? 8 : S.launchT) - h; if (S.launchT <= 0) { S.launchT = S.fastLaunch > 0 ? rnd(5, 8) : rnd(14, 22); tryLaunch(); } }
       if (S.era >= 7 && S.destSeen && !S.cata) { S.planetT = (S.planetT == null ? 20 : S.planetT) - h; if (S.planetT <= 0 && S.planets.length < 5) { S.planetT = rnd(24, 40); const pl = addPlanet({}); logEv(`El telescopio descubre ${pl.name}`); } }
       if (S.mammothT > 0) { S.mammothT -= h; }
@@ -2065,10 +2089,35 @@ const World = (function () {
     toasts.style.display = hudOpen ? "none" : "";
   }
 
+  // ---------- almuerzo: a las 12:00 todos paran a comer ----------
+  const LUNCH_FROM = 12 * 60, LUNCH_LEN = 60;   // de 12:00 a 12:59 (hora local)
+  const LUNCH_MSGS = ["¡Es hora de almorzar!", "¡A almorzar! El paper puede esperar", "¿Ya calentaste tu almuerzo?", "¿Qué hay de almuerzo hoy?", "Pausa de almuerzo: ¡las bacterias también descansan!",
+    "Un buen almuerzo vale más que un buen gel", "A comer: los genomas se ensamblan solos un ratito", "¿Fila del microondas? ¡Ve ahora!", "¡Buen provecho, científicos!", "Nada de tesis mientras comes",
+    "¿Compartes tu postre?", "Hoy toca almorzar, mañana toca graficar", "Hidrátate y come algo de verdad", "Si no almuerzas, no hay paper", "¿Y si almuerzas lejos del computador?"];
+  function startLunch() {
+    S.lunch = true; S.lunchMsgT = rnd(90, 150);
+    showBanner("¡A almorzar!"); skyMessage("¡Es hora de almorzar!"); pushToast("12:00 · ¡A almorzar!");
+    groundMons().forEach(g => { g.hold = false; g.act = "eat"; g.stay = rnd(20, 50); g.m.t = 0; g.m.dur = g.stay; g.m.food = pick(["banana", "berry", "leaf"]); });
+    A.setLunch(true);
+  }
+  function endLunch() {
+    S.lunch = false; A.setLunch(false);
+    pushToast("Terminó el almuerzo: ¡de vuelta al trabajo!"); skyMessage("¡Se acabó el almuerzo! De vuelta al trabajo");
+    groundMons().forEach(g => { g.stay = 0; });
+  }
+  let lunchAt = 0;
+  function lunchCheck(now) {   // una vez por segundo
+    if (now - lunchAt < 1000) return;
+    lunchAt = now;
+    const d = new Date(), m = d.getHours() * 60 + d.getMinutes(), on = Q.has("lunch") || (m >= LUNCH_FROM && m < LUNCH_FROM + LUNCH_LEN);
+    if (on && !S.lunch) startLunch(); else if (!on && S.lunch) endLunch();
+  }
+
   // ---------- ciclo ----------
   let last = 0;
   function frame(now) {
     requestAnimationFrame(frame);
+    lunchCheck(now);
     const real = Math.min(.05, Math.max(0, (now - last) / 1000)); last = now;
     if (document.hidden) return;
     for (const k in rectOf) delete rectOf[k];

@@ -9,10 +9,12 @@
 :root {
   --bg: #f4f6f9; --card: #ffffff; --text: #1b2430; --muted: #6b7686; --track: #e3e8ef; --border: #dde3ec;
   --ok: #16a34a; --warn: #f59e0b; --bad: #dc2626; --off: #9aa4b2; --accent: #2563eb; --we: #c2410c;
+  --sky1: #cfe4ff; --sky2: #f2f8ff; --sky-text: #4a5a78; --stars: 0;
 }
 :root[data-theme="dark"] {
   --bg: #0d1117; --card: #161b22; --text: #e6edf3; --muted: #8b96a5; --track: #262d38; --border: #2a313c;
   --ok: #3fb950; --warn: #f0a030; --bad: #f85149; --off: #6b7686; --accent: #58a6ff; --we: #fb923c;
+  --sky1: #070d1f; --sky2: #16264a; --sky-text: #a9bbdc; --stars: 1;
 }
 * { box-sizing: border-box; }
 body {
@@ -26,17 +28,50 @@ header {
 }
 h1 { font-size: 20px; margin: 0; letter-spacing: .12em; }
 .layout { display: flex; align-items: flex-start; gap: 10px; padding: 0 6px 24px; max-width: none; margin: 0; }
-.side { position: sticky; top: 12px; flex: none; width: clamp(150px, 16vw, 340px); }
+.side { position: sticky; top: 12px; flex: none; width: clamp(170px, 17vw, 360px); display: flex; flex-direction: column; gap: 10px; }
+.clockbox { position: relative; }
 .clock { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 2px; line-height: 1.05; padding: clamp(10px, 1.4vw, 24px) 8px;
   border-radius: 16px; font-variant-numeric: tabular-nums; min-height: 0; }
-.clock b { font-size: clamp(30px, 4.2vw, 92px); letter-spacing: -.03em; }
-.clock span { font-size: clamp(18px, 2.4vw, 48px); font-weight: 600; }
-.clock small { font-size: clamp(13px, 1.5vw, 28px); color: var(--muted); text-transform: capitalize; }
+.clock > b { font-size: clamp(30px, 4.2vw, 92px); letter-spacing: -.03em; }
+.clock > span.d { font-size: clamp(18px, 2.4vw, 48px); font-weight: 600; }
+.clock > small { font-size: clamp(13px, 1.5vw, 28px); color: var(--muted); text-transform: capitalize; }
+.clock .next { display: flex; flex-direction: column; align-items: center; gap: 1px; width: 100%; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border);
+  font-size: clamp(11px, 1.05vw, 19px); line-height: 1.25; text-align: center; }
+.clock .next:empty { display: none; }
+.clock .next i { font-style: normal; color: var(--muted); }
+.clock .next strong { font-size: 1.25em; }
+.clock .next .cd { font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+.weather { width: 100%; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 16px; text-align: left; min-height: 0; }
+.weather svg { flex: none; width: clamp(52px, 5vw, 100px); height: clamp(52px, 5vw, 100px); }
+.weather .wx-b { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.weather .wx-t { font-size: clamp(24px, 2.6vw, 54px); font-weight: 800; line-height: 1; }
+.weather .wx-s { font-size: clamp(11px, 1vw, 18px); color: var(--muted); line-height: 1.25; }
+#wxPop { position: fixed; z-index: 50; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(720px, 94vw); max-height: 92vh; overflow: auto; padding: 12px 14px;
+  background: var(--card); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,.35); font-size: 13.5px; }
+#wxPop[hidden] { display: none; }
+#wxPop .x { float: right; padding: 0 9px; min-height: 26px; font-size: 18px; line-height: 1; }
+#wxPop h3 { margin: 0 0 8px; font-size: 16px; }
+#wxPop table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+#wxPop td { padding: 4px 6px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+#wxPop td:first-child { text-transform: capitalize; font-weight: 600; }
+#wxPop iframe { width: 100%; height: 380px; border: 0; border-radius: 10px; background: var(--track); }
+#wxPop a { color: var(--accent); }
+.news { display: flex; align-items: center; height: 30px; background: var(--card); border-bottom: 1px solid var(--border); font-size: 13px; overflow: hidden; }
+.news[hidden] { display: none; }
+.news-tag { flex: none; padding: 0 12px; height: 100%; display: flex; align-items: center; font-weight: 800; color: var(--accent); border-right: 1px solid var(--border); }
+.news-view { flex: 1; overflow: hidden; height: 100%; display: flex; align-items: center; }
+.news-track { display: inline-flex; white-space: nowrap; animation: newsroll 400s linear infinite; will-change: transform; }
+.news-track:hover { animation-play-state: paused; }
+.news-track a { color: var(--text); text-decoration: none; margin-right: 40px; }
+.news-track a:hover { text-decoration: underline; }
+.news-track a b { color: var(--accent); margin-right: 7px; }
+@keyframes newsroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @media (max-width: 900px) {
   .layout { flex-direction: column; align-items: stretch; gap: 12px; }
   .side { position: static; width: 100%; }
-  .clock { flex-direction: row; justify-content: center; align-items: baseline; gap: 14px; }
-  .clock b { font-size: 38px; } .clock span { font-size: 22px; } .clock small { font-size: 14px; }
+  .clock { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 4px 14px; }
+  .clock > b { font-size: 38px; } .clock > span.d { font-size: 22px; } .clock > small { font-size: 14px; }
+  .clock .next { flex: 1 1 100%; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 2px 8px; font-size: 14px; }
 }
 .cal { position: absolute; left: 0; top: calc(100% + 8px); z-index: 40; width: 266px; padding: 10px; background: var(--card);
   border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.25); }
@@ -105,6 +140,7 @@ main {
 svg { display: block; width: 100%; max-width: 360px; margin: 0 auto; }
 .ringwrap { position: relative; max-width: 360px; margin: 0 auto; }
 .ringwrap svg { max-width: none; margin: 0; }
+@media (min-width: 901px) { .ringwrap { max-width: min(360px, 27vh); } }   /* informacion arriba, civilizacion abajo: los anillos se achican segun el alto */
 .ringwrap .zoo { position: absolute; inset: 0; height: 100%; pointer-events: none; overflow: visible; }
 svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
 .seg { transition: stroke .4s; }
@@ -117,6 +153,7 @@ footer { max-width: 1200px; margin: 0 auto; padding: 0 16px 24px; color: var(--m
 </style>
 </head>
 <body>
+<div id="news" class="news" hidden><span class="news-tag" id="newsTag">Noticias</span><div class="news-view"><div class="news-track" id="newsTrack"></div></div></div>
 <header>
   <h1>MONITO</h1>
   <div class="controls">
@@ -126,11 +163,15 @@ footer { max-width: 1200px; margin: 0 auto; padding: 0 16px 24px; color: var(--m
 </header>
 <div class="layout">
   <aside class="side">
-    <button id="clock" class="clock" aria-haspopup="dialog" aria-expanded="false" title="Ver el calendario"><b id="clockTime">--:--</b><span id="clockDate">--/--</span><small id="clockDay"></small></button>
-    <div id="cal" class="cal" role="dialog" aria-label="Calendario" hidden></div>
+    <div class="clockbox">
+      <button id="clock" class="clock" aria-haspopup="dialog" aria-expanded="false" title="Ver el calendario"><b id="clockTime">--:--</b><span class="d" id="clockDate">--/--</span><small id="clockDay"></small><span class="next" id="clockNext"></span></button>
+      <div id="cal" class="cal" role="dialog" aria-label="Calendario" hidden></div>
+    </div>
+    <button id="weather" class="weather" aria-haspopup="dialog" title="Ver el tiempo de la semana"><svg id="wxIcon" viewBox="0 0 80 80" aria-hidden="true"></svg><span class="wx-b"><b class="wx-t" id="wxTemp">--°</b><span class="wx-s" id="wxText">Cargando el tiempo…</span></span></button>
   </aside>
   <main id="grid"></main>
 </div>
+<div id="wxPop" role="dialog" aria-label="El tiempo" hidden></div>
 <footer>
   CPU por hilo y total: <span class="sw" style="background:var(--ok)"></span>&lt; 50 %
   <span class="sw" style="background:var(--warn)"></span>50–80 %
@@ -138,8 +179,8 @@ footer { max-width: 1200px; margin: 0 auto; padding: 0 16px 24px; color: var(--m
   Anillo exterior: hilos (arco fino = CPU total). Anillo interior: RAM.
 </footer>
 
-<script src="zoo.js?v=20261030c"></script>
-<script src="world.js?v=20261030c"></script>
+<script src="zoo.js?v=20261030d"></script>
+<script src="world.js?v=20261030d"></script>
 <script>
 // ====== Configuración ======
 const REPO = "fissotta/monito"; // "usuario/monito"  (vacío = modo demo)
@@ -160,7 +201,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
 const demo = !REPO || new URLSearchParams(location.search).has("demo");
-const BUILD = "20261030c";   // subir junto con los ?v= de los <script> en cada publicacion
+const BUILD = "20261030d";   // subir junto con los ?v= de los <script> en cada publicacion
 const state = { data: {}, next: 0, timer: null, stale: 300 };
 // si se publica una version nueva, la pagina (p. ej. en la TV) se recarga sola; revisa cada 10 min
 setInterval(async () => {
@@ -170,7 +211,7 @@ setInterval(async () => {
 // ---------- tema ----------
 const THEMES = ["auto", "light", "dark"];
 const THEME_LABEL = { auto: "◐ Auto", light: "☀ Día", dark: "☾ Noche" };
-let theme = store.get("theme", "auto");
+let theme = new URLSearchParams(location.search).get("theme") || store.get("theme", "auto");   // ?theme=dark para probar
 if (!THEMES.includes(theme)) theme = "auto";
 function applyTheme() {
   const h = new Date().getHours();
@@ -339,6 +380,7 @@ async function loadSems() {
     if (r.ok) SEMS = parseSems(await r.text());
   } catch { /* sin archivo: el calendario funciona igual */ }
   if (calView) renderCal();
+  renderNext();
 }
 function nextSem() {
   const t = dkey(new Date()), k = Object.keys(SEMS).sort().find(x => x >= t && SEMS[x].some(e => !e.none));
@@ -358,6 +400,7 @@ function tickClock() {
   const d = new Date(), t = pad(d.getHours()) + ":" + pad(d.getMinutes()), f = pad(d.getDate()) + "/" + pad(d.getMonth() + 1);
   if ($("clockTime").textContent !== t) $("clockTime").textContent = t;
   if ($("clockDate").textContent !== f) { $("clockDate").textContent = f; $("clockDay").textContent = DIAS_LARGOS[d.getDay()]; if (calView) renderCal(); }
+  renderNext();
 }
 function renderCal() {
   const now = new Date(), y = calView.y, m = calView.m, lead = (new Date(y, m, 1).getDay() + 6) % 7;   // casillas vacias antes del dia 1
@@ -389,6 +432,101 @@ tickClock(); setInterval(tickClock, 1000); loadSems();
 if (new URLSearchParams(location.search).has("cal")) toggleCal(true);
 { const q = new URLSearchParams(location.search); const taps = q.has("sofi") ? 5 : q.has("hola") ? 1 : 0;   // prueba: toques seguidos sobre el primer animal
   if (taps) setTimeout(() => { for (const z of Object.values(Zoo._zoos)) for (let i = 0; i < taps; i++) Zoo._test.react(z.ms[0]); }, 1500); }
+
+// ---------- proximo seminario con cuenta regresiva (bajo la fecha) ----------
+function nextSemTarget() {
+  const now = new Date(), t = dkey(now);
+  for (const k of Object.keys(SEMS).sort()) {
+    if (k < t) continue;
+    const e = SEMS[k].find(x => !x.none); if (!e) continue;
+    const [y, mo, d] = k.split("-").map(Number);
+    let tgt = new Date(y, mo - 1, d);   // sin hora: cuenta hasta que empieza ese dia
+    if (e.hora) { const [hh, mm] = e.hora.split(":").map(Number); tgt = new Date(y, mo - 1, d, hh, mm); if (now - tgt > 2 * 3600e3) continue; }
+    return { k, e, tgt };
+  }
+  return null;
+}
+function renderNext() {
+  const box = $("clockNext"), n = nextSemTarget();
+  if (!n) { if (box.innerHTML) box.innerHTML = ""; return; }
+  const ms = n.tgt - new Date(), mins = Math.floor(ms / 60000);
+  const cd = ms <= 0 ? (n.e.hora ? "¡Ahora!" : "¡Hoy!") : (mins >= 1440 ? Math.floor(mins / 1440) + " d " : "") + pad(Math.floor(mins % 1440 / 60)) + " h " + pad(mins % 60) + " min";
+  const [y, mo, d] = n.k.split("-").map(Number), dt = new Date(y, mo - 1, d);
+  const html = `<i>Próximo seminario</i><strong>${n.e.who || "por confirmar"}</strong><i>${DIAS_LARGOS[dt.getDay()].slice(0, 3)} ${pad(d)}/${pad(mo)}${n.e.hora ? " · " + n.e.hora : ""}</i><span class="cd">${ms > 0 ? "faltan " : ""}${cd}</span>`;
+  if (box.innerHTML !== html) box.innerHTML = html;
+}
+
+// ---------- noticias del mundo y de Chile (las baja un servidor cada 20 min y las publica en la rama "news") ----------
+const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+async function loadNews() {
+  if (!REPO) return;
+  let d = null;
+  try { const r = await fetch(`https://api.github.com/repos/${REPO}/contents/news.json?ref=news`, { headers: { Accept: "application/vnd.github.raw+json" } }); if (r.ok) d = await r.json(); } catch { /* sin cupo: se prueba raw */ }
+  if (!d) try { const r = await fetch(`https://raw.githubusercontent.com/${REPO}/news/news.json?t=${Date.now()}`, { cache: "no-store" }); if (r.ok) d = await r.json(); } catch { /* sin noticias */ }
+  if (d && d.items && d.items.length) renderNews(d);
+}
+function renderNews(d) {
+  const html = d.items.map(i => `<a href="${esc(i.u)}" target="_blank" rel="noopener"><b>${esc(i.s)}</b>${esc(i.t)}</a>`).join(""), tr = $("newsTrack");
+  tr.innerHTML = html + html;   // dos copias para que el desplazamiento no tenga saltos
+  $("news").hidden = false;
+  tr.style.animationDuration = Math.max(60, tr.scrollWidth / 2 / 70) + "s";   // ~70 px/s
+  const t = new Date(d.updated * 1000); $("newsTag").title = `Actualizadas a las ${pad(t.getHours())}:${pad(t.getMinutes())}`;
+}
+loadNews(); setInterval(loadNews, 15 * 60e3);
+
+// ---------- el tiempo (Open-Meteo, sin clave) con un monito segun el clima; al tocarlo, la semana y un mapa de Windy ----------
+const WX_PLACE = { name: "Santiago", lat: -33.4489, lon: -70.6693 };   // cambiar si el laboratorio esta en otra ciudad
+let WXD = null;
+const WX = c => c === 0 ? ["Despejado", "☀️", "sun"] : c === 1 ? ["Mayormente despejado", "🌤️", "sun"] : c === 2 ? ["Parcialmente nublado", "⛅", "part"] : c === 3 ? ["Nublado", "☁️", "cloud"]
+  : c === 45 || c === 48 ? ["Niebla", "🌫️", "fog"] : c >= 51 && c <= 57 ? ["Llovizna", "🌦️", "rain"] : c >= 61 && c <= 67 ? ["Lluvia", "🌧️", "rain"] : c >= 80 && c <= 82 ? ["Chubascos", "🌧️", "rain"]
+  : c >= 71 && c <= 77 || c === 85 || c === 86 ? ["Nieve", "❄️", "snow"] : c >= 95 ? ["Tormenta", "⛈️", "storm"] : ["Sin datos", "🌡️", "cloud"];
+async function loadWeather() {
+  try {
+    const u = `https://api.open-meteo.com/v1/forecast?latitude=${WX_PLACE.lat}&longitude=${WX_PLACE.lon}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max&timezone=auto&forecast_days=7`;
+    const r = await fetch(u); if (!r.ok) return; WXD = await r.json(); renderWeather();
+  } catch { /* sin red: queda el ultimo dato */ }
+}
+function wxMonkey(kind, temp) {   // el mismo mono de los anillos, con ropa y accesorios segun el clima
+  const A = Zoo.api, sp = A.SPECIES_BY_KIND.mono[0], NS = "http://www.w3.org/2000/svg";
+  const acc = kind === "sun" && temp >= 20 ? { name: "gafas de sol", a: "#555", d: "#222" } : temp <= 9 ? { name: "bufanda", a: "#e53935", d: "#9b1c1c" } : null;
+  const m = { sp, kind: "mono", pal: A.palette(sp), dir: 1, phase: 1, t: 1, dur: 3, mode: kind === "sun" ? "cheer" : "rest", mood: { low: 0, mid: 1, high: 0 }, theta: 0, seed: 5, hop: { u: .5 }, jump: { u: .5 }, acc, celeb: null, lane: "cpu" };
+  m.parts = A.build(m); A.draw(m);
+  const cloud = (c1, c2) => `<ellipse cx="26" cy="15" rx="16" ry="9" fill="${c1}"/><ellipse cx="44" cy="12" rx="14" ry="8.5" fill="${c2}"/><ellipse cx="54" cy="17" rx="11" ry="7" fill="${c1}"/>`;
+  const sun = (x, y, r) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#fdd835"/>` + Array.from({ length: 8 }, (_, i) => { const a = i * Math.PI / 4; return `<line x1="${x + Math.cos(a) * (r + 2)}" y1="${y + Math.sin(a) * (r + 2)}" x2="${x + Math.cos(a) * (r + 6)}" y2="${y + Math.sin(a) * (r + 6)}" stroke="#fdd835" stroke-width="2" stroke-linecap="round"/>`; }).join("");
+  const drops = Array.from({ length: 7 }, (_, i) => `<line x1="${14 + i * 9}" y1="${26 + (i % 2) * 6}" x2="${11 + i * 9}" y2="${34 + (i % 2) * 6}" stroke="#4a90e2" stroke-width="1.8" stroke-linecap="round"/>`).join("");
+  const over = { sun: sun(62, 16, 8), part: sun(60, 14, 6) + cloud("#c9d1dc", "#dde3ec"), cloud: cloud("#b3bcc9", "#c9d1dc"), fog: [20, 28, 36].map((y, i) => `<line x1="8" y1="${y}" x2="72" y2="${y}" stroke="#9aa6b6" stroke-width="3" stroke-linecap="round" opacity="${.7 - i * .15}"/>`).join(""),
+    rain: cloud("#8c98aa", "#a2adbd") + drops, snow: cloud("#aeb8c6", "#c6cedb") + Array.from({ length: 6 }, (_, i) => `<circle cx="${14 + i * 10}" cy="${28 + (i % 2) * 7}" r="2" fill="#fff" stroke="#9fb4d4" stroke-width=".6"/>`).join(""),
+    storm: cloud("#6f7a8c", "#86919f") + `<path d="M38 22l-7 12h6l-3 11 10-15h-6l4-8z" fill="#fdd835"/>` }[kind] || "";
+  const svg = $("wxIcon"); svg.innerHTML = over;
+  const g = document.createElementNS(NS, "g"); g.setAttribute("transform", "translate(40 78) scale(2.3)"); g.appendChild(m.parts.root); svg.appendChild(g);
+  if (kind === "rain" || kind === "storm") svg.insertAdjacentHTML("beforeend", `<path d="M14 40Q40 14 66 40Z" fill="#e53935"/><path d="M14 40Q27 36 40 40Q53 36 66 40" fill="none" stroke="#b71c1c" stroke-width="1"/><line x1="40" y1="40" x2="40" y2="50" stroke="#555" stroke-width="1.5"/>`);
+}
+function renderWeather() {
+  const d = WXD; if (!d || !d.current) return;
+  const t = Math.round(d.current.temperature_2m), [txt, , kind] = WX(d.current.weather_code);
+  $("wxTemp").textContent = t + "°";
+  $("wxText").innerHTML = `${txt}<br>mín ${Math.round(d.daily.temperature_2m_min[0])}° · máx ${Math.round(d.daily.temperature_2m_max[0])}°`;
+  wxMonkey(kind, t);
+  if (!$("wxPop").hidden) showWeather();
+}
+function showWeather() {
+  const d = WXD; if (!d) return;
+  const rows = d.daily.time.map((day, i) => {
+    const dt = new Date(day + "T12:00"), [txt, ico] = WX(d.daily.weather_code[i]), pr = d.daily.precipitation_probability_max ? d.daily.precipitation_probability_max[i] : null;
+    return `<tr><td>${i ? DIAS_LARGOS[dt.getDay()] : "hoy"} ${dt.getDate()}/${dt.getMonth() + 1}</td><td>${ico}</td><td>${txt}</td><td>${Math.round(d.daily.temperature_2m_min[i])}° / ${Math.round(d.daily.temperature_2m_max[i])}°</td><td>${pr == null ? "" : "☔ " + pr + " %"}</td></tr>`;
+  }).join("");
+  const { lat, lon } = WX_PLACE;
+  $("wxPop").innerHTML = `<button class="x" aria-label="Cerrar">×</button><h3>${WX_PLACE.name} · el tiempo de la semana</h3><table>${rows}</table>` +
+    `<iframe title="Mapa de Windy" loading="lazy" src="https://embed.windy.com/embed2.html?lat=${lat}&lon=${lon}&detailLat=${lat}&detailLon=${lon}&width=680&height=380&zoom=7&level=surface&overlay=rain&product=ecmwf&menu=&message=true&marker=true&calendar=now&pressure=&type=map&location=coordinates&detail=true&metricWind=km%2Fh&metricTemp=%C2%B0C&radarRange=-1"></iframe>` +
+    `<p><a href="https://www.windy.com/${lat}/${lon}?${lat},${lon},8" target="_blank" rel="noopener">Abrir en Windy.com</a> · datos del pronóstico: Open-Meteo</p>`;
+  $("wxPop").hidden = false;
+}
+$("weather").onclick = e => { e.stopPropagation(); if ($("wxPop").hidden) showWeather(); else $("wxPop").hidden = true; };
+$("wxPop").addEventListener("click", e => { e.stopPropagation(); if (e.target.classList && e.target.classList.contains("x")) $("wxPop").hidden = true; });
+document.addEventListener("click", () => { $("wxPop").hidden = true; });
+document.addEventListener("keydown", e => { if (e.key === "Escape") $("wxPop").hidden = true; });
+loadWeather(); setInterval(loadWeather, 30 * 60e3);
+if (new URLSearchParams(location.search).has("wx")) setTimeout(showWeather, 2500);   // prueba: abre el tiempo de la semana
 
 // ---------- monos ----------
 Zoo.init(MACHINES.map(m => m.id), () => state.data, Object.fromEntries(MACHINES.map(m => [m.id, m.animal])));

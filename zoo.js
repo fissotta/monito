@@ -534,7 +534,9 @@ const Zoo = (function () {
   };
   const speedOf = cpu => cpu <= 70 ? .3 + cpu / 100 * .9 : .93 + (cpu - 70) / 30 * 1.7;   // .3 .. 2.6
 
+  let LUNCH = false;   // a la hora de almuerzo todos los de los anillos comen
   function next(m, ctx) {
+    if (LUNCH) return enter(m, "eat", ctx);
     const w = mood(ctx.cpu), tally = {};
     for (const t in TIERS) for (const k in TIERS[t][m.lane]) tally[k] = (tally[k] || 0) + w[t] * TIERS[t][m.lane][k];
     const opts = Object.entries(tally).filter(o => o[1] > 0);
@@ -721,6 +723,7 @@ const Zoo = (function () {
     make: kind => newMonkey({ cpu: 50, ram: 50, n: 16 }, "cpu", pick(SPECIES_BY_KIND[kind || pick(["mono", "jirafa", "foca"])]), Math.random() < .5, rollCeleb(.03)),
     kindOf, CELEBS, SPECIES_BY_KIND,
     setCelebHandler: fn => { onCeleb = fn; },
+    setLunch: on => { LUNCH = on; if (on) for (const id in zoos) for (const m of zoos[id].ms) if (m.mode !== "cross" && m.ctx) enter(m, "eat", m.ctx); },
     setReleaseHandler: fn => { onRelease = fn; },
     setCap: n => { CAP = n; },
   };

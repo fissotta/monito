@@ -22,10 +22,10 @@ body {
 }
 header {
   display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between;
-  padding: 14px 16px; max-width: 1900px; margin: 0 auto;
+  padding: 10px 8px; max-width: none; margin: 0;
 }
 h1 { font-size: 20px; margin: 0; letter-spacing: .12em; }
-.layout { display: flex; align-items: flex-start; gap: 18px; padding: 0 16px 24px; max-width: 1900px; margin: 0 auto; }
+.layout { display: flex; align-items: flex-start; gap: 10px; padding: 0 6px 24px; max-width: none; margin: 0; }
 .side { position: sticky; top: 12px; flex: none; width: clamp(150px, 16vw, 340px); }
 .clock { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 2px; line-height: 1.05; padding: clamp(10px, 1.4vw, 24px) 8px;
   border-radius: 16px; font-variant-numeric: tabular-nums; min-height: 0; }
@@ -90,7 +90,7 @@ button:hover { border-color: var(--accent); }
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .status { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 main {
-  display: grid; gap: 16px; padding: 0; flex: 1; min-width: 0;
+  display: grid; gap: 10px; padding: 0; flex: 1; min-width: 0;
   grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
 }
 .card {
@@ -138,8 +138,8 @@ footer { max-width: 1200px; margin: 0 auto; padding: 0 16px 24px; color: var(--m
   Anillo exterior: hilos (arco fino = CPU total). Anillo interior: RAM.
 </footer>
 
-<script src="zoo.js"></script>
-<script src="world.js"></script>
+<script src="zoo.js?v=20261030c"></script>
+<script src="world.js?v=20261030c"></script>
 <script>
 // ====== Configuración ======
 const REPO = "fissotta/monito"; // "usuario/monito"  (vacío = modo demo)
@@ -160,7 +160,12 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
 const demo = !REPO || new URLSearchParams(location.search).has("demo");
+const BUILD = "20261030c";   // subir junto con los ?v= de los <script> en cada publicacion
 const state = { data: {}, next: 0, timer: null, stale: 300 };
+// si se publica una version nueva, la pagina (p. ej. en la TV) se recarga sola; revisa cada 10 min
+setInterval(async () => {
+  try { const r = await fetch("index.html?t=" + Date.now(), { cache: "no-store" }), m = (await r.text()).match(/const BUILD = "([^"]+)"/); if (m && m[1] !== BUILD) location.reload(); } catch { /* sin red: se intenta luego */ }
+}, 600000);
 
 // ---------- tema ----------
 const THEMES = ["auto", "light", "dark"];

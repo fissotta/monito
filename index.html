@@ -28,7 +28,7 @@ header {
 }
 h1 { font-size: 20px; margin: 0; letter-spacing: .12em; }
 .layout { display: flex; align-items: flex-start; gap: 10px; padding: 0 6px 24px; max-width: none; margin: 0; }
-.side { position: sticky; top: 12px; flex: none; width: clamp(170px, 17vw, 360px); display: flex; flex-direction: column; gap: 10px; }
+.side { position: sticky; top: 12px; z-index: 46; flex: none; width: clamp(170px, 17vw, 360px); display: flex; flex-direction: column; gap: 10px; }
 .clockbox { position: relative; }
 .clock { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 2px; line-height: 1.05; padding: clamp(10px, 1.4vw, 24px) 8px;
   border-radius: 16px; font-variant-numeric: tabular-nums; min-height: 0; }
@@ -108,6 +108,9 @@ body { padding-bottom: 150px; }
 .toast { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 4px 9px; font-size: 12px;
   max-width: min(380px, calc(100vw - 20px)); box-shadow: 0 2px 8px rgba(0,0,0,.12); animation: tt 7s ease forwards; }
 @keyframes tt { 0% { opacity: 0; transform: translateY(8px); } 6%, 85% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+#bldPop { position: fixed; z-index: 47; padding: 6px 10px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,.3); font-size: 13px; line-height: 1.35; pointer-events: none; max-width: 240px; }
+#bldPop[hidden] { display: none; }
+#bldPop b { font-size: 14px; }
 #planetPop { position: fixed; z-index: 45; width: 280px; max-height: 70vh; overflow: auto; padding: 10px 12px; background: var(--card);
   border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.28); font-size: 12.5px; line-height: 1.4; }
 #planetPop[hidden] { display: none; }
@@ -179,8 +182,8 @@ footer { max-width: 1200px; margin: 0 auto; padding: 0 16px 24px; color: var(--m
   Anillo exterior: hilos (arco fino = CPU total). Anillo interior: RAM.
 </footer>
 
-<script src="zoo.js?v=20261030d"></script>
-<script src="world.js?v=20261030d"></script>
+<script src="zoo.js?v=20261030f"></script>
+<script src="world.js?v=20261030f"></script>
 <script>
 // ====== Configuración ======
 const REPO = "fissotta/monito"; // "usuario/monito"  (vacío = modo demo)
@@ -201,7 +204,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
 const demo = !REPO || new URLSearchParams(location.search).has("demo");
-const BUILD = "20261030d";   // subir junto con los ?v= de los <script> en cada publicacion
+const BUILD = "20261030f";   // subir junto con los ?v= de los <script> en cada publicacion
 const state = { data: {}, next: 0, timer: null, stale: 300 };
 // si se publica una version nueva, la pagina (p. ej. en la TV) se recarga sola; revisa cada 10 min
 setInterval(async () => {
@@ -413,14 +416,18 @@ function renderCal() {
   }
   $("cal").innerHTML = h + `</div><div class="cal-info" id="calInfo">${infoHtml()}</div><div class="cal-foot"><button id="calToday">Hoy</button></div>`;
 }
+let calIdle = 0;
+function bumpCal() { clearTimeout(calIdle); calIdle = setTimeout(() => { if (!$("cal").hidden) toggleCal(false); }, 10000); }   // se cierra solo tras 10 s sin tocarlo
 function toggleCal(open) {
   const now = new Date(), show = open == null ? $("cal").hidden : open;
   if (show) { calView = { y: now.getFullYear(), m: now.getMonth() }; calSel = SEMS[dkey(now)] ? dkey(now) : null; renderCal(); loadSems(); } else calView = null;
   $("cal").hidden = !show; $("clock").setAttribute("aria-expanded", String(show));
+  if (show) bumpCal(); else clearTimeout(calIdle);
 }
 $("clock").onclick = e => { e.stopPropagation(); toggleCal(); };
+for (const ev of ["pointermove", "touchstart", "wheel"]) $("cal").addEventListener(ev, () => { if (!$("cal").hidden) bumpCal(); }, { passive: true });
 $("cal").addEventListener("click", e => {
-  e.stopPropagation();
+  e.stopPropagation(); bumpCal();
   const id = e.target.id, now = new Date(), day = e.target.closest ? e.target.closest(".d") : null;
   if (id === "calPrev" || id === "calNext") { const d = new Date(calView.y, calView.m + (id === "calNext" ? 1 : -1), 1); calView = { y: d.getFullYear(), m: d.getMonth() }; renderCal(); }
   else if (id === "calToday") { calView = { y: now.getFullYear(), m: now.getMonth() }; calSel = SEMS[dkey(now)] ? dkey(now) : null; renderCal(); }

@@ -234,8 +234,8 @@ svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
 <div id="wxPop" role="dialog" aria-label="El tiempo" hidden></div>
 
 
-<script src="zoo.js?v=20261030m"></script>
-<script src="world.js?v=20261030m"></script>
+<script src="zoo.js?v=20261030n"></script>
+<script src="world.js?v=20261030n"></script>
 <script>
 // ====== Configuración ======
 const REPO = "fissotta/monito"; // "usuario/monito"  (vacío = modo demo)
@@ -256,7 +256,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
 const demo = !REPO || new URLSearchParams(location.search).has("demo");
-const BUILD = "20261030m";   // subir junto con los ?v= de los <script> en cada publicacion
+const BUILD = "20261030n";   // subir junto con los ?v= de los <script> en cada publicacion
 const state = { data: {}, next: 0, timer: null, stale: 300 };
 // si se publica una version nueva, la pagina (p. ej. en la TV) se recarga sola; revisa cada 10 min
 setInterval(async () => {
@@ -600,7 +600,7 @@ function renderNews(d) {
   const t = new Date(d.updated * 1000); $("newsTag").title = `Actualizadas a las ${pad(t.getHours())}:${pad(t.getMinutes())}`;
 }
 loadNews(); setInterval(loadNews, 15 * 60e3);
-loadPapers(); setInterval(loadPapers, 60 * 60e3);
+loadPapers(); setInterval(loadPapers, 3 * 60 * 60e3);
 
 // ---------- el tiempo (Open-Meteo, sin clave) con un monito segun el clima; al tocarlo, la semana y un mapa de Windy ----------
 const WX_PLACE = { name: "Santiago", lat: -33.4489, lon: -70.6693 };   // cambiar si el laboratorio esta en otra ciudad

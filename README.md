@@ -96,7 +96,7 @@ Segunda cinta junto al indicador de época, con papers nuevos de los temas del l
 ## Feed de papers: temas y frecuencia
 
 - Temas: los del laboratorio más bioinformática, GTDB y filogenia, metagenómica, métodos nuevos e IA en ciencia (genómica). Los trabajos de R. Quatrini se **excluyen** a propósito.
-- `papers.py` consulta PubMed y Europe PMC cada **3 horas** (dentro del cron de `news.py`; las noticias, cada 20 min). La página relee `papers.json` cada hora.
+- `papers.py` consulta PubMed y Europe PMC **una vez al día** (~07:00, dentro del cron de `news.py`; las noticias, cada 20 min). La página relee `papers.json` cada 3 horas. Para forzar una consulta: `python3 news.py --papers`.
 - La pastilla de época queda bajo el tiempo; la cinta de papers parte desde el borde izquierdo de akaza.
 
 ## Popups

@@ -6,7 +6,7 @@ trabajos recientes sobre los temas del laboratorio y los publica como papers.jso
 Los temas salen de los abstracts de los trabajos de R. Quatrini (acidofilos, Acidithiobacillus,
 biominería, genomica comparada, metagenomica, elementos geneticos moviles...) mas bioinformatica,
 filogenia/GTDB, metodos nuevos e IA en genomica. Los trabajos de Quatrini se EXCLUYEN (es el feed de
-lo que sale de nuevo en el area, no del propio laboratorio). Lo ejecuta news.py (mismo cron, cada 3 h)
+lo que sale de nuevo en el area, no del propio laboratorio). Lo ejecuta news.py (mismo cron, una vez al dia)
 o se puede correr a mano. Solo libreria estandar. Uso:
   papers.py            # baja y publica
   papers.py --dry-run  # baja e imprime, sin publicar

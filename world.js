@@ -860,6 +860,75 @@ const World = (function () {
     // invierno: de vez en cuando llovizna
     FEST.rainT -= h; if (FEST.rainT <= 0) { FEST.rainT = rnd(200, 400); if (FEST.season === "invierno" && calm && !S.rain && chance(.4)) S.rain = rnd(8, 14); }
   }
+  // ---------- poderes: botones para provocar sucesos en la civilizacion (para mal o para bien) ----------
+  function manna() {   // comida del cielo
+    logEv(`¡Cae comida del cielo sobre ${T()}!`);
+    const items = [
+      `<path d="M-6 0Q0 8 6 0Q4 -7 -6 -4Z" fill="#ffd84a" stroke="#c9a200" stroke-width=".6"/>`,
+      `<circle r="5" fill="#e53935"/><path d="M0 -5Q1 -9 4 -9" stroke="#4b6b2a" fill="none"/>`,
+      `<ellipse rx="7" ry="4.5" fill="#d9a05b"/><path d="M-3 -2l1 3M1 -3l1 4" stroke="#b9803a"/>`,
+      `<path d="M-7 0Q-2 -6 4 -1L8 -4V4L4 1Q-2 6 -7 0Z" fill="#7fc4ff"/>`,
+      `<circle r="4.5" fill="#fb8c00"/><path d="M0 -4.5Q2 -8 5 -7" stroke="#4b6b2a" fill="none"/>`];
+    for (let i = 0; i < 40; i++) later(i * .13, () => {
+      const v = rnd(110, 170), rs = rnd(-200, 200);
+      fx("g", { x: rnd(30, W - 30), y: SKY - 8, vy: v, life: (floorY() - SKY + 14) / v, rotate: rnd(0, 360), html: pick(items),
+        tick: f => { f.rotate += rs * .016; }, onEnd: f => burst(f.x, floorY() - 3, 3, "#fff3b0", 45) });
+    });
+    later(5.4, () => {
+      S.extra += 6;
+      free().slice(0, 16).forEach(g => { g.act = "eat"; g.stay = rnd(4, 7); g.m.t = 0; g.m.dur = g.stay; g.m.food = pick(["banana", "berry", "leaf"]); });
+      logEv(`Banquete para todos: llega más gente a ${T()} (+6)`);
+    });
+  }
+  function alienGift() {   // los alienigenas regalan tecnologia
+    const tx = rnd(W * .3, W * .7), sx = chance(.5) ? -70 : W + 70, ex = sx < 0 ? W + 80 : -80, y = Math.max(SKY + 50, skyY(.25)), ground = floorY() - y;
+    logEv(`¡Una nave alienígena se detiene sobre ${T()}!`);
+    fx("g", { x: sx, y, life: 11, html: `<ellipse rx="30" ry="9" fill="#8fe3c8"/><ellipse cy="-6" rx="14" ry="9" fill="#bff3ff" opacity=".85"/><circle cx="-18" cy="2" r="2.2" fill="#fff27a"/><circle cx="0" cy="4" r="2.2" fill="#fff27a"/><circle cx="18" cy="2" r="2.2" fill="#fff27a"/>`,
+      tick: f => { const t = f.t; f.vx = 0; f.x = t < 3 ? lerp(sx, tx, out3(t / 3)) : t < 8 ? tx : lerp(tx, ex, clamp((t - 8) / 3, 0, 1)); f.y = y + Math.sin(t * 4) * 3 - (t > 8 ? (t - 8) * 14 : 0); } });
+    later(3.2, () => fx("g", { x: tx, y, life: 4.6, html: `<path d="M-12 10L-48 ${ground + 14}L48 ${ground + 14}L12 10Z" fill="#c9fff0"/>`,
+      tick: f => f.e.setAttribute("opacity", (clamp(f.t / .5, 0, 1) * clamp(f.life / .7, 0, 1) * .5).toFixed(2)) }));
+    later(4.4, () => fx("g", { x: tx, y: y + 12, vy: (ground - 26) / 1.6, life: 1.6, rotate: 0,
+      html: `<circle r="13" fill="#7dffb0" opacity=".25"/><rect x="-6" y="-6" width="12" height="12" rx="2" fill="#7dffb0"/><rect x="-6" y="-6" width="12" height="12" rx="2" fill="none" stroke="#fff" stroke-width="1.5"/>`,
+      tick: f => { f.rotate += 6; },
+      onEnd: () => {
+        burst(tx, floorY() - 12, 26, "#7dffb0", 150); fx("flash", { x: tx, y: floorY() - 16, r0: 6, r1: 60, life: .5, col: "#bfffe0", op: .7 });
+        logEv(`Los alienígenas dejan un regalo luminoso: conocimiento nuevo`);
+        let got = nextMilestone(); got = nextMilestone() || got;
+        if (!got) S.eraT = Math.min(S.eraDur * .97, S.eraT + S.eraDur * .12);   // sin hitos pendientes, la era avanza
+        S.extra += 3; cheerSome(10, 6);
+      } }));
+  }
+  const POWERS = [
+    { id: "meteorito", ico: "☄️", n: "Meteorito", bad: 1, run: () => meteor() },
+    { id: "volcan", ico: "🌋", n: "Volcán", bad: 1, run: volcano },
+    { id: "inundacion", ico: "🌊", n: "Inundación", bad: 1, run: () => flood(14, `Inundación: el agua sube sobre ${T()}`) },
+    { id: "tormenta", ico: "⛈️", n: "Tormenta", bad: 1, run: storm },
+    { id: "terremoto", ico: "🌍", n: "Terremoto", bad: 1, run: quake },
+    { id: "incendio", ico: "🔥", n: "Incendio", bad: 1, run: fire },
+    { id: "plaga", ico: "🦠", n: "Plaga", bad: 1, run: () => { if (S.pandemic) { pushToast("Ya hay una plaga en curso"); return false; } pandemic(); } },
+    { id: "abduccion", ico: "🛸", n: "Abducción", bad: 1, run: () => { if (S.busy || S.ufo || !free().length) { pushToast("Ahora no hay nadie que abducir"); return false; } ufo(); } },
+    { id: "manna", ico: "🍎", n: "Comida", tip: "Comida del cielo", run: manna },
+    { id: "regalo", ico: "👽", n: "Aliens", tip: "Los aliens regalan tecnología", run: alienGift },
+    { id: "deseos", ico: "🌠", n: "Deseos", run: () => { starShower(); S.extra += 3; } },
+    { id: "fiesta", ico: "🎉", n: "Fiesta", run: () => { festival(); S.extra += 2; } },
+  ];
+  (function buildPowers() {
+    const box = document.getElementById("powers"); if (!box) return;
+    for (const p of POWERS) {
+      const b = document.createElement("button"); b.className = "pw " + (p.bad ? "bad" : "good"); b.type = "button";
+      b.title = (p.bad ? "Para mal: " : "Para bien: ") + (p.tip || p.n); b.innerHTML = `<span aria-hidden="true">${p.ico}</span>${p.n}`;
+      b.addEventListener("click", e => {
+        e.stopPropagation();
+        if (!S.started) { pushToast("La civilización empieza cuando cae el primer animal"); return; }
+        if (S.cata || S.saga) { pushToast("La civilización está en plena crisis: espera un momento"); return; }
+        if (p.run() === false) return;
+        pushToast(`${p.ico} ${p.n}`);
+        b.disabled = true; setTimeout(() => { b.disabled = false; }, 20000);   // enfriamiento de 20 s por boton
+      });
+      box.appendChild(b);
+    }
+    if (Q.get("power")) setTimeout(() => { const p = POWERS.find(x => x.id === Q.get("power")); if (p) { S.started = true; p.run(); const ps = parseFloat(Q.get("pstep")) || 0; for (let t = 0; t < ps; t += .05) step(.05); } }, 3500);   // prueba: ?power=meteorito
+  })();
   const THOUGHTS = {
     any: ["Hmm… ¿y si…?", "¡Qué buen día!", "Tengo sueño…", "Me pica la espalda", "¿Qué estarán pensando los demás?", "Qué linda tribu tenemos", "¿Habrá algo de comer?", "¿Y si descansamos un poco?", "Mañana será mejor", "¡Cómo pasa el tiempo!", "¿Habrá terminado mi job?", "Me falta un párrafo del paper", "¿Y si repito el experimento?", "Tengo que hacer backup", "¿Quedará café en el lab?", "Mi tesis me espera"],
     0: ["Hambre… ¡uh!", "¿Qué es esa luz tan grande?", "Palo bueno, piedra mejor", "Esa cueva se ve cómoda", "Brrr, qué frío hace"],

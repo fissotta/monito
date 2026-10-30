@@ -678,9 +678,20 @@ const World = (function () {
     const night = isNight(), space = S.era >= 7, calm = !S.saga;
     if (night !== AMB.theme) { AMB.theme = night; drawCelestial(night); }
     celest.setAttribute("transform", `translate(${(W * .88).toFixed(0)} ${skyY(.2).toFixed(0)}) scale(${FEST.season === "verano" ? 1.3 : 1})`); celest.style.display = space || SKYOFF ? "none" : "";
-    // nubes que cruzan despacio (mas lejos = mas chicas, lentas y claras)
     const base = (FEST.season === "invierno" ? 8 : FEST.season === "verano" ? 3 : 6) - (LOW ? 2 : 0), want = space || SKYOFF ? 0 : night ? Math.max(2, base - 2) : base;
     if (!AMB.init) { AMB.init = true; for (let i = 0; i < want; i++) spawnCloud(rnd(-60, W)); }
+    // desde que empieza la civilizacion el fondo es una imagen fija: nada se mueve (solo pasan las nubes con mensajes)
+    if (S.started && !SKYOFF) {
+      if (AMB.flocks.length || AMB.flies.length || AMB.bf.length) { [].concat(AMB.flocks, AMB.flies, AMB.bf).forEach(o => o.e.remove()); AMB.flocks = []; AMB.flies = []; AMB.bf = []; }
+      const sig = W + "," + SKY + "," + night + "," + FEST.season + "," + space;
+      if (AMB.sig !== sig) {   // solo se vuelve a colocar si cambia la pantalla, el dia/noche o la estacion
+        AMB.sig = sig;
+        for (const c of AMB.clouds) { c.e.setAttribute("transform", `translate(${c.x.toFixed(1)} ${skyY(c.f).toFixed(1)}) scale(${c.s.toFixed(2)})`); c.e.setAttribute("opacity", (c.op * (night ? .75 : 1)).toFixed(2)); }
+        AMB.clouds = AMB.clouds.filter(c => { if (space || c.x > W + c.w * c.s) { c.e.remove(); return false; } return true; });
+      }
+      festive(h); return;
+    }
+    // nubes que cruzan despacio (mas lejos = mas chicas, lentas y claras)
     AMB.cloudT -= h; if (AMB.clouds.length < want && AMB.cloudT <= 0) { AMB.cloudT = rnd(6, 14); spawnCloud(); }
     for (const c of AMB.clouds) { c.x += c.vx * h; c.e.setAttribute("transform", `translate(${c.x.toFixed(1)} ${skyY(c.f).toFixed(1)}) scale(${c.s.toFixed(2)})`); c.e.setAttribute("opacity", (c.op * (night ? .75 : 1)).toFixed(2)); }
     AMB.clouds = AMB.clouds.filter(c => { if (space || c.x > W + c.w * c.s) { c.e.remove(); return false; } return true; });
@@ -2137,8 +2148,8 @@ const World = (function () {
   function renderCrits() {
     for (const c of S.crits) {
       const b = c.dying ? 1 - c.dying : 1, f = c.noflip ? 1 : (c.dir < 0 ? -1 : 1);
-      c.el.setAttribute("transform", `translate(${c.x.toFixed(1)} ${(floorY() + 6).toFixed(1)}) scale(${f * (c.sc || 1)} ${c.sc || 1})`);
-      c.el.style.opacity = ((c.alpha == null ? 1 : c.alpha) * Math.max(0, b)).toFixed(2);
+      setT(c.el, `translate(${c.x.toFixed(1)} ${(floorY() + 6).toFixed(1)}) scale(${f * (c.sc || 1)} ${c.sc || 1})`);
+      setO(c.el, ((c.alpha == null ? 1 : c.alpha) * Math.max(0, b)).toFixed(2));
     }
   }
   CRITS.xeno = {
@@ -2513,14 +2524,16 @@ const World = (function () {
     for (const s of S.structs) {
       const def = KINDS[s.kind], b = s.dying ? 1 - out3(s.dying) : out3(s.built);
       const sx = (s.flip && !def.noflip ? -1 : 1);
-      s.el.setAttribute("transform", `translate(${(s.x + sh).toFixed(1)} ${(floorY() + (s.dy || 0) + 4).toFixed(1)}) scale(${sx} ${Math.max(.001, b).toFixed(3)})`);
+      setT(s.el, `translate(${(s.x + sh).toFixed(1)} ${(floorY() + (s.dy || 0) + 4).toFixed(1)}) scale(${sx} ${Math.max(.001, b).toFixed(3)})`);
     }
   }
+  const setT = (e, v) => { if (e._t !== v) { e._t = v; e.setAttribute("transform", v); } };   // solo se escribe en el DOM si el valor cambio
+  const setO = (e, v) => { if (e._o !== v) { e._o = v; e.style.opacity = v; } };
   function renderMons() {
     for (const g of S.mon) {
       A.draw(g.m);
-      g.m.parts.root.setAttribute("transform", `translate(${g.x.toFixed(1)} ${(g.state === "ground" ? floorY() + g.dy : g.y).toFixed(1)}) scale(${K}) rotate(${g.rot.toFixed(1)} 0 -9)`);
-      g.m.parts.root.style.opacity = g.dead > 0 ? clamp(g.dead, 0, 1).toFixed(2) : 1;
+      setT(g.m.parts.root, `translate(${g.x.toFixed(1)} ${(g.state === "ground" ? floorY() + g.dy : g.y).toFixed(1)}) scale(${K}) rotate(${g.rot.toFixed(1)} 0 -9)`);
+      setO(g.m.parts.root, g.dead > 0 ? clamp(g.dead, 0, 1).toFixed(2) : "1");
     }
   }
   const popLine = () => S.unified ? `Población ${popTotal()} · ${S.nation}` : S.tribes.map(t => { const w = TRIBE_INFO[t.kind].plural; return `${w[0].toUpperCase() + w.slice(1)} ${popOf(t.i)}`; }).join(" · ");

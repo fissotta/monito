@@ -188,6 +188,7 @@ button { -webkit-tap-highlight-color: transparent; }
 button:hover { border-color: var(--accent); }
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .status { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.ver { color: var(--muted); opacity: .6; font-size: 11px; margin-left: 6px; }
 main {
   display: grid; gap: 10px; padding: 0; flex: 1; min-width: 0;
   grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
@@ -244,7 +245,7 @@ svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
   <h1>MONITO</h1>
   <div id="news" class="news" hidden><span class="news-tag" id="newsTag">Noticias</span><div class="news-view"><div class="news-track" id="newsTrack"></div></div></div>
   <div class="controls">
-    <span class="status" id="status" aria-live="polite">—</span>
+    <span class="status" id="status" aria-live="polite">—</span><span class="ver" id="ver" title="Versión de la página"></span>
     <button id="btnTheme" title="Cambiar color: automático (por hora), día o noche"></button>
   </div>
 </header>
@@ -273,8 +274,8 @@ svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
 if (/[?&]ua\b/.test(location.search)) addEventListener("load", () => { const d = document.createElement("div"); d.style.cssText = "position:fixed;left:8px;right:8px;top:40px;z-index:99;background:#fff;color:#000;border:2px solid #c00;padding:10px;font:16px monospace;word-break:break-all"; d.textContent = navigator.userAgent + " | " + innerWidth + "x" + innerHeight + " @" + devicePixelRatio; document.body.appendChild(d); setTimeout(() => d.remove(), 60000); });
 </script>
 <script src="qrcode.min.js?v=1"></script>
-<script src="zoo.js?v=20261031i"></script>
-<script src="world.js?v=20261031i"></script>
+<script src="zoo.js?v=20261031j"></script>
+<script src="world.js?v=20261031j"></script>
 <script>
 // ====== Configuración ======
 const REPO = "fissotta/monito"; // "usuario/monito"  (vacío = modo demo)
@@ -295,7 +296,8 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
 const demo = !REPO || new URLSearchParams(location.search).has("demo");
-const BUILD = "20261031i";   // subir junto con los ?v= de los <script> en cada publicacion
+const BUILD = "20261031j";   // subir junto con los ?v= de los <script> en cada publicacion
+$("ver").textContent = "v" + BUILD.slice(4); $("ver").title = "Versión de la página: " + BUILD;   // version en gris junto al estado (p. ej. v1031j)
 const state = { data: {}, next: 0, timer: null, stale: 300 };
 // si se publica una version nueva, la pagina (p. ej. en la TV) se recarga sola; revisa cada 10 min
 setInterval(async () => {

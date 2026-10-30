@@ -61,8 +61,12 @@ const World = (function () {
   const hud = document.createElement("div"); hud.id = "hud"; hud.style.opacity = 0; document.body.appendChild(hud);
   const banner = document.createElement("div"); banner.id = "eraBanner"; document.body.appendChild(banner);
   const toasts = document.createElement("div"); toasts.id = "toasts"; document.body.appendChild(toasts);
-  let hudOpen = Q.has("hud");
-  hud.addEventListener("click", () => { hudOpen = !hudOpen; S.hudT = 0; renderHud(); });
+  const chip = document.createElement("button"); chip.id = "hudChip"; chip.title = "Ver época, población y crónica"; document.body.appendChild(chip);
+  let hudOpen = Q.has("hud"), hudTimer = 0;   // el cuadro central se esconde solo al minuto
+  const setHud = on => { hudOpen = on; hud.classList.toggle("open", on); clearTimeout(hudTimer); if (on) hudTimer = setTimeout(() => setHud(false), 60000); S.hudT = 0; renderHud(); };
+  if (hudOpen) { hud.classList.add("open"); hudTimer = setTimeout(() => setHud(false), 60000); }
+  chip.addEventListener("click", () => setHud(!hudOpen));
+  hud.addEventListener("click", () => setHud(false));
   function layout() {
     svg.setAttribute("width", W); svg.setAttribute("height", H);
     ground.setAttribute("y", floorY()); ground.setAttribute("width", W);
@@ -71,6 +75,7 @@ const World = (function () {
     rails.innerHTML = `<rect x="0" y="${H - 9}" width="${W}" height="2.5" fill="#444"/>` +
       `<line x1="0" y1="${H - 5}" x2="${W}" y2="${H - 5}" stroke="#5a4630" stroke-width="3" stroke-dasharray="3 9"/>`;
     SKY = measureSky();
+    chip.style.bottom = Math.max(4, H - SKY + 8) + "px";
     dark.setAttribute("y", SKY); dark.setAttribute("height", H - SKY); tint.setAttribute("y", SKY);
     tint.setAttribute("width", W); tint.setAttribute("height", H - SKY); water.setAttribute("width", W);
     const sb = skyBg.querySelector(".sb"), sl = skyBg.querySelector(".sl"), st = skyBg.querySelector(".stars");
@@ -2081,7 +2086,7 @@ const World = (function () {
 
   // ---------- poblacion, eras y reloj ----------
   function startWorld() {
-    S.started = true; gGround.style.opacity = 1; gStruct.style.opacity = 1; hud.style.opacity = 1;
+    S.started = true; gGround.style.opacity = 1; gStruct.style.opacity = 1; hud.style.opacity = 1; chip.style.opacity = 1;
     logEv(`${T()} llega al suelo: empieza su historia`);
     showBanner(ERAS[0].name);
   }
@@ -2188,7 +2193,8 @@ const World = (function () {
     if (!S.started || S.hudT > 0) return;
     S.hudT = .3;
     const e = ERAS[S.era], pop = popTotal(), st = S.stats;
-    let h = `<b>${eraName()}</b> · ${fmtYear(curYear())} ${hudOpen ? "▾" : "▸"}<br>${popLine()}` + (S.cycle > 1 ? ` · Ciclo ${S.cycle}` : "") + (S.tribes.some(t => t.cult) && !S.unified && S.era <= 4 ? `<br>Culturas: ${S.tribes.map(t => `${TRIBE_INFO[t.kind].plural} ${CULTURES[t.cult] ? CULTURES[t.cult].name : "—"}`).join(" · ")}` : "") +
+    chip.innerHTML = `<b>${eraName()}</b> · ${fmtYear(curYear())}` + (S.cycle > 1 ? ` · Ciclo ${S.cycle}` : "") + " ▸";
+    let h = `<b>${eraName()}</b> · ${fmtYear(curYear())}<br>${popLine()}` + (S.cycle > 1 ? ` · Ciclo ${S.cycle}` : "") + (S.tribes.some(t => t.cult) && !S.unified && S.era <= 4 ? `<br>Culturas: ${S.tribes.map(t => `${TRIBE_INFO[t.kind].plural} ${CULTURES[t.cult] ? CULTURES[t.cult].name : "—"}`).join(" · ")}` : "") +
       (S.saga ? `<br>Saga: ${S.saga.def.name}` : "") +
       (S.era === 7 && S.destSeen ? ` · ${S.dest.name}: ${S.colonists}${S.won ? " ✔" : "/" + S.goal}` : "");
     if (hudOpen) {
@@ -2198,7 +2204,6 @@ const World = (function () {
         `<div style="margin-top:4px;border-top:1px solid var(--border);padding-top:3px">Guerras ${st.guerras} · Plagas ${st.plagas} · Hambrunas ${st.hambrunas} · Terremotos ${st.terremotos} · Meteoritos ${st.meteoritos} · Fiestas ${st.festivales} · Cohetes ${st.cohetes} · Pandemias ${st.pandemias} · Incendios ${st.incendios} · Bajas ${st.devorados} · Cataclismos ${st.cataclismos} · Choques ${st.choques} · Hitos ${st.hitos}</div>`;
     }
     hud.innerHTML = h + (Q.has("debug") ? `<br>t=${S.t.toFixed(1)} fx=${S.fx.length} mon=${S.mon.length} st=${S.structs.length}` : "");
-    toasts.style.display = hudOpen ? "none" : "";
   }
 
   // ---------- almuerzo: a las 12:00 todos paran a comer ----------
@@ -2208,7 +2213,7 @@ const World = (function () {
     "¿Compartes tu postre?", "Hoy toca almorzar, mañana toca graficar", "Hidrátate y come algo de verdad", "Si no almuerzas, no hay paper", "¿Y si almuerzas lejos del computador?"];
   function startLunch() {
     S.lunch = true; S.lunchMsgT = rnd(90, 150);
-    showBanner("¡A almorzar!"); skyMessage("¡Es hora de almorzar!"); pushToast("12:00 · ¡A almorzar!");
+    showBanner("¡A almorzar!"); if (Q.has("lunch")) bigMsg(BIG[0]); skyMessage("¡Es hora de almorzar!"); pushToast("12:00 · ¡A almorzar!");
     groundMons().forEach(g => { g.hold = false; g.act = "eat"; g.stay = rnd(20, 50); g.m.t = 0; g.m.dur = g.stay; g.m.food = pick(["banana", "berry", "leaf"]); });
     A.setLunch(true);
   }
@@ -2217,11 +2222,53 @@ const World = (function () {
     pushToast("Terminó el almuerzo: ¡de vuelta al trabajo!"); skyMessage("¡Se acabó el almuerzo! De vuelta al trabajo");
     groundMons().forEach(g => { g.stay = 0; });
   }
+  // ---------- mensajes de pantalla completa con un mono haciendo lo que dice el mensaje ----------
+  const big = document.createElement("div"); big.id = "bigMsg"; big.hidden = true; document.body.appendChild(big);
+  let bigRaf = 0, bigTimer = 0;
+  function closeBig() { big.hidden = true; cancelAnimationFrame(bigRaf); clearTimeout(bigTimer); big.innerHTML = ""; }
+  big.addEventListener("click", closeBig);
+  function bigMsg(o) {
+    closeBig();
+    const NS = "http://www.w3.org/2000/svg", sp = pick(A.SPECIES_BY_KIND.mono);
+    const m = { sp, kind: "mono", pal: A.palette(sp), dir: 1, phase: 0, t: 0, dur: 6, mode: o.mode, mood: { low: 0, mid: 1, high: o.mode === "hop" ? 1 : 0 }, theta: 0, seed: 5,
+      hop: { u: 0 }, jump: { u: 0 }, acc: o.acc || null, celeb: null, lane: "cpu", food: o.food };
+    m.parts = A.build(m);
+    big.innerHTML = `<div class="bm-in ${o.tone || ""}"><svg class="bm-mono" viewBox="0 0 120 130"><g transform="translate(60 124) scale(5.2)"></g></svg><div><div class="bm-t"></div><div class="bm-s"></div></div></div>`;
+    big.querySelector(".bm-t").textContent = o.title; big.querySelector(".bm-s").textContent = o.sub;
+    big.querySelector("g").appendChild(m.parts.root);
+    big.hidden = false;
+    let last = performance.now();
+    const loop = now => {
+      const dt = Math.min(.05, (now - last) / 1000); last = now; m.t += dt; m.phase += dt * (o.mode === "hop" ? 10 : 8);
+      if (o.mode === "hop") m.hop.u = Math.abs(Math.sin(m.t * 5));
+      if (o.mode === "eat" && m.t > m.dur) m.t = 0;
+      A.draw(m); bigRaf = requestAnimationFrame(loop);
+    };
+    A.draw(m); bigRaf = requestAnimationFrame(loop);
+    bigTimer = setTimeout(closeBig, (o.secs || 10) * 1000);
+  }
+  const BIG = [   // at = minuto del dia; days = dias de la semana (0 = domingo) o null = todos
+    { id: "almuerzo", at: 12 * 60, days: null, title: "¡A almorzar!", sub: "Buen provecho · el paper puede esperar", mode: "eat", food: "banana", secs: 9 },
+    { id: "seminario", at: 9 * 60 + 20, days: [4], title: "¡Seminario FCV!", sub: "Es hora: ¡todos al seminario!", mode: "walk", acc: { name: "lentes redondos", a: "#333", d: "#111" }, secs: 14 },
+    { id: "tarde", at: 9 * 60 + 30, days: [4], title: "¿Qué hacen acá?", sub: "¿¿¿No deberían estar en el seminario???", mode: "hop", tone: "alert", secs: 16 },
+    { id: "cafe", at: 16 * 60, days: [1, 2, 3, 4, 5], title: "¡Hora del café!", sub: "Un cafecito y seguimos con los genomas", mode: "coffee", secs: 8 },
+    { id: "casa", at: 18 * 60, days: [1, 2, 3, 4, 5], title: "¿Lanzaste tus jobs?", sub: "Antes de irte: guarda, respalda y apaga el autoclave", mode: "stretch", secs: 10 },
+  ];
+  const firedBig = new Set();
+  function bigCheck(d) {
+    const m = d.getHours() * 60 + d.getMinutes();
+    for (const b of BIG) {
+      const key = d.toDateString() + b.id;
+      if (b.at === m && (!b.days || b.days.includes(d.getDay())) && !firedBig.has(key)) { firedBig.add(key); bigMsg(b); }
+    }
+  }
+  if (Q.get("big")) setTimeout(() => { const b = BIG.find(x => x.id === Q.get("big")); if (b) bigMsg(b); }, 1500);   // prueba: ?big=almuerzo|seminario|tarde|cafe|casa
   let lunchAt = 0;
   function lunchCheck(now) {   // una vez por segundo
     if (now - lunchAt < 1000) return;
     lunchAt = now;
-    const d = new Date(), m = d.getHours() * 60 + d.getMinutes(), on = Q.has("lunch") || (m >= LUNCH_FROM && m < LUNCH_FROM + LUNCH_LEN);
+    const d = new Date(); bigCheck(d);
+    const m = d.getHours() * 60 + d.getMinutes(), on = Q.has("lunch") || (m >= LUNCH_FROM && m < LUNCH_FROM + LUNCH_LEN);
     if (on && !S.lunch) startLunch(); else if (!on && S.lunch) endLunch();
   }
 
@@ -2253,7 +2300,7 @@ const World = (function () {
     if (S.era === 3 && Q.has("medieval")) { S.eraT = S.eraDur * .31; }
     if (S.era === 3 && Q.has("medieval") || S.era === 4) assignCultures((Q.get("cult") || "").split(",")), S.medieval = S.era === 3;
     ground.setAttribute("fill", ERAS[S.era].ground);
-    S.started = true; gGround.style.opacity = 1; gStruct.style.opacity = 1; hud.style.opacity = 1;
+    S.started = true; gGround.style.opacity = 1; gStruct.style.opacity = 1; hud.style.opacity = 1; chip.style.opacity = 1;
     for (let i = 0; i < 14; i++) {
       const tr = i % 3, m = A.make(TRIBE_KINDS[tr]), zz = zone(tr); gMon.appendChild(m.parts.root); m.mood = { low: 0, mid: 1, high: 0 }; m.theta = 0;
       S.mon.push({ m, tribe: tr, state: "ground", x: rnd(zz[0] + 30, zz[1] - 30), y: 0, rot: 0, vx: 0, vy: 0, vr: 0, dy: rnd(6, GROUND_H - 12), sp: rnd(.85, 1.2), act: "idle", stay: rnd(0, 3) });

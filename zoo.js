@@ -83,6 +83,22 @@ const Zoo = (function () {
       el("path", { d: "M1 3.7L-1.7 2.2L-1.7 5.2ZM1 3.7L3.7 2.2L3.7 5.2Z", fill: a }, h);
       el("circle", { cx: 1, cy: 3.7, r: .65, fill: d }, h);
     },
+    "gorro de lana": (h, a, d) => {
+      el("path", { d: "M-3.9 -2.2Q-4.2 -7.2 0 -7.4Q4.2 -7.2 3.9 -2.2Z", fill: a }, h);
+      el("rect", { x: -4, y: -3.4, width: 8, height: 1.4, rx: .5, fill: d }, h);
+      el("circle", { cx: 0, cy: -7.8, r: 1, fill: "#f4f1ea" }, h);
+      el("path", { d: "M-3 2.6Q.5 4.4 4 2.6L4 4Q.5 5.8 -3 4Z", fill: d }, h);
+    },
+    "sombrero de paja": (h, a) => {
+      el("ellipse", { cx: 0, cy: -3, rx: 5.6, ry: 1.1, fill: "#e2c46e", stroke: "#b8923a", "stroke-width": .3 }, h);
+      el("path", { d: "M-2.7 -3.1Q-2.8 -6.6 0 -6.7Q2.8 -6.6 2.7 -3.1Z", fill: "#ecd27f" }, h);
+      el("rect", { x: -2.7, y: -4.3, width: 5.4, height: .9, fill: a }, h);
+      for (const ex of [.6, 2.7]) el("rect", { x: ex - 1.05, y: -1.3, width: 2.1, height: 1.7, rx: .6, fill: "#151515" }, h);
+      el("line", { x1: -.45, y1: -.5, x2: -3.3, y2: -1.2, stroke: "#151515", "stroke-width": .4 }, h);
+    },
+    "capucha": (h, a, d) => {
+      el("path", { d: "M-4.3 3.4Q-5 -4.8 0 -5.2Q5 -4.8 4.3 3.4L3.2 .8Q0 -3.2 -3.2 .8Z", fill: "#f4c430", stroke: "#b8860b", "stroke-width": .3 }, h);
+    },
     "bufanda": (h, a, d) => {
       el("path", { d: "M-3 2.6Q.5 4.4 4 2.6L4 4Q.5 5.8 -3 4Z", fill: a }, h);
       el("rect", { x: -2.9, y: 3.7, width: 1.3, height: 3.2, rx: .3, fill: d }, h);

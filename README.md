@@ -93,6 +93,16 @@ Segunda cinta junto al indicador de época, con papers nuevos de los temas del l
 - `collector/papers.py` consulta PubMed (E-utilities de NCBI) y los preprints de Europe PMC (bioRxiv y otros), filtra por una lista de palabras clave sacada de los abstracts de Quatrini y publica `papers.json` en la rama `papers`. Lo ejecuta el mismo cron de `news.py`. Prueba: `python3 papers.py --dry-run`.
 - Las palabras clave y las consultas están al comienzo de `papers.py` (`TOPICS`, `EPMC_TOPICS`, `KEYWORDS`, `KEY_MIN`); se pueden editar.
 
+## Feed de papers: temas y frecuencia
+
+- Temas: los del laboratorio más bioinformática, GTDB y filogenia, metagenómica, métodos nuevos e IA en ciencia (genómica). Los trabajos de R. Quatrini se **excluyen** a propósito.
+- `papers.py` consulta PubMed y Europe PMC cada **3 horas** (dentro del cron de `news.py`; las noticias, cada 20 min). La página relee `papers.json` cada hora.
+- La pastilla de época queda bajo el tiempo; la cinta de papers parte desde el borde izquierdo de akaza.
+
+## Popups
+
+Clic en la fecha/hora abre el calendario; clic en «Próximo seminario» abre la lista completa de seminarios. Las ventanas se cierran con ×, tocando fuera o solas: el calendario a los 10 s, el tiempo y la lista de seminarios a los 30 s, el resumen de época a 1 min, planetas 15 s y edificios 5 s.
+
 ## Mensajes de pantalla completa y clima
 
 - A ciertas horas aparece, en una franja en la parte superior, un mensaje con un mono grande haciendo lo que dice. A la hora del evento sale 5 veces durante 1 minuto (8 s cada vez); si lo tocas se va y no vuelve: 12:00 «¡A almorzar!» (comiendo), jueves 9:20 «¡Seminario FCV!» (caminando), jueves 9:30 «¿Qué hacen acá? ¿No deberían estar en el seminario???» (saltando enojado), 16:00 café y 18:00 recordatorio de jobs/respaldo. Prueba: `?big=almuerzo|seminario|tarde|cafe|casa`.

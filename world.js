@@ -592,13 +592,15 @@ const World = (function () {
     "Dato: en el desierto de Atacama viven bacterias extremófilas", "Dato: una bacteria puede intercambiar genes con otra por conjugación", "Dato: el ADN de una bacteria suele ser un cromosoma circular",
   ];
   let skyDeck = [];
-  function skyMessage(fixed) {
+  function skyMessage(fixed, atX) {
     if (!skyDeck.length) skyDeck = shuffle(SKY_MSGS.concat(SKY_MSGS_MORE));
-    const txt = typeof fixed === "string" ? fixed : skyDeck.pop(), w = txt.length * 9.6 + 40, dir = chance(.5) ? 1 : -1, y0 = skyY(rnd(.1, .42)), dur = rnd(16, 22);
-    fx("g", { x: dir > 0 ? -w / 2 - 10 : W + w / 2 + 10, y: y0, vx: dir * (W + w + 20) / dur, life: dur,
-      html: `<rect x="${-w / 2}" y="-17" width="${w}" height="34" rx="17" style="fill:var(--card);stroke:var(--accent);stroke-width:1.6px" opacity=".94"/>` +
-        `<text text-anchor="middle" y="6" style="fill:var(--text);font-size:16px;font-weight:700">${txt}</text>`,
-      tick: g => { g.y = y0 + Math.sin(g.t * 1.4) * 7; } });
+    const txt = typeof fixed === "string" ? fixed : skyDeck.pop(), w = txt.length * 9.2 + 64, dir = chance(.5) ? 1 : -1, y0 = skyY(rnd(.22, .5)), dur = rnd(22, 30);
+    // una nube con el mensaje: base alargada y varias bolitas encima
+    const n = Math.max(3, Math.round(w / 64)), bumps = Array.from({ length: n }, (_, i) => `<circle cx="${(-w / 2 + w * (i + .5) / n).toFixed(1)}" cy="${-5 - (i % 2) * 4}" r="${16 + ((i * 7) % 3) * 4}"/>`).join("");
+    fx("g", { x: atX != null ? atX : dir > 0 ? -w / 2 - 10 : W + w / 2 + 10, y: y0, vx: dir * (W + w + 20) / dur, life: dur,
+      html: `<g style="fill:var(--card);filter:drop-shadow(0 3px 4px rgba(0,0,0,.14))" opacity=".95"><rect x="${-w / 2 + 8}" y="-9" width="${w - 16}" height="31" rx="15.5"/>${bumps}</g>` +
+        `<text text-anchor="middle" y="11" style="fill:var(--text);font-size:15px;font-weight:700">${txt}</text>`,
+      tick: g => { g.y = y0 + Math.sin(g.t * .9) * 6; } });
   }
   const THOUGHTS = {
     any: ["Hmm… ¿y si…?", "¡Qué buen día!", "Tengo sueño…", "Me pica la espalda", "¿Qué estarán pensando los demás?", "Qué linda tribu tenemos", "¿Habrá algo de comer?", "¿Y si descansamos un poco?", "Mañana será mejor", "¡Cómo pasa el tiempo!", "¿Habrá terminado mi job?", "Me falta un párrafo del paper", "¿Y si repito el experimento?", "Tengo que hacer backup", "¿Quedará café en el lab?", "Mi tesis me espera"],
@@ -2316,7 +2318,7 @@ const World = (function () {
     for (let i = 0; i < 14; i++) plan();
     if (S.era >= 3 && S.era <= 4) addStruct("castle", W * .5, { tribe: 1 });
     S.structs.forEach(s => s.built = 1);
-    const DO = { guerra: () => { if (!tribalWar()) startWar(); }, caceria: startHunt, cohete: () => { S.destSeen = true; ensureDest(); tryLaunch(); }, meteorito: meteor, ovni: ufo, plaga: () => hurt(.25, "Plaga"),
+    const DO = { nube: () => skyMessage("¿Ya corriste GTDB-Tk en tus MAGs?", W / 2), guerra: () => { if (!tribalWar()) startWar(); }, caceria: startHunt, cohete: () => { S.destSeen = true; ensureDest(); tryLaunch(); }, meteorito: meteor, ovni: ufo, plaga: () => hurt(.25, "Plaga"),
       terremoto: quake, volcan: volcano, festival, eclipse: () => { S.eclipse = 10; }, lluvia: () => { S.rain = 12; }, cometa: comet };
     Object.assign(DO, { cataclismo: () => cataclysm({ surv: 4 }), pandemia: pandemic, incendio: fire, inundacion: () => flood(14, "Inundación"), tormenta: storm, aurora, estrellas: starShower,
       exploradores: explorers, comercio: trade, misioneros: missionaries, tratado: treaty, ayuda: aid, bodareal: royalWedding,

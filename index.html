@@ -50,6 +50,17 @@ h1 { font-size: 20px; margin: 0; letter-spacing: .12em; }
 #wxPop { position: fixed; z-index: 50; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(720px, 94vw); max-height: 92vh; overflow: auto; padding: 12px 14px;
   background: var(--card); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,.35); font-size: 13.5px; }
 #wxPop[hidden] { display: none; }
+#semPop { position: fixed; z-index: 50; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(520px, 94vw); max-height: 86vh; overflow: auto; padding: 12px 14px;
+  background: var(--card); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,.35); font-size: 14px; }
+#semPop[hidden] { display: none; }
+#semPop .x { float: right; padding: 0 9px; min-height: 26px; font-size: 18px; line-height: 1; }
+#semPop h3 { margin: 0 0 8px; font-size: 16px; }
+#semPop table { width: 100%; border-collapse: collapse; }
+#semPop td { padding: 5px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
+#semPop td:first-child { white-space: nowrap; font-weight: 600; } #semPop td:first-child::first-letter { text-transform: uppercase; }
+#semPop tr.past { opacity: .45; } #semPop tr.nx td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+#semPop .muted { color: var(--muted); }
+.clock .next { cursor: pointer; }
 #wxPop .x { float: right; padding: 0 9px; min-height: 26px; font-size: 18px; line-height: 1; }
 #wxPop h3 { margin: 0 0 8px; font-size: 16px; }
 #wxPop table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
@@ -116,7 +127,8 @@ button {
   border-radius: 8px; padding: 7px 12px; cursor: pointer; min-height: 36px;
 }
 body { padding-bottom: 150px; }
-#hudChip { flex: none; padding: 5px 12px; min-height: 30px; background: var(--card); border: 1px solid var(--border);
+#eraSlot { display: flex; }
+#hudChip { flex: 1; text-align: center; padding: 7px 12px; min-height: 34px; background: var(--card); border: 1px solid var(--border);
   border-radius: 999px; font-size: 13px; cursor: pointer; transition: opacity 1.6s; box-shadow: 0 2px 10px rgba(0,0,0,.12); opacity: 0; white-space: nowrap; }
 #hudChip:hover { border-color: var(--accent); }
 #hud { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 47; display: none; width: min(540px, calc(100vw - 24px)); max-height: 80vh; overflow: auto;
@@ -207,6 +219,7 @@ svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
       <div id="cal" class="cal" role="dialog" aria-label="Calendario" hidden></div>
     </div>
     <button id="weather" class="weather" aria-haspopup="dialog" title="Ver el tiempo de la semana"><svg id="wxIcon" viewBox="0 0 80 80" aria-hidden="true"></svg><span class="wx-b"><b class="wx-t" id="wxTemp">--°</b><span class="wx-s" id="wxText">Cargando el tiempo…</span></span></button>
+    <div id="eraSlot"></div>
   </aside>
   <main id="grid"></main>
   <div class="legendbar">
@@ -214,14 +227,15 @@ svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
   <span class="sw" style="background:var(--warn)"></span>50–80 %
   <span class="sw" style="background:var(--bad)"></span>≥ 80 %.
   Anillo exterior: hilos (arco fino = CPU total). Anillo interior: RAM.
-  <div class="eraRow"><span id="eraSlot"></span><div id="papers" class="news" hidden><span class="news-tag" id="papersTag">Papers</span><div class="news-view"><div class="news-track" id="papersTrack"></div></div></div></div>
+  <div class="eraRow"><div id="papers" class="news" hidden><span class="news-tag" id="papersTag">Papers</span><div class="news-view"><div class="news-track" id="papersTrack"></div></div></div></div>
 </div>
 </div>
+<div id="semPop" role="dialog" aria-label="Seminarios" hidden></div>
 <div id="wxPop" role="dialog" aria-label="El tiempo" hidden></div>
 
 
-<script src="zoo.js?v=20261030j"></script>
-<script src="world.js?v=20261030j"></script>
+<script src="zoo.js?v=20261030l"></script>
+<script src="world.js?v=20261030l"></script>
 <script>
 // ====== Configuración ======
 const REPO = "fissotta/monito"; // "usuario/monito"  (vacío = modo demo)
@@ -242,7 +256,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
 const demo = !REPO || new URLSearchParams(location.search).has("demo");
-const BUILD = "20261030j";   // subir junto con los ?v= de los <script> en cada publicacion
+const BUILD = "20261030l";   // subir junto con los ?v= de los <script> en cada publicacion
 const state = { data: {}, next: 0, timer: null, stale: 300 };
 // si se publica una version nueva, la pagina (p. ej. en la TV) se recarga sola; revisa cada 10 min
 setInterval(async () => {
@@ -501,7 +515,25 @@ function toggleCal(open) {
   $("cal").hidden = !show; $("clock").setAttribute("aria-expanded", String(show));
   if (show) bumpCal(); else clearTimeout(calIdle);
 }
-$("clock").onclick = e => { e.stopPropagation(); toggleCal(); };
+$("clock").onclick = e => {
+  e.stopPropagation();
+  if (e.target.closest && e.target.closest("#clockNext")) { toggleCal(false); showSems(); } else { $("semPop").hidden = true; toggleCal(); }
+};
+// ventanas emergentes: si no se cierran a mano, se esconden solas tras 30 s sin tocarlas
+const popTimers = {};
+function armPop(el, ms = 30000) { clearTimeout(popTimers[el.id]); popTimers[el.id] = setTimeout(() => { el.hidden = true; }, ms); }
+for (const id of ["semPop", "wxPop"]) for (const ev of ["pointermove", "touchstart", "wheel"]) $(id).addEventListener(ev, () => { if (!$(id).hidden) armPop($(id)); }, { passive: true });
+function showSems() {   // lista completa de seminarios
+  const today = dkey(new Date()), ks = Object.keys(SEMS).sort(), nx = ks.find(k => k >= today && SEMS[k].some(e => !e.none));
+  const rows = ks.map(k => SEMS[k].map(e => `<tr class="${k < today ? "past" : ""}${k === nx && !e.none ? " nx" : ""}"><td>${fmtDay(k).replace(" De "," de ")}</td><td>${e.none ? `<span class="muted">${esc(e.who || "No hay seminario")}</span>` : `<b>${esc(e.who || "por confirmar")}</b>${e.hora ? " · " + e.hora : ""}${e.extra ? `<br><span class="muted">${esc(e.extra)}</span>` : ""}`}</td></tr>`).join("")).join("");
+  $("semPop").innerHTML = `<button class="x" aria-label="Cerrar">×</button><h3>Seminarios del laboratorio</h3>` + (rows ? `<table>${rows}</table>` : `<p class="muted">Aún no hay seminarios en seminarios.txt</p>`);
+  $("semPop").hidden = false; armPop($("semPop"));
+  const el = $("semPop").querySelector("tr.nx"); if (el) el.scrollIntoView({ block: "center" });
+}
+if (new URLSearchParams(location.search).has("sems")) setTimeout(showSems, 2500);   // prueba: abre la lista de seminarios
+$("semPop").addEventListener("click", e => { e.stopPropagation(); if (e.target.classList && e.target.classList.contains("x")) $("semPop").hidden = true; });
+document.addEventListener("click", () => { $("semPop").hidden = true; });
+document.addEventListener("keydown", e => { if (e.key === "Escape") $("semPop").hidden = true; });
 for (const ev of ["pointermove", "touchstart", "wheel"]) $("cal").addEventListener(ev, () => { if (!$("cal").hidden) bumpCal(); }, { passive: true });
 $("cal").addEventListener("click", e => {
   e.stopPropagation(); bumpCal();
@@ -621,7 +653,7 @@ function showWeather() {
   $("wxPop").innerHTML = `<button class="x" aria-label="Cerrar">×</button><h3>${WX_PLACE.name} · el tiempo de la semana</h3><table>${rows}</table>` +
     `<iframe title="Mapa de Windy" loading="lazy" src="https://embed.windy.com/embed2.html?lat=${lat}&lon=${lon}&detailLat=${lat}&detailLon=${lon}&width=680&height=380&zoom=7&level=surface&overlay=rain&product=ecmwf&menu=&message=true&marker=true&calendar=now&pressure=&type=map&location=coordinates&detail=true&metricWind=km%2Fh&metricTemp=%C2%B0C&radarRange=-1"></iframe>` +
     `<p><a href="https://www.windy.com/${lat}/${lon}?${lat},${lon},8" target="_blank" rel="noopener">Abrir en Windy.com</a> · datos del pronóstico: Open-Meteo</p>`;
-  $("wxPop").hidden = false;
+  const was = $("wxPop").hidden; $("wxPop").hidden = false; if (was) armPop($("wxPop"));
 }
 $("weather").onclick = e => { e.stopPropagation(); if ($("wxPop").hidden) showWeather(); else $("wxPop").hidden = true; };
 $("wxPop").addEventListener("click", e => { e.stopPropagation(); if (e.target.classList && e.target.classList.contains("x")) $("wxPop").hidden = true; });

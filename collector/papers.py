@@ -4,8 +4,10 @@ trabajos recientes sobre los temas del laboratorio y los publica como papers.jso
 `papers` del repo (commit sin padre, force-push).
 
 Los temas salen de los abstracts de los trabajos de R. Quatrini (acidofilos, Acidithiobacillus,
-biominería, genomica comparada, metagenomica, elementos geneticos moviles...). Lo ejecuta news.py
-(mismo cron) o se puede correr a mano. Solo libreria estandar. Uso:
+biominería, genomica comparada, metagenomica, elementos geneticos moviles...) mas bioinformatica,
+filogenia/GTDB, metodos nuevos e IA en genomica. Los trabajos de Quatrini se EXCLUYEN (es el feed de
+lo que sale de nuevo en el area, no del propio laboratorio). Lo ejecuta news.py (mismo cron, cada 3 h)
+o se puede correr a mano. Solo libreria estandar. Uso:
   papers.py            # baja y publica
   papers.py --dry-run  # baja e imprime, sin publicar
 """
@@ -24,29 +26,40 @@ EUTILS = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
 EPMC = "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
 BRANCH, FILE = "papers", "papers.json"
 UA = "monito-papers/1.0 (lab feed)"
-DAYS, PER_TOPIC, TOTAL = 365, 14, 70
+DAYS, PER_TOPIC, TOTAL = 365, 12, 90
+EXCLUDE = ["Quatrini"]   # autores cuyos trabajos no se muestran
 
-# (etiqueta, consulta PubMed)
+# (etiqueta, consulta PubMed, minimo de palabras clave)
 TOPICS = [
-    ("Quatrini", '"Quatrini R"[Author]'),
-    ("Acidófilos", "(acidophil*[tiab] OR Acidithiobacill*[tiab] OR Acidithiobacillia[tiab] OR Leptospirillum[tiab] OR Sulfobacillus[tiab] OR Ferroplasma[tiab] OR acidophilic[tiab])"),
-    ("Biominería", "(bioleaching[tiab] OR biomining[tiab] OR \"acid mine drainage\"[tiab] OR \"acid rock drainage\"[tiab] OR biohydrometallurgy[tiab])"),
-    ("Hierro y azufre", "(\"iron-oxidizing bacteria\"[tiab] OR \"sulfur-oxidizing bacteria\"[tiab] OR \"iron-oxidising\"[tiab] OR \"Fe(II) oxidation\"[tiab] OR \"sulfur oxidation\"[tiab] OR \"iron oxidation\"[tiab]) AND (bacteri*[tiab] OR archaea*[tiab] OR microb*[tiab])"),
-    ("Metagenómica", "(metagenom*[tiab] AND (acidophil*[tiab] OR extremophil*[tiab] OR \"mine drainage\"[tiab] OR bioleaching[tiab] OR \"hot spring\"[tiab] OR Atacama[tiab] OR \"acidic\"[tiab] OR thermophil*[tiab]))"),
-    ("Genómica", "((comparative genomics[tiab] OR phylogenomic*[tiab] OR pangenome*[tiab] OR \"metagenome-assembled genome*\"[tiab]) AND (extremophil*[tiab] OR acidophil*[tiab] OR Acidithiobacill*[tiab] OR thermophil*[tiab] OR Archaea[tiab] OR Proteobacteria[tiab]))"),
-    ("Extremófilos", "(extremophil*[tiab] AND (microb*[tiab] OR bacteri*[tiab] OR archaea*[tiab]) AND (genom*[tiab] OR ecology[tiab] OR evolution[tiab] OR metabol*[tiab]))"),
-    ("Elementos móviles", "((mobile genetic element*[tiab] OR CRISPR[tiab] OR plasmid*[tiab] OR \"horizontal gene transfer\"[tiab]) AND (acidophil*[tiab] OR Acidithiobacill*[tiab] OR extremophil*[tiab]))"),
+    ("Acidófilos", "(acidophil*[tiab] OR Acidithiobacill*[tiab] OR Acidithiobacillia[tiab] OR Leptospirillum[tiab] OR Sulfobacillus[tiab] OR Ferroplasma[tiab] OR acidophilic[tiab])", 4),
+    ("Biominería", "(bioleaching[tiab] OR biomining[tiab] OR \"acid mine drainage\"[tiab] OR \"acid rock drainage\"[tiab] OR biohydrometallurgy[tiab])", 4),
+    ("Hierro y azufre", "(\"iron-oxidizing bacteria\"[tiab] OR \"sulfur-oxidizing bacteria\"[tiab] OR \"iron-oxidising\"[tiab] OR \"Fe(II) oxidation\"[tiab] OR \"sulfur oxidation\"[tiab] OR \"iron oxidation\"[tiab]) AND (bacteri*[tiab] OR archaea*[tiab] OR microb*[tiab])", 4),
+    ("Metagenómica", "(metagenom*[tiab] AND (acidophil*[tiab] OR extremophil*[tiab] OR \"mine drainage\"[tiab] OR bioleaching[tiab] OR \"hot spring\"[tiab] OR Atacama[tiab] OR \"acidic\"[tiab] OR thermophil*[tiab]))", 4),
+    ("Genómica", "((comparative genomics[tiab] OR phylogenomic*[tiab] OR pangenome*[tiab] OR \"metagenome-assembled genome*\"[tiab]) AND (extremophil*[tiab] OR acidophil*[tiab] OR Acidithiobacill*[tiab] OR thermophil*[tiab] OR Archaea[tiab] OR Proteobacteria[tiab]))", 4),
+    ("Extremófilos", "(extremophil*[tiab] AND (microb*[tiab] OR bacteri*[tiab] OR archaea*[tiab]) AND (genom*[tiab] OR ecology[tiab] OR evolution[tiab] OR metabol*[tiab]))", 4),
+    ("Elementos móviles", "((mobile genetic element*[tiab] OR CRISPR[tiab] OR plasmid*[tiab] OR \"horizontal gene transfer\"[tiab]) AND (acidophil*[tiab] OR Acidithiobacill*[tiab] OR extremophil*[tiab]))", 4),
+    # temas generales de metodos
+    ("Bioinformática", "((bioinformatic*[ti] OR \"genome assembly\"[ti] OR \"genome annotation\"[ti] OR \"sequence alignment\"[ti]) AND (bacteri*[tiab] OR microb*[tiab] OR prokaryot*[tiab] OR genom*[tiab]))", 3),
+    ("GTDB y filogenia", "((GTDB[tiab] OR \"Genome Taxonomy Database\"[tiab] OR phylogenomic*[ti] OR \"phylogenetic tree\"[ti] OR \"phylogenetic inference\"[ti] OR IQ-TREE[tiab] OR \"tree of life\"[ti]) AND (bacteri*[tiab] OR archaea*[tiab] OR prokaryot*[tiab] OR microb*[tiab]))", 3),
+    ("Metagenómica", "((metagenom*[ti] OR \"metagenome-assembled\"[ti] OR binning[ti]) AND (tool*[tiab] OR method*[tiab] OR pipeline*[tiab] OR software[tiab] OR benchmark*[tiab] OR assembl*[tiab] OR taxonom*[tiab]))", 3),
+    ("Métodos nuevos", "((\"novel method\"[ti] OR \"new method\"[ti] OR \"a tool\"[ti] OR \"a pipeline\"[ti] OR \"a framework\"[ti] OR benchmark*[ti] OR \"web server\"[ti] OR software[ti]) AND (genom*[ti] OR metagenom*[ti] OR phylogen*[ti] OR annotat*[ti] OR sequenc*[ti] OR microbi*[ti]))", 2),
+    ("IA en ciencia", "((\"machine learning\"[ti] OR \"deep learning\"[ti] OR \"language model\"[ti] OR \"artificial intelligence\"[ti] OR AlphaFold[ti] OR transformer[ti]) AND (genom*[tiab] OR metagenom*[tiab] OR microb*[tiab] OR bacteri*[tiab] OR bioinformatic*[tiab] OR \"protein structure\"[tiab] OR \"protein function\"[tiab]))", 2),
 ]
 EPMC_TOPICS = [
     ("Acidófilos", '(Acidithiobacill* OR "acidophilic bacteria" OR "acidophilic archaea" OR "acidophilic microorganisms" OR acidophiles OR "acid mine drainage" OR bioleaching OR biomining)'),
     ("Metagenómica", '(metagenom* AND (acidophil* OR extremophil* OR "mine drainage" OR bioleaching OR "hot spring" OR thermophil*))'),
     ("Genómica", '(("comparative genomics" OR phylogenomic* OR "metagenome-assembled genomes") AND (extremophil* OR acidophil* OR Acidithiobacill* OR thermophil*))'),
+    ("GTDB y filogenia", '(GTDB OR "Genome Taxonomy Database" OR "phylogenomic" OR "tree of life") AND (bacteria OR archaea)'),
+    ("Bioinformática", '(TITLE:"bioinformatics" OR TITLE:"genome annotation" OR TITLE:"genome assembly" OR TITLE:"metagenomic binning") AND (bacteria OR microbial OR prokaryotes)'),
+    ("IA en ciencia", '(TITLE:"machine learning" OR TITLE:"deep learning" OR TITLE:"language model") AND (metagenom* OR "microbial genom*" OR bioinformatics OR "protein function")'),
 ]
+
 # palabras clave del laboratorio (sacadas de los abstracts de R. Quatrini); un trabajo entra si junta KEY_MIN o mas
 KEYWORDS = ["acidophil", "acidithiobacill", "ferrooxidans", "bioleach", "biomining", "mine drainage", "iron-oxid", "sulfur-oxid", "sulphur-oxid", "extremophil",
             "metagenom", "metagenome-assembled", "genom", "phylogen", "pangenom", "mobile genetic", "crispr", "horizontal gene transfer", "thermophil", "archaea",
-            "microbial", "bacteri", "16s", "extreme environment", "acidic", "sulfur", "iron"]
-KEY_MIN = 4
+            "microbial", "bacteri", "16s", "extreme environment", "acidic", "sulfur", "iron",
+            "bioinformatic", "gtdb", "taxonomy", "annotation", "assembly", "binning", "machine learning", "deep learning", "language model",
+            "artificial intelligence", "alphafold", "pipeline", "benchmark", "sequencing", "protein"]
 
 
 def score(text):
@@ -55,9 +68,10 @@ def score(text):
 
 
 TAGS = [   # para etiquetar segun el texto
+    ("IA en ciencia", r"machine learning|deep learning|language model|artificial intelligence|alphafold"), ("GTDB y filogenia", r"gtdb|taxonomy database|phylogenomic|tree of life"),
     ("Acidithiobacillus", r"acidithiobacill"), ("Acidófilos", r"acidophil"), ("Biominería", r"bioleach|biomining|mine drainage|biohydromet"),
     ("Hierro y azufre", r"iron.oxid|sulfur.oxid|iron-sulfur|sulphur"), ("Metagenómica", r"metagenom"), ("Genómica", r"genomic|pangenom|phylogenom"),
-    ("Extremófilos", r"extremophil"), ("Elementos móviles", r"mobile genetic|crispr|plasmid"),
+    ("Extremófilos", r"extremophil"), ("Elementos móviles", r"mobile genetic|crispr|plasmid"), ("Bioinformática", r"bioinformatic|pipeline|web server|software"),
 ]
 
 
@@ -75,10 +89,10 @@ def tag_of(text, default):
     return default
 
 
-def pubmed(label, term):
+def pubmed(label, term, need):
     try:
         ids = get(EUTILS + "esearch.fcgi", {"db": "pubmed", "term": term, "retmax": PER_TOPIC, "sort": "pub_date", "retmode": "json",
-                                            "datetype": "pdat", "reldate": DAYS if label != "Quatrini" else 3650})["esearchresult"]["idlist"]
+                                            "datetype": "pdat", "reldate": DAYS})["esearchresult"]["idlist"]
         if not ids:
             return []
         root = ET.fromstring(get(EUTILS + "efetch.fcgi", {"db": "pubmed", "id": ",".join(ids), "retmode": "xml"}, False))
@@ -100,8 +114,8 @@ def pubmed(label, term):
         except (TypeError, ValueError):
             ts = int(time.time())
         out.append({"t": title[:200], "u": "https://pubmed.ncbi.nlm.nih.gov/%s/" % pmid, "ts": ts, "s": (a.findtext(".//Journal/ISOAbbreviation") or "PubMed")[:40],
-                    "a": (authors[0] + (" et al." if len(authors) > 1 else "")) if authors else "", "k": "Quatrini" if label == "Quatrini" else tag_of(title + " " + abstract, label),
-                    "q": "Quatrini" in authors, "n": score(title + " " + abstract)})
+                    "a": (authors[0] + (" et al." if len(authors) > 1 else "")) if authors else "", "k": tag_of(title + " " + abstract, label),
+                    "x": any(e in authors for e in EXCLUDE), "n": score(title + " " + abstract), "need": need})
     return out
 
 
@@ -124,28 +138,24 @@ def europepmc():   # preprints (bioRxiv, etc.)
                 ts = int(time.time())
             au = (r.get("authorString") or "").split(",")[0].strip().rstrip(".")
             out.append({"t": " ".join(re.sub(r"<[^>]+>", "", r["title"]).split())[:200], "u": link, "ts": ts, "s": (r.get("bookOrReportDetails") or {}).get("publisher") or "Preprint",
-                        "a": au + (" et al." if "," in (r.get("authorString") or "") else ""), "k": tag_of(r["title"], label), "q": "Quatrini" in (r.get("authorString") or ""), "p": 1, "n": score(r["title"]) + 3})
+                        "a": au + (" et al." if "," in (r.get("authorString") or "") else ""), "k": tag_of(r["title"], label), "x": any(e in (r.get("authorString") or "") for e in EXCLUDE), "p": 1, "n": score(r["title"]) + 3, "need": 4})
         time.sleep(.4)
     return out
 
 
 def build():
     items = []
-    for label, term in TOPICS:
-        items += pubmed(label, term)
+    for label, term, need in TOPICS:
+        items += pubmed(label, term, need)
         time.sleep(.5)   # NCBI pide <= 3 consultas por segundo sin clave
     items += europepmc()
     seen, uniq = set(), []
-    for it in sorted([i for i in items if i["q"] or i["n"] >= KEY_MIN], key=lambda x: -x["ts"]):
+    for it in sorted([i for i in items if not i["x"] and i["n"] >= i["need"]], key=lambda x: -x["ts"]):
         key = re.sub(r"\W+", "", it["t"].lower())[:80]
         if key in seen:
             continue
-        seen.add(key); uniq.append(it)
-    # los de Quatrini se muestran siempre (los 6 mas recientes); el resto, por fecha
-    q = [i for i in uniq if i["q"]][:6]
-    rest = [i for i in uniq if i not in q][:TOTAL - len(q)]
-    final = sorted(q + rest, key=lambda x: -x["ts"])
-    return {"updated": int(time.time()), "items": final}
+        seen.add(key); uniq.append({k: v for k, v in it.items() if k not in ("x", "n", "need")})
+    return {"updated": int(time.time()), "items": uniq[:TOTAL]}
 
 
 def publish(cfg, data):
@@ -166,7 +176,7 @@ def run(cfg=None, dry=False):
         return
     if dry:
         for i in data["items"][:25]:
-            print(time.strftime("%Y-%m-%d", time.localtime(i["ts"])), "[%s]%s" % (i["k"], "★" if i["q"] else ""), i["a"], "|", i["s"], "|", i["t"][:90])
+            print(time.strftime("%Y-%m-%d", time.localtime(i["ts"])), "[%s]" % i["k"], i["a"], "|", i["s"], "|", i["t"][:90])
         print("total:", len(data["items"]))
         return
     publish(cfg, data)

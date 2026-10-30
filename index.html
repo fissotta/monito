@@ -209,6 +209,7 @@ svg { display: block; width: 100%; max-width: 360px; margin: 0 auto; }
   .side { width: auto; grid-column: 1; grid-row: 1 / span 2; }
   #grid { display: contents; }
   .legendbar { grid-column: 2 / span 3; margin-top: -4px; }
+  .eraRow { grid-column: 1 / -1; margin-top: 0; }   /* la cinta de papers va de lado a lado */
 }
 @media (min-width: 901px) { .ringwrap { max-width: min(360px, 27vh); } }   /* informacion arriba, civilizacion abajo: los anillos se achican segun el alto */
 .ringwrap .zoo { position: absolute; left: 0; right: 0; top: 0; bottom: 0; height: 100%; pointer-events: none; overflow: visible; }
@@ -246,8 +247,8 @@ svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
   <span class="sw" style="background:var(--warn)"></span>50–80 %
   <span class="sw" style="background:var(--bad)"></span>≥ 80 %.
   Anillo exterior: hilos (arco fino = CPU total). Anillo interior: RAM.
-  <div class="eraRow"><div id="papers" class="news" hidden><span class="news-tag" id="papersTag">Papers</span><div class="news-view"><div class="news-track" id="papersTrack"></div></div></div></div>
 </div>
+  <div class="eraRow"><div id="papers" class="news" hidden><span class="news-tag" id="papersTag">Papers</span><div class="news-view"><div class="news-track" id="papersTrack"></div></div></div></div>
 </div>
 <div id="papPop" role="dialog" aria-label="Paper" hidden></div>
 <div id="semPop" role="dialog" aria-label="Seminarios" hidden></div>

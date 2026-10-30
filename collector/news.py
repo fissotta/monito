@@ -123,9 +123,11 @@ def main():
             sys.exit("falta %s" % k)
     time.sleep(random.uniform(0, 8))
     publish(cfg, data)
-    try:   # el feed de papers viaja en el mismo cron
+    try:   # el feed de papers viaja en el mismo cron, pero se consulta una vez al dia (en el primer cron despues de las 07:00)
         import papers
-        papers.run(cfg)
+        lt = time.localtime()
+        if lt.tm_hour == 7 and lt.tm_min < 20 or "--papers" in sys.argv:
+            papers.run(cfg)
     except Exception as e:   # noqa: BLE001 - que un fallo de papers no tumbe las noticias
         print("papers: %s" % e, file=sys.stderr)
 

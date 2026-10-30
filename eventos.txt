@@ -1,0 +1,4 @@
+# Congresos y eventos del calendario (se colorea todo el rango de dias).
+# Formato:  AAAA-MM-DD a AAAA-MM-DD | NOMBRE | descripcion (opcional)
+2026-11-16 a 2026-11-20 | SCB | Congreso de la Sociedad Chilena de Bioinformática (SCB)
+2026-11-24 a 2026-11-27 | SOMICH | Congreso de la Sociedad de Microbiología de Chile (SOMICH)

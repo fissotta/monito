@@ -81,12 +81,27 @@ crontab -e   # agregar:
   También se entienden `2026-11-09 Abraham 15:00`, `09/11/2026; Abraham`, `9 de noviembre: Abraham`, líneas con `#` (comentarios) y líneas sin fecha (se agregan como nota a la anterior). Si no hay año, se toma el que deje la fecha más cerca de hoy.
 - Para actualizarlo: editar `seminarios.txt` → rama → pull request → merge (el archivo es público, igual que el resto del repo).
 
+## Feriados y congresos en el calendario
+
+- Los **feriados de Chile** salen marcados en rojo (se calculan por año: Semana Santa, traslados a lunes de San Pedro y San Pablo y Encuentro de Dos Mundos, Iglesias Evangélicas, Fiestas Patrias, etc.). Es referencial: no incluye jornadas electorales ni feriados decretados aparte.
+- Los **congresos y eventos de varios días** se leen de `eventos.txt` (`AAAA-MM-DD a AAAA-MM-DD | NOMBRE | descripción`) y pintan todo el rango de días, con leyenda de colores. Al tocar un día, el cuadro de abajo dice qué es.
+
 ## Feed de papers
 
-Segunda cinta junto al indicador de época, con papers nuevos de los temas del laboratorio (acidófilos, *Acidithiobacillus*, biominería, hierro y azufre, metagenómica, genómica, extremófilos, elementos móviles) más los trabajos de R. Quatrini (marcados con ★). Cada paper abre su página (PubMed, DOI o Europe PMC).
+Segunda cinta bajo los monitores, con papers nuevos de los temas del laboratorio (acidófilos, *Acidithiobacillus*, biominería, hierro y azufre, metagenómica, genómica, extremófilos, elementos móviles) más bioinformática, GTDB, métodos nuevos e IA en genómica. Cada paper abre su página (PubMed, DOI o Europe PMC).
 
-- `collector/papers.py` consulta PubMed (E-utilities de NCBI) y los preprints de Europe PMC (bioRxiv y otros), filtra por una lista de palabras clave sacada de los abstracts de Quatrini y publica `papers.json` en la rama `papers`. Lo ejecuta el mismo cron de `news.py`. Prueba: `python3 papers.py --dry-run`.
-- Las palabras clave y las consultas están al comienzo de `papers.py` (`TOPICS`, `EPMC_TOPICS`, `KEYWORDS`, `KEY_MIN`); se pueden editar.
+- `collector/papers.py` consulta PubMed (E-utilities de NCBI) y los preprints de Europe PMC (bioRxiv y otros), filtra por una lista de palabras clave (sacada de los abstracts de R. Quatrini, cuyos trabajos se excluyen del feed) y publica `papers.json` en la rama `papers`. Lo ejecuta el mismo cron de `news.py`. Prueba: `python3 papers.py --dry-run`.
+- Las palabras clave y las consultas están al comienzo de `papers.py` (`TOPICS` con su mínimo de palabras clave, `EPMC_TOPICS`, `KEYWORDS`, `EXCLUDE`); se pueden editar.
+
+## Feed de papers: temas y frecuencia
+
+- Temas: los del laboratorio más bioinformática, GTDB y filogenia, metagenómica, métodos nuevos e IA en ciencia (genómica). Los trabajos de R. Quatrini se **excluyen** a propósito.
+- `papers.py` consulta PubMed y Europe PMC **una vez al día** (~07:00, dentro del cron de `news.py`; las noticias, cada 20 min). La página relee `papers.json` cada 3 horas. Para forzar una consulta: `python3 news.py --papers`.
+- La pastilla de época queda bajo el tiempo; la cinta de papers parte desde el borde izquierdo de akaza.
+
+## Popups
+
+Clic en la fecha/hora abre el calendario; clic en «Próximo seminario» abre la lista completa de seminarios. Las ventanas se cierran con ×, tocando fuera o solas: el calendario a los 10 s, el tiempo y la lista de seminarios a los 30 s, el resumen de época a 1 min, planetas 15 s y edificios 5 s.
 
 ## Mensajes de pantalla completa y clima
 

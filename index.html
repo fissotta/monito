@@ -22,13 +22,22 @@ body {
 }
 header {
   display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between;
-  padding: 14px 16px; max-width: 1200px; margin: 0 auto;
+  padding: 14px 16px; max-width: 1900px; margin: 0 auto;
 }
 h1 { font-size: 20px; margin: 0; letter-spacing: .12em; }
-.brand { position: relative; display: flex; align-items: center; gap: 14px; }
-.clock { display: flex; flex-direction: column; align-items: center; line-height: 1.15; padding: 3px 10px; min-height: 0; font-variant-numeric: tabular-nums; }
-.clock b { font-size: 17px; }
-.clock span { font-size: 11px; color: var(--muted); }
+.layout { display: flex; align-items: flex-start; gap: 18px; padding: 0 16px 24px; max-width: 1900px; margin: 0 auto; }
+.side { position: sticky; top: 12px; flex: none; width: clamp(150px, 16vw, 340px); }
+.clock { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 2px; line-height: 1.05; padding: clamp(10px, 1.4vw, 24px) 8px;
+  border-radius: 16px; font-variant-numeric: tabular-nums; min-height: 0; }
+.clock b { font-size: clamp(30px, 4.2vw, 92px); letter-spacing: -.03em; }
+.clock span { font-size: clamp(18px, 2.4vw, 48px); font-weight: 600; }
+.clock small { font-size: clamp(13px, 1.5vw, 28px); color: var(--muted); text-transform: capitalize; }
+@media (max-width: 900px) {
+  .layout { flex-direction: column; align-items: stretch; gap: 12px; }
+  .side { position: static; width: 100%; }
+  .clock { flex-direction: row; justify-content: center; align-items: baseline; gap: 14px; }
+  .clock b { font-size: 38px; } .clock span { font-size: 22px; } .clock small { font-size: 14px; }
+}
 .cal { position: absolute; left: 0; top: calc(100% + 8px); z-index: 40; width: 266px; padding: 10px; background: var(--card);
   border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.25); }
 .cal[hidden] { display: none; }
@@ -81,7 +90,7 @@ button:hover { border-color: var(--accent); }
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .status { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 main {
-  display: grid; gap: 16px; padding: 0 16px 24px; max-width: 1200px; margin: 0 auto;
+  display: grid; gap: 16px; padding: 0; flex: 1; min-width: 0;
   grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
 }
 .card {
@@ -109,17 +118,19 @@ footer { max-width: 1200px; margin: 0 auto; padding: 0 16px 24px; color: var(--m
 </head>
 <body>
 <header>
-  <div class="brand">
-    <button id="clock" class="clock" aria-haspopup="dialog" aria-expanded="false" title="Ver el calendario"><b id="clockTime">--:--</b><span id="clockDate">--/--</span></button>
-    <h1>MONITO</h1>
-    <div id="cal" class="cal" role="dialog" aria-label="Calendario" hidden></div>
-  </div>
+  <h1>MONITO</h1>
   <div class="controls">
     <span class="status" id="status" aria-live="polite">—</span>
     <button id="btnTheme" title="Cambiar color: automático (por hora), día o noche"></button>
   </div>
 </header>
-<main id="grid"></main>
+<div class="layout">
+  <aside class="side">
+    <button id="clock" class="clock" aria-haspopup="dialog" aria-expanded="false" title="Ver el calendario"><b id="clockTime">--:--</b><span id="clockDate">--/--</span><small id="clockDay"></small></button>
+    <div id="cal" class="cal" role="dialog" aria-label="Calendario" hidden></div>
+  </aside>
+  <main id="grid"></main>
+</div>
 <footer>
   CPU por hilo y total: <span class="sw" style="background:var(--ok)"></span>&lt; 50 %
   <span class="sw" style="background:var(--warn)"></span>50–80 %
@@ -133,9 +144,9 @@ footer { max-width: 1200px; margin: 0 auto; padding: 0 16px 24px; color: var(--m
 // ====== Configuración ======
 const REPO = "fissotta/monito"; // "usuario/monito"  (vacío = modo demo)
 const MACHINES = [
-  { id: "akaza",   label: "Desktop" },
-  { id: "ymir",    label: "Servidor" },
-  { id: "inozuke", label: "Servidor" },
+  { id: "akaza",   label: "Desktop",  animal: "mono",   plural: "monos" },
+  { id: "ymir",    label: "Servidor", animal: "jirafa", plural: "jirafas" },
+  { id: "inozuke", label: "Servidor", animal: "foca",   plural: "focas" },
 ];
 const REFRESH_S = 300;                 // se actualiza cada 5 minutos
 const DARK_FROM = 19, DARK_TO = 7;     // modo automático: oscuro de 19:00 a 07:00
@@ -341,7 +352,7 @@ function infoHtml() {
 function tickClock() {
   const d = new Date(), t = pad(d.getHours()) + ":" + pad(d.getMinutes()), f = pad(d.getDate()) + "/" + pad(d.getMonth() + 1);
   if ($("clockTime").textContent !== t) $("clockTime").textContent = t;
-  if ($("clockDate").textContent !== f) { $("clockDate").textContent = f; if (calView) renderCal(); }
+  if ($("clockDate").textContent !== f) { $("clockDate").textContent = f; $("clockDay").textContent = DIAS_LARGOS[d.getDay()]; if (calView) renderCal(); }
 }
 function renderCal() {
   const now = new Date(), y = calView.y, m = calView.m, lead = (new Date(y, m, 1).getDay() + 6) % 7;   // casillas vacias antes del dia 1
@@ -371,9 +382,10 @@ document.addEventListener("click", () => { if (!$("cal").hidden) toggleCal(false
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("cal").hidden) { toggleCal(false); $("clock").focus(); } });
 tickClock(); setInterval(tickClock, 1000); loadSems();
 if (new URLSearchParams(location.search).has("cal")) toggleCal(true);
+if (new URLSearchParams(location.search).has("sofi")) setTimeout(() => { const z = Object.values(Zoo._zoos)[0]; if (z) for (let i = 0; i < 5; i++) Zoo._test.react(z.ms[0]); }, 1500);   // prueba: 5 toques seguidos
 
 // ---------- monos ----------
-Zoo.init(MACHINES.map(m => m.id), () => state.data);
+Zoo.init(MACHINES.map(m => m.id), () => state.data, Object.fromEntries(MACHINES.map(m => [m.id, m.animal])));
 Zoo.setEnabled(true);
 
 applyTheme(); refresh();

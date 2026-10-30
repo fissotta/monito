@@ -409,6 +409,39 @@ const World = (function () {
   const rectOf = {};   // cache por cuadro
   const cardRect = c => rectOf[c.dataset.id || (c.dataset.id = Math.random())] || (rectOf[c.dataset.id] = c.getBoundingClientRect());
 
+  // mensajes que cruzan el cielo de vez en cuando (el laboratorio vigila)
+  const SKY_MSGS = [
+    "¡Dejen de ver monos y vayan a trabajar!", "¿Cómo vas con tu experimento?", "¿Y el paper? ¿Y el código?", "¿Ya escribiste hoy tu tesis?", "Harto de tesis… ¡pero a seguir!",
+    "¿Cómo están tus bacterias?", "¿Y tu ADN? ¿Ya lo secuenciaste?", "¿Qué tal van esos genomas?", "¿Ya ensamblaste ese genoma?", "¿Corriste el alineamiento?",
+    "¿Y el árbol filogenético?", "¿Pasaste el control de calidad?", "¿Hiciste el backup de tus datos?", "El cluster no se llena solo: ¡a correr jobs!", "¿Cuántas lecturas tienes hoy?",
+    "¿Revisaste tus controles negativos?", "¿Anotaste ya tu genoma?", "Tu tesis te extraña", "¿Y la discusión? ¿Y las conclusiones?", "Gracias por mirar monos. Ahora, ¡a trabajar!",
+    "¿Cómo va tu PCR?", "¿Pipeteaste hoy?", "¿Leíste el paper de la semana?", "Recuerda citar bien tus referencias", "¿Y las figuras? ¡Que se vean bonitas!",
+    "El revisor 2 te está mirando…", "¿Ya preparaste tu seminario?", "¿Subiste tus secuencias a GenBank?", "Mejor un commit hoy que una tesis mañana", "¿Código sin comentarios? ¡Ay!",
+    "¿Y el medio de cultivo? ¿Ya lo autoclavaste?", "¿Cuánto crecieron tus Acidithiobacillus?", "¿Mapeaste las lecturas contra el genoma?", "¿Cuántos contigs tienes?", "¿Tu hipótesis sigue en pie?",
+    "Tesis, tesis, tesis…", "¿Ya escribiste los métodos?", "¿Y la reproducibilidad, eh?", "¡Un párrafo más y descansas!", "¿Hoy toca bioinformática o bañera?",
+  ];
+  let skyDeck = [];
+  function skyMessage() {
+    if (!skyDeck.length) skyDeck = shuffle(SKY_MSGS.slice());
+    const txt = skyDeck.pop(), w = txt.length * 9.6 + 40, dir = chance(.5) ? 1 : -1, y0 = rnd(H * .1, H * .36), dur = rnd(16, 22);
+    fx("g", { x: dir > 0 ? -w / 2 - 10 : W + w / 2 + 10, y: y0, vx: dir * (W + w + 20) / dur, life: dur,
+      html: `<rect x="${-w / 2}" y="-17" width="${w}" height="34" rx="17" style="fill:var(--card);stroke:var(--accent);stroke-width:1.6px" opacity=".94"/>` +
+        `<text text-anchor="middle" y="6" style="fill:var(--text);font-size:16px;font-weight:700">${txt}</text>`,
+      tick: g => { g.y = y0 + Math.sin(g.t * 1.4) * 7; } });
+  }
+  const THOUGHTS = {
+    any: ["Hmm… ¿y si…?", "¡Qué buen día!", "Tengo sueño…", "Me pica la espalda", "¿Qué estarán pensando los demás?", "Qué linda tribu tenemos", "¿Habrá algo de comer?", "¿Y si descansamos un poco?", "Mañana será mejor", "¡Cómo pasa el tiempo!"],
+    0: ["Hambre… ¡uh!", "¿Qué es esa luz tan grande?", "Palo bueno, piedra mejor", "Esa cueva se ve cómoda", "Brrr, qué frío hace"],
+    1: ["El fuego es mágico", "Mmm… huele a asado", "¡No toques, que quema!", "¿Qué habrá detrás de las estrellas?"],
+    2: ["¿Dónde acampamos hoy?", "Sigamos a las bananas", "Ese lobo me mira raro", "Otra migración… qué cansancio"],
+    3: ["¿Habrá buena cosecha?", "Quiero una casa más grande", "¿Por qué sale el sol?", "Hoy toca sembrar", "Qué alto es ese templo"],
+    4: ["¡Tierra a la vista!", "¿Y si navego hacia el oeste?", "Dicen que el mundo es redondo", "Qué castillo tan alto"],
+    5: ["El humo me da tos", "¿Llegará el tren a tiempo?", "Mi jornada es larguísima", "¡Cuánto ruido hacen las máquinas!"],
+    6: ["Me llegó un mensaje", "¿Y si me tomo un café?", "Voy tarde a la oficina", "¿Quién ganó el partido?", "Se me acabó la batería"],
+    7: ["¿Viviremos en otro planeta?", "Quiero ir a la Luna", "¿Habrá bananas en Marte?"],
+    8: ["¿Estamos solos?", "Esa nave me da mala espina", "¿Será seguro el hiperespacio?"],
+  };
+  const thoughtFor = g => pick(chance(.55) ? THOUGHTS.any.concat(THOUGHTS[Math.min(S.era, 8)] || []) : (THOUGHTS[Math.min(S.era, 8)] || THOUGHTS.any));
   function say(text) { const g = pick(groundMons()); if (g && g.m.mode !== "sleep") { g.m.say = text; g.m.mode = "react"; g.m.t = 0; g.m.dur = 1.7; } }
   function adopt(m, x, y, id) {   // un mono se desborda del anillo hacia el mundo
     gMon.appendChild(m.parts.root);
@@ -462,6 +495,14 @@ const World = (function () {
         g.fearT = .3;
         const c = nearestCrit(g.x);
         if (c && Math.abs(c.x - g.x) < 140) { g.tx = clamp(g.x + (g.x < c.x ? -1 : 1) * rnd(120, 220), 18, W - 18); g.act = "run"; g.next = "sit"; g.stayT = .6; g.face = 0; }
+      }
+    }
+    g.talkT = (g.talkT == null ? rnd(3, 14) : g.talkT) - h;   // piensa en voz alta de vez en cuando
+    if (m.thinkT > 0) m.thinkT -= h;
+    if (g.talkT <= 0) {
+      g.talkT = rnd(14, 34);
+      if (!(m.thinkT > 0) && m.mode !== "ko" && m.mode !== "sleep" && g.act !== "fight" && S.mon.filter(o => o.m.thinkT > 0).length < 5) {
+        m.think = thoughtFor(g); m.thinkDur = m.thinkT = clamp(2 + m.think.length * .06, 2.4, 5);
       }
     }
     if (m.mode === "react") { if (m.t > m.dur) m.mode = "rest"; return; }
@@ -1709,6 +1750,7 @@ const World = (function () {
     if (S.eclipse > 0) { S.eclipse -= h; dark.setAttribute("opacity", (Math.sin(Math.PI * clamp(1 - S.eclipse / 10, 0, 1)) * .55).toFixed(2)); }
     if (S.rain > 0) { S.rain -= h; for (let i = 0; i < h * 90; i++) fx("drop", { x: rnd(0, W), y: -10, vy: rnd(500, 700), vx: -40, life: 3 }); }
     if (S.snow > 0) { S.snow -= h; for (let i = 0; i < h * 30; i++) fx("flake", { x: rnd(0, W), y: -10, vy: rnd(40, 80), life: 8 }); }
+    S.skyT = (S.skyT == null ? rnd(14, 26) : S.skyT) - h; if (S.skyT <= 0) { S.skyT = rnd(35, 80); skyMessage(); }
     qStep(); pandemicStep(h);
     if (S.flood > 0) S.flood -= h;
     if (S.sea > 0) S.sea -= h;
@@ -1835,6 +1877,7 @@ const World = (function () {
       asedio: siege, justas: joust, cruzada: crusade, invasores: raid, pestenegra: () => pandemic({ name: "Peste Negra", lethal: .75, dur: 40 }), dragon, naval: navalBattle, guerramundial: worldWar, guerrafria: coldWar,
       olimpiadas: olympics, peregrinacion: pilgrimage, milagro: miracle, cisma: schism, huelga: strike, crisis, langostas: locusts, sequia: drought, genio: genius, concierto: () => { S.music = 10; cheerSome(10, 8); } });
     if (START_ERA === 8) setTimeout(() => startSaga(Q.get("saga")), 600);
+    DO.cielo = skyMessage;
     DO.choque = () => { const gs = groundMons(); if (gs.length < 2) return; const a = gs[0], b = gs[1]; a.state = "fall"; a.x = b.x; a.y = -30; a.vx = 0; a.vy = 0; a.vr = 0; a.bounced = true; a.m.mode = "fall"; };
     const d = Q.get("do"); if (d && DO[d]) setTimeout(DO[d], 2500);
     if (Q.get("planet") != null) setTimeout(() => { const pl = S.planets[+Q.get("planet")]; if (pl) showPlanet(pl); }, 1500);

@@ -277,8 +277,8 @@ svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
 if (/[?&]ua\b/.test(location.search)) addEventListener("load", () => { const d = document.createElement("div"); d.style.cssText = "position:fixed;left:8px;right:8px;top:40px;z-index:99;background:#fff;color:#000;border:2px solid #c00;padding:10px;font:16px monospace;word-break:break-all"; d.textContent = navigator.userAgent + " | " + innerWidth + "x" + innerHeight + " @" + devicePixelRatio; document.body.appendChild(d); setTimeout(() => d.remove(), 60000); });
 </script>
 <script src="qrcode.min.js?v=1"></script>
-<script src="zoo.js?v=20261031l"></script>
-<script src="world.js?v=20261031l"></script>
+<script src="zoo.js?v=20261031m"></script>
+<script src="world.js?v=20261031m"></script>
 <script>
 // ====== Configuración ======
 const REPO = "fissotta/monito"; // "usuario/monito"  (vacío = modo demo)
@@ -299,8 +299,8 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
 const demo = !REPO || new URLSearchParams(location.search).has("demo");
-const BUILD = "20261031l";   // subir junto con los ?v= de los <script> en cada publicacion
-const PR = 25;   // numero del pull request de esta version (lo que se ve en gris junto al estado; subirlo en cada publicacion)
+const BUILD = "20261031m";   // subir junto con los ?v= de los <script> en cada publicacion
+const PR = 26;   // numero del pull request de esta version (lo que se ve en gris junto al estado; subirlo en cada publicacion)
 $("ver").textContent = "v" + PR;
 const state = { data: {}, next: 0, timer: null, stale: 300 };
 // si se publica una version nueva, la pagina (p. ej. en la TV) se recarga sola; revisa cada 10 min
@@ -652,9 +652,11 @@ $("ver").addEventListener("click", e => {
   $("verPop").innerHTML = `<h3>Versión v${PR}</h3><div><span class="k">Pull request:</span> #${PR}</div><div><span class="k">Código de publicación:</span> ${BUILD}</div>` +
     `<div><span class="k">Navegador:</span> ${tv ? "TV" : "computador"}${ch ? " · Chrome " + ch : ""}</div><div><span class="k">Pantalla:</span> ${innerWidth}×${innerHeight} (×${devicePixelRatio})</div>` +
     `<div><span class="k">Modo liviano:</span> ${Zoo.api.low ? "sí" : "no"}</div>` +
-    `<div><span class="k">Cuadros por segundo:</span> ${Zoo.api.low ? (Zoo.api.probe() < 0 ? "midiendo…" : "medidos " + Zoo.api.probe() + " → " + (Zoo.api.minDt() ? "limitado a 30" : "sin límite")) : "sin límite"}</div>`;
+    `<div><span class="k">Cuadros por segundo:</span> ${Zoo.api.low ? (Zoo.api.probe() < 0 ? "midiendo…" : "medidos " + Zoo.api.probe() + " → " + (Zoo.api.minDt() ? "limitado a 30" : "sin límite")) : "sin límite"}</div>` +
+    (/[?&]off=/.test(location.search) ? `<div><span class="k">Apagado para probar:</span> ${decodeURIComponent((location.search.match(/[?&]off=([^&]*)/) || [])[1] || "")}</div>` : "");
   $("verPop").hidden = false; armPop($("verPop"));
 });
+if (Zoo.api.low) { setTimeout(Zoo.api.reprobe, 60000); setInterval(Zoo.api.reprobe, 600000); }   // la TV vuelve a medir sus cuadros por segundo a los 60 s y cada 10 min
 if (/[?&]verclick\b/.test(location.search)) setTimeout(() => $("ver").click(), 9000);   // prueba: abre el cuadro de la version
 $("verPop").addEventListener("click", e => { e.stopPropagation(); $("verPop").hidden = true; });
 document.addEventListener("click", () => { $("verPop").hidden = true; });
@@ -689,7 +691,7 @@ const marquees = [];
     requestAnimationFrame(f);
     const dt = (now - last) / 1000;
     if (Zoo.api.minDt() && dt * 1000 < Zoo.api.minDt()) return;   // si la TV no llega a 60 fps: ~30 cuadros por segundo
-    last = now; if (document.hidden) return;
+    last = now; if (document.hidden || Zoo.api.off("cintas")) return;
     for (const m of marquees) m.step(Math.min(.1, dt));
   });
 })();

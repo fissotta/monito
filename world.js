@@ -2634,7 +2634,7 @@ const World = (function () {
   function frame(now) {
     requestAnimationFrame(frame);
     lunchCheck(now);
-    if (LOW && now - last < 31) return;   // TV: ~30 cuadros por segundo (la simulacion usa el tiempo real, no se ralentiza)
+    if (A.minDt() && now - last < A.minDt()) return;   // si la TV no llega a 60 fps se limita a ~30 (la simulacion usa el tiempo real, no se ralentiza)
     const real = Math.min(.05, Math.max(0, (now - last) / 1000)); last = now;
     if (document.hidden) return;
     for (const k in rectOf) delete rectOf[k];

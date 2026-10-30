@@ -14,7 +14,8 @@ const Zoo = (function () {
   let CAP = 9;                          // monos por equipo antes de que los nuevos se desborden y caigan
   const SCALE = 1.25;                   // tamaño general de los monos
   const LOW = /Tizen|SMART-TV|SmartTV|Web0S/i.test(navigator.userAgent) || /[?&]lento\b/.test(location.search);   // TV: se dibuja a ~30 cuadros por segundo
-  const MIN_DT = LOW ? 31 : 0;
+  let MIN_DT = 0;   // limite de cuadros: 0 = libre (60 fps); 31 = ~30 fps. En la TV se decide midiendo (ver "probe")
+  const probe = { t0: 0, n: 0, done: !LOW, fps: 0 };   // en la TV se mide cuantos cuadros por segundo da sin limite; si no llega a ~48 se limita a 30 (mas parejo)
   const GIRAFFE_K = 1.5;                // las jirafas se dibujan 1,5 veces mas grandes (globos y zzz suben con ellas)
   const kOf = m => (m.sp && m.sp.kind === "jirafa" ? GIRAFFE_K : 1);
 
@@ -747,6 +748,10 @@ const Zoo = (function () {
   const clear = n => { while (n.firstChild) n.removeChild(n.firstChild); };   // replaceChildren no existe en navegadores viejos
   function frame(now) {
     raf = requestAnimationFrame(frame);
+    if (!probe.done) {   // medicion inicial: se ignoran los primeros 2 s (la pagina esta cargando) y se miran 4 s
+      if (!probe.t0) probe.t0 = now;
+      if (now - probe.t0 >= 2000) { if (!probe.s) { probe.s = now; probe.n = 0; } probe.n++; if (now - probe.s >= 4000) { probe.fps = Math.round(probe.n * 1000 / (now - probe.s)); MIN_DT = probe.fps < 48 ? 31 : 0; probe.done = true; } }
+    }
     if (MIN_DT && now - last < MIN_DT) return;
     const dt = Math.min(.05, Math.max(0, (now - last) / 1000)); last = now;
     if (document.hidden) return;
@@ -779,7 +784,7 @@ const Zoo = (function () {
     kindOf, CELEBS, SPECIES_BY_KIND,
     setCelebHandler: fn => { onCeleb = fn; },
     setFestive: names => { FEST = names || []; },
-    low: LOW,
+    low: LOW, minDt: () => MIN_DT, probe: () => (probe.done ? (LOW ? probe.fps : 0) : -1),
     setLunch: on => { LUNCH = on; if (on) for (const id in zoos) for (const m of zoos[id].ms) if (m.mode !== "cross" && m.ctx) enter(m, "eat", m.ctx); },
     setReleaseHandler: fn => { onRelease = fn; },
     setCap: n => { CAP = n; },

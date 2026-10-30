@@ -88,10 +88,10 @@ crontab -e   # agregar:
 
 ## Feed de papers
 
-Segunda cinta junto al indicador de época, con papers nuevos de los temas del laboratorio (acidófilos, *Acidithiobacillus*, biominería, hierro y azufre, metagenómica, genómica, extremófilos, elementos móviles) más los trabajos de R. Quatrini (marcados con ★). Cada paper abre su página (PubMed, DOI o Europe PMC).
+Segunda cinta bajo los monitores, con papers nuevos de los temas del laboratorio (acidófilos, *Acidithiobacillus*, biominería, hierro y azufre, metagenómica, genómica, extremófilos, elementos móviles) más bioinformática, GTDB, métodos nuevos e IA en genómica. Cada paper abre su página (PubMed, DOI o Europe PMC).
 
-- `collector/papers.py` consulta PubMed (E-utilities de NCBI) y los preprints de Europe PMC (bioRxiv y otros), filtra por una lista de palabras clave sacada de los abstracts de Quatrini y publica `papers.json` en la rama `papers`. Lo ejecuta el mismo cron de `news.py`. Prueba: `python3 papers.py --dry-run`.
-- Las palabras clave y las consultas están al comienzo de `papers.py` (`TOPICS`, `EPMC_TOPICS`, `KEYWORDS`, `KEY_MIN`); se pueden editar.
+- `collector/papers.py` consulta PubMed (E-utilities de NCBI) y los preprints de Europe PMC (bioRxiv y otros), filtra por una lista de palabras clave (sacada de los abstracts de R. Quatrini, cuyos trabajos se excluyen del feed) y publica `papers.json` en la rama `papers`. Lo ejecuta el mismo cron de `news.py`. Prueba: `python3 papers.py --dry-run`.
+- Las palabras clave y las consultas están al comienzo de `papers.py` (`TOPICS` con su mínimo de palabras clave, `EPMC_TOPICS`, `KEYWORDS`, `EXCLUDE`); se pueden editar.
 
 ## Feed de papers: temas y frecuencia
 

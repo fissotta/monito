@@ -67,6 +67,16 @@ const World = (function () {
   if (hudOpen) { hud.classList.add("open"); hudTimer = setTimeout(() => setHud(false), 60000); }
   chip.addEventListener("click", () => setHud(!hudOpen));
   hud.addEventListener("click", () => setHud(false));
+  // logo del laboratorio (esquina superior izquierda de la civilizacion), dibujado dentro del propio svg del mundo para que funcione en cualquier navegador
+  const logoG = el("g", { "pointer-events": "none" }, svg), logoBg = el("rect", { rx: 10, fill: "#fff" }, logoG), logoImg = el("image", { preserveAspectRatio: "xMinYMid meet" }, logoG);
+  logoImg.setAttribute("href", "logoMEL.svg"); logoImg.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", "logoMEL.svg");
+  function placeLogo() {
+    const h = Math.max(34, Math.min(66, H * .06)), lw = h * 2383 / 578, dark = document.documentElement.dataset.theme === "dark";
+    logoG.style.display = SKY ? "" : "none";
+    logoBg.setAttribute("x", 12); logoBg.setAttribute("y", SKY + 8 - 3); logoBg.setAttribute("width", lw + 16); logoBg.setAttribute("height", h + 6); logoBg.setAttribute("opacity", dark ? .9 : 0);
+    logoImg.setAttribute("x", 20); logoImg.setAttribute("y", SKY + 8); logoImg.setAttribute("width", lw); logoImg.setAttribute("height", h);
+  }
+  new MutationObserver(placeLogo).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
   function layout() {
     svg.setAttribute("width", W); svg.setAttribute("height", H);
     ground.setAttribute("y", floorY()); ground.setAttribute("width", W);
@@ -75,8 +85,7 @@ const World = (function () {
     rails.innerHTML = `<rect x="0" y="${H - 9}" width="${W}" height="2.5" fill="#444"/>` +
       `<line x1="0" y1="${H - 5}" x2="${W}" y2="${H - 5}" stroke="#5a4630" stroke-width="3" stroke-dasharray="3 9"/>`;
     SKY = measureSky();
-    const logo = document.getElementById("labLogo");   // logo del laboratorio en la esquina superior izquierda de la civilizacion
-    if (logo) { logo.hidden = !SKY; logo.style.top = (SKY + 8) + "px"; }
+    placeLogo();
     dark.setAttribute("y", SKY); dark.setAttribute("height", H - SKY); tint.setAttribute("y", SKY);
     tint.setAttribute("width", W); tint.setAttribute("height", H - SKY); water.setAttribute("width", W);
     const sb = skyBg.querySelector(".sb"), sl = skyBg.querySelector(".sl"), st = skyBg.querySelector(".stars");

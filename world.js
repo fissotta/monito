@@ -44,9 +44,13 @@ const World = (function () {
   let SKY = 0;   // borde superior del panel de la civilizacion (0 = sin division, como en el celular)
   const skyH = () => floorY() - SKY, skyY = f => SKY + skyH() * f;
   const svg = el("svg", { id: "world", width: W, height: H }, document.body);
-  svg.style.cssText = "position:fixed;left:0;top:0;z-index:30;pointer-events:none;overflow:visible";
+  // dos capas: la fija (cielo, suelo, construcciones) se dibuja una vez; la movil (animales, bichos, efectos) cambia en cada cuadro.
+  // Cada una es un svg con su propia capa de la GPU (will-change), asi mover un animal no obliga a redibujar el cielo ni las casas.
+  svg.style.cssText = "position:fixed;left:0;top:0;z-index:30;pointer-events:none;overflow:visible;will-change:transform";
+  const svgD = el("svg", { id: "worldD", width: W, height: H }, document.body);
+  svgD.style.cssText = "position:fixed;left:0;top:0;z-index:30;pointer-events:none;overflow:visible;will-change:transform";
   const gSky = el("g", {}, svg), gGround = el("g", {}, svg), gStruct = el("g", {}, svg),
-        gMon = el("g", {}, svg), gCrit = el("g", {}, svg), gFx = el("g", {}, svg);
+        gMon = el("g", {}, svgD), gCrit = el("g", {}, svgD), gFx = el("g", {}, svgD);
   for (const g of [gGround, gStruct]) { g.style.opacity = 0; g.style.transition = "opacity 1.6s"; }
   const ground = el("rect", { x: 0, width: W, height: GROUND_H, fill: "#8b7b5c" }, gGround);
   ground.style.transition = "fill 2s";
@@ -88,7 +92,7 @@ const World = (function () {
   }
   new MutationObserver(placeLogo).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
   function layout() {
-    svg.setAttribute("width", W); svg.setAttribute("height", H);
+    svg.setAttribute("width", W); svg.setAttribute("height", H); svgD.setAttribute("width", W); svgD.setAttribute("height", H);
     ground.setAttribute("y", floorY()); ground.setAttribute("width", W);
     grass.setAttribute("y", floorY()); grass.setAttribute("width", W);
     dark.setAttribute("width", W); dark.setAttribute("height", H);
@@ -717,7 +721,7 @@ const World = (function () {
     AMB.starT -= h; if (AMB.starT <= 0) { AMB.starT = rnd(18, 45); if (night && !space && !SKYMIN && !SKYOFF) fx("g", { x: rnd(W * .25, W * .95), y: skyY(rnd(.05, .35)), vx: -rnd(260, 360), vy: rnd(80, 130), life: .9, html: `<line x1="0" y1="0" x2="38" y2="-13" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".9"/>` }); }
   }
   // ---------- fiestas y estaciones: decoraciones en el suelo, gorros en los animales y cosas en el cielo ----------
-  const gDeco = el("g", { "pointer-events": "none" }, svg); svg.insertBefore(gDeco, gMon);   // sobre las construcciones, bajo los animales
+  const gDeco = el("g", { "pointer-events": "none" }, svg);   // sobre las construcciones; los animales van en la otra capa (arriba)
   const D = (y, m, d) => new Date(y, m - 1, d), addD = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
   const nthSun = (y, m, n) => { const f = D(y, m, 1); return addD(f, (7 - f.getDay()) % 7 + 7 * (n - 1)); };
   function easterOf(y) {
@@ -778,12 +782,12 @@ const World = (function () {
     switch (kind) {
       case "pumpkin": return `<ellipse cy="-6" rx="9" ry="7" fill="#f58a1f"/><path d="M-3.5 -12Q-7 -6 -3.5 0M3.5 -12Q7 -6 3.5 0" stroke="#c76a10" fill="none"/><rect x="-1.2" y="-16" width="2.4" height="4.5" fill="#4b6b2a"/><path d="M-5 -8l2.3 -3 2.3 3zM.4 -8l2.3 -3 2.3 3z" fill="#ffd84a"/><path d="M-4.5 -3.2Q0 0 4.5 -3.2" stroke="#ffd84a" stroke-width="1.4" fill="none"/>`;
       case "tree": {
-        const lights = Array.from({ length: 9 }, (_, i) => { const y = -12 - i * 4.2, x = Math.sin(i * 2.1) * (12 - i * 1.1); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.6" fill="${["#ff5252", "#ffd84a", "#4fc3f7", "#fff"][i % 4]}"><animate attributeName="opacity" values=".2;1;.2" dur="${(1 + (i % 3) * .5).toFixed(1)}s" begin="${(i * .23).toFixed(2)}s" repeatCount="indefinite"/></circle>`; }).join("");
+        const lights = Array.from({ length: 9 }, (_, i) => { const y = -12 - i * 4.2, x = Math.sin(i * 2.1) * (12 - i * 1.1); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.6" fill="${["#ff5252", "#ffd84a", "#4fc3f7", "#fff"][i % 4]}">${LOW ? "" : `<animate attributeName="opacity" values=".2;1;.2" dur="${(1 + (i % 3) * .5).toFixed(1)}s" begin="${(i * .23).toFixed(2)}s" repeatCount="indefinite"/>`}</circle>`; }).join("");
         return `<g transform="scale(.8)"><rect x="-2.5" y="-6" width="5" height="6" fill="#6b4a2a"/><path d="M-16 -6L0 -27L16 -6Z" fill="#1f7a3a"/><path d="M-13 -19L0 -38L13 -19Z" fill="#238c42"/><path d="M-10 -31L0 -48L10 -31Z" fill="#27a04c"/><path d="M0 -55l1.7 3.5 3.8.5-2.8 2.7.7 3.8L0 -45.8l-3.4 1.7.7-3.8-2.8-2.7 3.8-.5z" fill="#ffd84a"/>${lights}</g>`;
       }
       case "gift": return `<rect x="-6" y="-9" width="12" height="9" fill="${c}"/><rect x="-1" y="-9" width="2" height="9" fill="#fff" opacity=".85"/><rect x="-6" y="-5" width="12" height="2" fill="#fff" opacity=".85"/><path d="M0 -9Q-5 -15 -1 -12ZM0 -9Q5 -15 1 -12Z" fill="#fff" stroke="#999" stroke-width=".4"/>`;
       case "egg": return `<ellipse cy="-4.6" rx="3.6" ry="4.8" fill="${c}"/><path d="M-3.5 -5Q-1.7 -7 0 -5T3.5 -5" stroke="#fff" stroke-width="1" fill="none" opacity=".85"/><circle cx="-1" cy="-2.2" r=".8" fill="#fff" opacity=".8"/>`;
-      case "flag": return `<rect x="-.8" y="-36" width="1.6" height="36" fill="#8a8a8a"/><g><rect x=".8" y="-36" width="24" height="7.5" fill="#fff"/><rect x=".8" y="-28.5" width="24" height="7.5" fill="#d52b1e"/><rect x=".8" y="-36" width="9.5" height="7.5" fill="#0039a6"/><path d="M5.5 -34.7l.8 1.7 1.8.2-1.3 1.2.4 1.8-1.7-.9-1.7.9.4-1.8-1.3-1.2 1.8-.2z" fill="#fff"/><animateTransform attributeName="transform" type="skewY" values="0;7;0" dur="1.7s" repeatCount="indefinite"/></g>`;
+      case "flag": return `<rect x="-.8" y="-36" width="1.6" height="36" fill="#8a8a8a"/><g><rect x=".8" y="-36" width="24" height="7.5" fill="#fff"/><rect x=".8" y="-28.5" width="24" height="7.5" fill="#d52b1e"/><rect x=".8" y="-36" width="9.5" height="7.5" fill="#0039a6"/><path d="M5.5 -34.7l.8 1.7 1.8.2-1.3 1.2.4 1.8-1.7-.9-1.7.9.4-1.8-1.3-1.2 1.8-.2z" fill="#fff"/>${LOW ? "" : `<animateTransform attributeName="transform" type="skewY" values="0;7;0" dur="1.7s" repeatCount="indefinite"/>`}</g>`;
       case "fonda": {
         const tri = Array.from({ length: 9 }, (_, i) => { const x = -19 + i * 4.75, y = -19 + Math.sin(i / 8 * Math.PI) * 4; return `<path d="M${x.toFixed(1)} ${y.toFixed(1)}l4 0 -2 6z" fill="${["#d52b1e", "#fff", "#0039a6"][i % 3]}" stroke="#999" stroke-width=".3"/>`; }).join("");
         return `<rect x="-19" y="-24" width="2.6" height="24" fill="#8a5a2b"/><rect x="16.4" y="-24" width="2.6" height="24" fill="#8a5a2b"/><path d="M-24 -23L0 -37L24 -23Z" fill="#c9a35a"/><path d="M-19 -19Q0 -13 19 -19" stroke="#666" stroke-width=".7" fill="none"/>${tri}<rect x="-8" y="-8" width="16" height="3" fill="#8a5a2b"/><rect x="-7" y="-5" width="2" height="5" fill="#8a5a2b"/><rect x="5" y="-5" width="2" height="5" fill="#8a5a2b"/>`;
@@ -860,7 +864,7 @@ const World = (function () {
     }
     const calm = S.era < 7 && !S.saga, skyFest = !S.started || Q.has("fiesta");   // el cielo festivo solo antes de que empiece la civilizacion
     gDeco.style.display = S.era >= 7 ? "none" : "";
-    for (const it of FEST.items) it.e.setAttribute("transform", `translate(${(it.fx * W).toFixed(1)} ${(floorY() + it.dy).toFixed(1)})`);
+    for (const it of FEST.items) setT(it.e, `translate(${(it.fx * W).toFixed(1)} ${(floorY() + it.dy).toFixed(1)})`);
     if (calm) for (const k of FEST.kinds) { if (FEST.fk.has(k) && !skyFest) continue; FEST.tm[k] -= h; if (FEST.tm[k] <= 0) { FEST.tm[k] = (RATE[k] || 5) * rnd(.7, 1.3); festSpawn(k); } }
     for (const o of FEST.fl) {
       o.t += h; o.x += o.vx * h;
@@ -2431,7 +2435,7 @@ const World = (function () {
 
   // ---------- poblacion, eras y reloj ----------
   function startWorld() {
-    S.started = true; gGround.style.opacity = 1; gStruct.style.opacity = 1; hud.style.opacity = 1; chip.style.opacity = 1;
+    S.started = true; A.setStatic(true); gGround.style.opacity = 1; gStruct.style.opacity = 1; hud.style.opacity = 1; chip.style.opacity = 1;
     logEv(`${T()} llega al suelo: empieza su historia`);
     showBanner(ERAS[0].name);
   }
@@ -2503,7 +2507,10 @@ const World = (function () {
         if (chance(h * 3)) smoke(s.x, floorY() - 30);
         if (s.fireT <= 0) ruinOf(s);
       }
-      if (def.tick && !s.dying) def.tick(s, h);
+      if (def.tick && !s.dying) {
+        if (!LOW) def.tick(s, h);
+        else { s._ta = (s._ta || 0) + h; if (s._ta >= .1) { def.tick(s, s._ta); s._ta = 0; } }   // TV: 10 veces por segundo
+      }
       if (s.kind === "mammoth" || s.kind === "sheep" || s.kind === "dog" || s.kind === "cart") wander(s, h);
     }
     S.structs = S.structs.filter(s => { if (s.dying > 1) { s.el.remove(); return false; } return true; });
@@ -2531,7 +2538,11 @@ const World = (function () {
   const setO = (e, v) => { if (e._o !== v) { e._o = v; e.style.opacity = v; } };
   function renderMons() {
     for (const g of S.mon) {
-      A.draw(g.m);
+      if (!LOW) A.draw(g.m);
+      else {   // TV: en movimiento se redibuja cada 2 cuadros; quieto (sentado, comiendo, durmiendo), cada 6
+        const mv = g.act === "walk" || g.act === "run" || g.state !== "ground" || g.m.mode === "react", ev = mv ? 2 : 6;
+        g._k = (g._k || 0) + 1; if (g._k % ev === 0 || g.m.mode !== g._lm) { A.draw(g.m); g._lm = g.m.mode; }
+      }
       setT(g.m.parts.root, `translate(${g.x.toFixed(1)} ${(g.state === "ground" ? floorY() + g.dy : g.y).toFixed(1)}) scale(${K}) rotate(${g.rot.toFixed(1)} 0 -9)`);
       setO(g.m.parts.root, g.dead > 0 ? clamp(g.dead, 0, 1).toFixed(2) : "1");
     }
@@ -2659,7 +2670,7 @@ const World = (function () {
     if (S.era === 3 && Q.has("medieval")) { S.eraT = S.eraDur * .31; }
     if (S.era === 3 && Q.has("medieval") || S.era === 4) assignCultures((Q.get("cult") || "").split(",")), S.medieval = S.era === 3;
     ground.setAttribute("fill", ERAS[S.era].ground);
-    S.started = true; gGround.style.opacity = 1; gStruct.style.opacity = 1; hud.style.opacity = 1; chip.style.opacity = 1;
+    S.started = true; A.setStatic(true); gGround.style.opacity = 1; gStruct.style.opacity = 1; hud.style.opacity = 1; chip.style.opacity = 1;
     for (let i = 0; i < 14; i++) {
       const tr = i % 3, m = A.make(TRIBE_KINDS[tr]), zz = zone(tr); gMon.appendChild(m.parts.root); m.mood = { low: 0, mid: 1, high: 0 }; m.theta = 0;
       S.mon.push({ m, tribe: tr, state: "ground", x: rnd(zz[0] + 30, zz[1] - 30), y: 0, rot: 0, vx: 0, vy: 0, vr: 0, dy: rnd(6, GROUND_H - 12), sp: rnd(.85, 1.2), act: "idle", stay: rnd(0, 3) });

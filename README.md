@@ -105,7 +105,7 @@ Al tocar un paper de la cinta se abre una ventana con tema, título, autores, re
 
 ## Logo del laboratorio
 
-`logoMEL.svg` (fondo transparente) se muestra en la esquina superior izquierda de la parte de la civilización; de noche lleva un fondo claro para que se lea. Para cambiarlo basta reemplazar el archivo.
+`logoMEL.svg` (fondo transparente) se muestra en la esquina superior izquierda de la parte de la civilización, con la pastilla de época («Era nuclear · 1945 d.C.») justo debajo (en celular, la pastilla queda bajo el clima); de noche lleva un fondo claro para que se lea. Para cambiarlo basta reemplazar el archivo.
 
 ## Popups
 

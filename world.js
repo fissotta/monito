@@ -77,6 +77,10 @@ const World = (function () {
     logoG.style.display = narrow ? "none" : "";
     logoBg.setAttribute("x", x); logoBg.setAttribute("y", y - 3); logoBg.setAttribute("width", lw + 16); logoBg.setAttribute("height", h + 6); logoBg.setAttribute("opacity", dark || !SKY ? .9 : 0);
     logoImg.setAttribute("x", x + 8); logoImg.setAttribute("y", y); logoImg.setAttribute("width", lw); logoImg.setAttribute("height", h);
+    // la pastilla de la epoca va dentro de la civilizacion, justo bajo el logo (en pantallas angostas vuelve a su lugar, bajo el clima)
+    const slot = document.getElementById("eraSlot");
+    if (narrow) { if (slot && chip.parentNode !== slot) slot.appendChild(chip); chip.classList.remove("fl"); chip.style.left = chip.style.top = ""; }
+    else { if (chip.parentNode !== document.body) document.body.appendChild(chip); chip.classList.add("fl"); chip.style.left = (x + 4) + "px"; chip.style.top = (y + h + 10) + "px"; }
   }
   new MutationObserver(placeLogo).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
   function layout() {

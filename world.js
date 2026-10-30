@@ -2213,7 +2213,7 @@ const World = (function () {
     "¿Compartes tu postre?", "Hoy toca almorzar, mañana toca graficar", "Hidrátate y come algo de verdad", "Si no almuerzas, no hay paper", "¿Y si almuerzas lejos del computador?"];
   function startLunch() {
     S.lunch = true; S.lunchMsgT = rnd(90, 150);
-    showBanner("¡A almorzar!"); if (Q.has("lunch")) bigMsg(BIG[0]); skyMessage("¡Es hora de almorzar!"); pushToast("12:00 · ¡A almorzar!");
+    showBanner("¡A almorzar!"); if (Q.has("lunch")) bigRun(BIG[0]); skyMessage("¡Es hora de almorzar!"); pushToast("12:00 · ¡A almorzar!");
     groundMons().forEach(g => { g.hold = false; g.act = "eat"; g.stay = rnd(20, 50); g.m.t = 0; g.m.dur = g.stay; g.m.food = pick(["banana", "berry", "leaf"]); });
     A.setLunch(true);
   }
@@ -2224,9 +2224,17 @@ const World = (function () {
   }
   // ---------- mensajes de pantalla completa con un mono haciendo lo que dice el mensaje ----------
   const big = document.createElement("div"); big.id = "bigMsg"; big.hidden = true; document.body.appendChild(big);
-  let bigRaf = 0, bigTimer = 0;
-  function closeBig() { big.hidden = true; cancelAnimationFrame(bigRaf); clearTimeout(bigTimer); big.innerHTML = ""; }
-  big.addEventListener("click", closeBig);
+  let bigRaf = 0, bigTimer = 0, bigSeries = [];
+  const BIG_SHOW = 8, BIG_TIMES = 5, BIG_GAP = 12;   // a la hora del evento: 5 apariciones de 8 s durante 1 minuto
+  function closeBig(all) {
+    big.hidden = true; cancelAnimationFrame(bigRaf); clearTimeout(bigTimer); big.innerHTML = "";
+    if (all === true) { bigSeries.forEach(clearTimeout); bigSeries = []; }   // al tocarlo se va y no vuelve
+  }
+  big.addEventListener("click", () => closeBig(true));
+  function bigRun(o) {
+    closeBig(true);
+    for (let i = 0; i < BIG_TIMES; i++) bigSeries.push(setTimeout(() => bigMsg(o), i * BIG_GAP * 1000));
+  }
   function bigMsg(o) {
     closeBig();
     const NS = "http://www.w3.org/2000/svg", sp = pick(A.SPECIES_BY_KIND.mono);
@@ -2245,7 +2253,7 @@ const World = (function () {
       A.draw(m); bigRaf = requestAnimationFrame(loop);
     };
     A.draw(m); bigRaf = requestAnimationFrame(loop);
-    bigTimer = setTimeout(closeBig, (o.secs || 10) * 1000);
+    bigTimer = setTimeout(() => closeBig(), BIG_SHOW * 1000);
   }
   const BIG = [   // at = minuto del dia; days = dias de la semana (0 = domingo) o null = todos
     { id: "almuerzo", at: 12 * 60, days: null, title: "¡A almorzar!", sub: "Buen provecho · el paper puede esperar", mode: "eat", food: "banana", secs: 9 },
@@ -2259,10 +2267,10 @@ const World = (function () {
     const m = d.getHours() * 60 + d.getMinutes();
     for (const b of BIG) {
       const key = d.toDateString() + b.id;
-      if (b.at === m && (!b.days || b.days.includes(d.getDay())) && !firedBig.has(key)) { firedBig.add(key); bigMsg(b); }
+      if (b.at === m && (!b.days || b.days.includes(d.getDay())) && !firedBig.has(key)) { firedBig.add(key); bigRun(b); }
     }
   }
-  if (Q.get("big")) setTimeout(() => { const b = BIG.find(x => x.id === Q.get("big")); if (b) bigMsg(b); }, 1500);   // prueba: ?big=almuerzo|seminario|tarde|cafe|casa
+  if (Q.get("big")) setTimeout(() => { const b = BIG.find(x => x.id === Q.get("big")); if (b) bigRun(b); }, 1500);   // prueba: ?big=almuerzo|seminario|tarde|cafe|casa
   let lunchAt = 0;
   function lunchCheck(now) {   // una vez por segundo
     if (now - lunchAt < 1000) return;

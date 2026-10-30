@@ -83,7 +83,7 @@ crontab -e   # agregar:
 
 ## Mensajes de pantalla completa y clima
 
-- A ciertas horas aparece un mensaje gigante con un mono haciendo lo que dice (se cierra solo o al tocarlo): 12:00 «¡A almorzar!» (comiendo), jueves 9:20 «¡Seminario FCV!» (caminando), jueves 9:30 «¿Qué hacen acá? ¿No deberían estar en el seminario???» (saltando enojado), 16:00 café y 18:00 recordatorio de jobs/respaldo. Prueba: `?big=almuerzo|seminario|tarde|cafe|casa`.
+- A ciertas horas aparece, en una franja en la parte superior, un mensaje con un mono grande haciendo lo que dice. A la hora del evento sale 5 veces durante 1 minuto (8 s cada vez); si lo tocas se va y no vuelve: 12:00 «¡A almorzar!» (comiendo), jueves 9:20 «¡Seminario FCV!» (caminando), jueves 9:30 «¿Qué hacen acá? ¿No deberían estar en el seminario???» (saltando enojado), 16:00 café y 18:00 recordatorio de jobs/respaldo. Prueba: `?big=almuerzo|seminario|tarde|cafe|casa`.
 - El mono del clima cambia de ropa: capucha y paraguas con lluvia, gorro y abrigo con nieve o frío, bufanda y abrigo con fresco, gafas o sombrero de paja con sol y calor.
 - La época y el año quedan en una pastilla bajo los monitores, fuera de la civilización; al tocarla se abre un cuadro al centro (población, crónica, estadísticas) que se esconde solo al minuto o al tocarlo otra vez.
 - Cabecera: MONITO, las noticias y el botón de color en una sola línea. Reloj y tiempo tienen el mismo ancho que cada monitor, y la leyenda queda bajo akaza.

@@ -81,6 +81,11 @@ crontab -e   # agregar:
   También se entienden `2026-11-09 Abraham 15:00`, `09/11/2026; Abraham`, `9 de noviembre: Abraham`, líneas con `#` (comentarios) y líneas sin fecha (se agregan como nota a la anterior). Si no hay año, se toma el que deje la fecha más cerca de hoy.
 - Para actualizarlo: editar `seminarios.txt` → rama → pull request → merge (el archivo es público, igual que el resto del repo).
 
+## Feriados y congresos en el calendario
+
+- Los **feriados de Chile** salen marcados en rojo (se calculan por año: Semana Santa, traslados a lunes de San Pedro y San Pablo y Encuentro de Dos Mundos, Iglesias Evangélicas, Fiestas Patrias, etc.). Es referencial: no incluye jornadas electorales ni feriados decretados aparte.
+- Los **congresos y eventos de varios días** se leen de `eventos.txt` (`AAAA-MM-DD a AAAA-MM-DD | NOMBRE | descripción`) y pintan todo el rango de días, con leyenda de colores. Al tocar un día, el cuadro de abajo dice qué es.
+
 ## Feed de papers
 
 Segunda cinta junto al indicador de época, con papers nuevos de los temas del laboratorio (acidófilos, *Acidithiobacillus*, biominería, hierro y azufre, metagenómica, genómica, extremófilos, elementos móviles) más los trabajos de R. Quatrini (marcados con ★). Cada paper abre su página (PubMed, DOI o Europe PMC).

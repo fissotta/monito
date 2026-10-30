@@ -61,7 +61,7 @@ const World = (function () {
   const hud = document.createElement("div"); hud.id = "hud"; hud.style.opacity = 0; document.body.appendChild(hud);
   const banner = document.createElement("div"); banner.id = "eraBanner"; document.body.appendChild(banner);
   const toasts = document.createElement("div"); toasts.id = "toasts"; document.body.appendChild(toasts);
-  const chip = document.createElement("button"); chip.id = "hudChip"; chip.title = "Ver época, población y crónica"; (document.getElementById("eraSlot") || document.body).appendChild(chip);
+  const chip = document.createElement("button"); chip.id = "hudChip"; chip.title = "Ver época, población y crónica"; chip.textContent = "Civilización ▸"; chip.style.opacity = 1; (document.getElementById("eraSlot") || document.body).appendChild(chip);
   let hudOpen = Q.has("hud"), hudTimer = 0;   // el cuadro central se esconde solo al minuto
   const setHud = on => { hudOpen = on; hud.classList.toggle("open", on); clearTimeout(hudTimer); if (on) hudTimer = setTimeout(() => setHud(false), 60000); S.hudT = 0; renderHud(); };
   if (hudOpen) { hud.classList.add("open"); hudTimer = setTimeout(() => setHud(false), 60000); }
@@ -71,10 +71,12 @@ const World = (function () {
   const logoG = el("g", { "pointer-events": "none" }, svg), logoBg = el("rect", { rx: 10, fill: "#fff" }, logoG), logoImg = el("image", { preserveAspectRatio: "xMinYMid meet" }, logoG);
   logoImg.setAttribute("href", "logoMEL.svg"); logoImg.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", "logoMEL.svg");
   function placeLogo() {
-    const h = Math.max(34, Math.min(66, H * .06)), lw = h * 2383 / 578, dark = document.documentElement.dataset.theme === "dark";
-    logoG.style.display = SKY ? "" : "none";
-    logoBg.setAttribute("x", 12); logoBg.setAttribute("y", SKY + 8 - 3); logoBg.setAttribute("width", lw + 16); logoBg.setAttribute("height", h + 6); logoBg.setAttribute("opacity", dark ? .9 : 0);
-    logoImg.setAttribute("x", 20); logoImg.setAttribute("y", SKY + 8); logoImg.setAttribute("width", lw); logoImg.setAttribute("height", h);
+    const h = Math.max(34, Math.min(66, H * .06)), lw = h * 2383 / 578, dark = document.documentElement.dataset.theme === "dark", narrow = matchMedia("(max-width: 900px)").matches;
+    // con pantalla dividida: esquina superior izquierda de la civilizacion; en pantallas bajas (sin division, p. ej. 1920x395): a la derecha, sobre el suelo
+    const x = SKY ? 12 : W - lw - 36, y = SKY ? SKY + 8 : Math.round(H * .55 - h);
+    logoG.style.display = narrow ? "none" : "";
+    logoBg.setAttribute("x", x); logoBg.setAttribute("y", y - 3); logoBg.setAttribute("width", lw + 16); logoBg.setAttribute("height", h + 6); logoBg.setAttribute("opacity", dark || !SKY ? .9 : 0);
+    logoImg.setAttribute("x", x + 8); logoImg.setAttribute("y", y); logoImg.setAttribute("width", lw); logoImg.setAttribute("height", h);
   }
   new MutationObserver(placeLogo).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
   function layout() {
@@ -2222,7 +2224,8 @@ const World = (function () {
   }
   const popLine = () => S.unified ? `Población ${popTotal()} · ${S.nation}` : S.tribes.map(t => { const w = TRIBE_INFO[t.kind].plural; return `${w[0].toUpperCase() + w.slice(1)} ${popOf(t.i)}`; }).join(" · ");
   function renderHud() {
-    if (!S.started || S.hudT > 0) return;
+    if (!S.started) { if (hudOpen) hud.innerHTML = "La civilización empieza cuando cae el primer animal de los anillos."; return; }
+    if (S.hudT > 0) return;
     S.hudT = .3;
     const e = ERAS[S.era], pop = popTotal(), st = S.stats;
     chip.innerHTML = `<b>${eraName()}</b> · ${fmtYear(curYear())}` + (S.cycle > 1 ? ` · Ciclo ${S.cycle}` : "") + " ▸";

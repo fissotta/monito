@@ -70,21 +70,24 @@ async function run() {
   fr.hidden = true; fr.src = "about:blank"; $("bar").style.display = "none";
   report(out);
 }
+let VER = "";   // version de la pagina (numero del pull request), leida de index.html
+fetch("index.html?t=" + Date.now()).then(x => x.text()).then(t => { const m = /const PR = (\d+)/.exec(t); if (m) VER = "v" + m[1]; }).catch(() => {});
+const c60 = x => Math.min(60, x);   // los cuadros por segundo no pasan de 60 en pantalla; sin tope, una pagina casi vacia da cifras absurdas (500 fps)
 const cls = f => f >= 52 ? "ok" : f >= 28 ? "mid" : "bad", f1 = x => x.toFixed(1);
 function report(r) {
   const by = Object.fromEntries(r.map(x => [x.id, x])), ua = navigator.userAgent, ch = (ua.match(/Chrome\/(\d+)/) || [])[1], d = new Date();
   const mem = performance.memory ? `${Math.round(performance.memory.usedJSHeapSize / 1048576)} MB de memoria JS` : "";
-  const rows = r.map(x => `<tr class="${x.hoy ? "hoy" : x.ref ? "ref" : ""}"><td>${x.label}</td><td class="n ${cls(x.fps)}">${f1(x.fps)}</td><td class="n ${cls(x.low1)}">${f1(x.low1)}</td><td class="n ${x.slow > 10 ? "bad" : x.slow > 3 ? "mid" : "ok"}">${f1(x.slow)} %</td></tr>`).join("");
+  const rows = r.map(x => `<tr class="${x.hoy ? "hoy" : x.ref ? "ref" : ""}"><td>${x.label}</td><td class="n ${cls(x.fps)}">${f1(c60(x.fps))}</td><td class="n ${cls(x.low1)}">${f1(c60(x.low1))}</td><td class="n ${x.slow > 10 ? "bad" : x.slow > 3 ? "mid" : "ok"}">${f1(x.slow)} %</td></tr>`).join("");
   const lim = by.vacia.fps, lines = [], dev = /Tizen|SMART-TV/i.test(ua) ? "La TV" : "Este equipo";
   if (lim < 40) lines.push(`${dev} entrega solo <b>${f1(lim)} fps</b> aunque la página esté vacía: <b>el límite lo pone el equipo</b>, no MONITO. La meta realista es mantener ese ritmo parejo.`);
   else lines.push(`${dev} da <b>${f1(lim)} fps</b> con la página vacía: hay margen para llegar a 60 si MONITO pesa menos.`);
-  const parts = [["los anillos", by.anillos], ["la civilización", by.mundo], ["las cintas", by.cintas]].map(([n, x]) => [n, by.nada.fps - x.fps]).sort((a, b) => b[1] - a[1]);
-  if (by.nada.fps - by.full.fps > 5) lines.push(`Lo que más pesa: <b>${parts[0][0]}</b> (${f1(parts[0][1])} fps menos), luego <b>${parts[1][0]}</b> (${f1(parts[1][1])}).`);
+  const parts = [["los anillos", by.anillos], ["la civilización", by.mundo], ["las cintas", by.cintas]].map(([n, x]) => [n, c60(by.nada.fps) - c60(x.fps)]).sort((a, b) => b[1] - a[1]);
+  if (c60(by.nada.fps) - c60(by.full.fps) > 5) lines.push(`Lo que más pesa: <b>${parts[0][0]}</b> (${f1(parts[0][1])} fps menos), luego <b>${parts[1][0]}</b> (${f1(parts[1][1])}).`);
   else lines.push("Ninguna parte pesa de forma notable: MONITO completo casi no baja los cuadros por segundo.");
-  if (by.sincielo.fps - by.full.fps > 4) lines.push(`El cielo vivo cuesta <b>${f1(by.sincielo.fps - by.full.fps)} fps</b>.`);
+  if (c60(by.sincielo.fps) - c60(by.full.fps) > 4) lines.push(`El cielo vivo cuesta <b>${f1(c60(by.sincielo.fps) - c60(by.full.fps))} fps</b>.`);
   lines.push(by.hoy.fps >= 28 && by.hoy.slow < 10 ? `Funcionando como hoy: <b class="ok">bien</b> (${f1(by.hoy.fps)} fps, ${f1(by.hoy.slow)} % de cuadros lentos).` : `Funcionando como hoy: <b class="bad">con tirones</b> (${f1(by.hoy.fps)} fps, ${f1(by.hoy.slow)} % de cuadros lentos).`);
   $("rep").style.display = "block";
-  $("rep").innerHTML = `<h1>MONITO · prueba de rendimiento <span>v26</span></h1>
+  $("rep").innerHTML = `<h1>MONITO · prueba de rendimiento <span>${VER}</span></h1>
   <div class="meta">${d.toLocaleDateString("es-CL")} ${d.toLocaleTimeString("es-CL")} · ${ch ? "Chrome " + ch + " · " : ""}${/Tizen|SMART-TV/i.test(ua) ? "TV Samsung" : "computador"} · pantalla ${innerWidth}×${innerHeight} (×${devicePixelRatio}) · ${navigator.hardwareConcurrency || "?"} núcleos${navigator.deviceMemory ? " · " + navigator.deviceMemory + " GB" : ""}${mem ? " · " + mem : ""}</div>
   <table><tr><th>Prueba</th><th class="n">Cuadros por segundo</th><th class="n">Peor 1 %</th><th class="n">Cuadros lentos</th></tr>${rows}</table>
   <div id="verd">${lines.join("<br>")}</div>

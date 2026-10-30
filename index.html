@@ -56,6 +56,7 @@ h1 { font-size: 20px; margin: 0; letter-spacing: .12em; }
 #papPop { position: fixed; z-index: 50; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(820px, 94vw); max-height: 88vh; overflow: auto; padding: 14px 16px;
   background: var(--card); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,.4); font-size: 14px; }
 #papPop[hidden] { display: none; }
+@keyframes tw { 0%, 100% { opacity: 1; } 50% { opacity: .2; } }
 #papPop .x { float: right; margin: 0 0 6px 8px; padding: 0 9px; min-height: 26px; font-size: 18px; line-height: 1; }
 #papPop .pp-body { display: flex; gap: 18px; align-items: flex-start; }
 #papPop .pp-txt { flex: 1; min-width: 0; }

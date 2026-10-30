@@ -107,6 +107,10 @@ Al tocar un paper de la cinta se abre una ventana con tema, título, autores, re
 
 `logoMEL.svg` (fondo transparente) se muestra en la esquina superior izquierda de la parte de la civilización, con la pastilla de época («Era nuclear · 1945 d.C.») justo debajo (en celular, la pastilla queda bajo el clima); de noche lleva un fondo claro para que se lea. Para cambiarlo basta reemplazar el archivo.
 
+## Cielo vivo
+
+El cielo ya no es plano: de día hay sol, nubes que pasan despacio (más lejos = más chicas y lentas), bandadas de pájaros en V y mariposas cerca del suelo; de noche hay luna, estrellas que titilan, estrellas fugaces ocasionales y luciérnagas. Se apagan en la era espacial y durante las sagas. Prueba: `?do=pajaros`.
+
 ## Popups
 
 Clic en la fecha/hora abre el calendario; clic en «Próximo seminario» abre la lista completa de seminarios. Las ventanas se cierran con ×, tocando fuera o solas: el calendario a los 10 s, el tiempo y la lista de seminarios a los 30 s, el resumen de época a 1 min, planetas 15 s y edificios 5 s.

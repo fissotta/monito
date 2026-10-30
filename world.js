@@ -98,7 +98,7 @@ const World = (function () {
     skyBg.style.display = SKY > 0 ? "" : "none";
     sb.setAttribute("x", 0); sb.setAttribute("y", SKY); sb.setAttribute("width", W); sb.setAttribute("height", H - SKY);
     sl.setAttribute("x1", 0); sl.setAttribute("x2", W); sl.setAttribute("y1", SKY); sl.setAttribute("y2", SKY);
-    st.innerHTML = SKY > 0 ? Array.from({ length: 70 }, () => `<circle cx="${(Math.random() * W).toFixed(0)}" cy="${(SKY + 6 + Math.random() * Math.max(10, skyH() - 40)).toFixed(0)}" r="${(.5 + Math.random() * 1.1).toFixed(1)}" fill="#fff"/>`).join("") : "";
+    st.innerHTML = SKY > 0 ? Array.from({ length: 70 }, () => `<circle cx="${(Math.random() * W).toFixed(0)}" cy="${(SKY + 6 + Math.random() * Math.max(10, skyH() - 40)).toFixed(0)}" r="${(.5 + Math.random() * 1.1).toFixed(1)}" fill="#fff" style="animation:tw ${(2 + Math.random() * 3).toFixed(1)}s ease-in-out ${(Math.random() * 3).toFixed(1)}s infinite"/>`).join("") : "";
     placePlanets();
   }
   function measureSky() {   // la pantalla se reparte: informacion arriba, civilizacion abajo
@@ -638,6 +638,65 @@ const World = (function () {
       html: `<g style="fill:#9db2d3" opacity=".35">${shapes(7)}</g><g style="fill:var(--cloud);filter:drop-shadow(0 3px 5px rgba(0,0,0,.12))" opacity=".97">${shapes(0)}</g>` +
         `<text text-anchor="middle" y="19" style="fill:var(--text);font-size:15px;font-weight:700">${txt}</text>`,
       tick: g => { g.y = y0 + Math.sin(g.t * .8) * 6; } });
+  }
+  // ---------- cielo vivo: nubes que pasan, pajaros, sol o luna, estrellas fugaces, luciernagas y mariposas ----------
+  const gAmb = el("g", { "pointer-events": "none" }, gSky); gSky.insertBefore(gAmb, dark);   // detras de edificios y animales
+  const celest = el("g", {}, gAmb), AMB = { clouds: [], flocks: [], flies: [], bf: [], cloudT: 0, birdT: 10, starT: 25, theme: null, init: false };
+  function cloudMarkup(w) {   // nube esponjosa sin texto (mismo dibujo que las de los mensajes, sin sombra pesada)
+    const n = Math.max(3, Math.round(w / 78)), lo = -w / 2 + 40, hi = w / 2 - 40;
+    const puffs = Array.from({ length: n }, (_, i) => { const t = n === 1 ? .5 : i / (n - 1), r = 24 + 16 * Math.sin(Math.PI * t) + ((i * 5) % 3) * 3; return [lo + (hi - lo) * t, -4 - r * .5, r]; });
+    puffs.push([-w / 2 + 30, 10, 26], [w / 2 - 30, 10, 26]);
+    const shapes = dy => `<rect x="${-w / 2 + 22}" y="${-8 + dy}" width="${w - 44}" height="44" rx="22"/>` + puffs.map(([x, y, r]) => `<circle cx="${x.toFixed(1)}" cy="${y + dy}" r="${r.toFixed(1)}"/>`).join("");
+    return `<g style="fill:#9db2d3" opacity=".3">${shapes(8)}</g><g style="fill:var(--cloud)">${shapes(0)}</g>`;
+  }
+  const isNight = () => document.documentElement.dataset.theme === "dark";
+  function drawCelestial(night) {
+    celest.innerHTML = night
+      ? `<circle r="48" fill="#cfd8ff" opacity=".09"/><circle r="32" fill="#cfd8ff" opacity=".13"/><circle r="21" fill="#f3f0d6"/><circle cx="-6" cy="-5" r="4" fill="#d9d4b4" opacity=".7"/><circle cx="7" cy="6" r="5.5" fill="#d9d4b4" opacity=".6"/><circle cx="5" cy="-9" r="2.5" fill="#d9d4b4" opacity=".6"/>`
+      : `<circle r="64" fill="#fff6c2" opacity=".25"/><circle r="43" fill="#ffee9a" opacity=".33"/><circle r="26" fill="#ffd84a"/>`;
+  }
+  function spawnCloud(x) {
+    const d = Math.random(), w = rnd(150, 300), s = .55 + d * .95, e = el("g", {}, gAmb);
+    e.innerHTML = cloudMarkup(w);
+    AMB.clouds.push({ e, x: x != null ? x : -w * s / 2 - 20, f: rnd(.04, .6), s, w, vx: 3 + d * 9, op: .5 + d * .35 });
+  }
+  function spawnFlock() {   // bandada en V
+    const dir = chance(.5) ? 1 : -1, sz = rnd(.9, 1.4), n = Math.floor(rnd(3, 8)), e = el("g", {}, gAmb), birds = [];
+    for (let i = 0; i < n; i++) {
+      const row = Math.ceil(i / 2), side = i % 2 ? 1 : -1;
+      birds.push({ dx: -dir * row * 15 * sz, dy: i ? side * row * 7 * sz : 0, ph: rnd(0, 6.28), p: el("path", { fill: "none", stroke: "#2f3a48", "stroke-width": 1.7, "stroke-linecap": "round", "stroke-linejoin": "round" }, e) });
+    }
+    AMB.flocks.push({ e, birds, sz, x: dir > 0 ? -80 : W + 80, f: rnd(.08, .5), vx: dir * rnd(55, 85), t: 0 });
+  }
+  function ambient(h) {
+    const night = isNight(), space = S.era >= 7, calm = !S.saga;
+    if (night !== AMB.theme) { AMB.theme = night; drawCelestial(night); }
+    celest.setAttribute("transform", `translate(${(W * .88).toFixed(0)} ${skyY(.2).toFixed(0)})`); celest.style.display = space ? "none" : "";
+    // nubes que cruzan despacio (mas lejos = mas chicas, lentas y claras)
+    const want = space ? 0 : night ? 4 : 6;
+    if (!AMB.init) { AMB.init = true; for (let i = 0; i < want; i++) spawnCloud(rnd(-60, W)); }
+    AMB.cloudT -= h; if (AMB.clouds.length < want && AMB.cloudT <= 0) { AMB.cloudT = rnd(6, 14); spawnCloud(); }
+    for (const c of AMB.clouds) { c.x += c.vx * h; c.e.setAttribute("transform", `translate(${c.x.toFixed(1)} ${skyY(c.f).toFixed(1)}) scale(${c.s.toFixed(2)})`); c.e.setAttribute("opacity", (c.op * (night ? .75 : 1)).toFixed(2)); }
+    AMB.clouds = AMB.clouds.filter(c => { if (space || c.x > W + c.w * c.s) { c.e.remove(); return false; } return true; });
+    // pajaros de dia
+    AMB.birdT -= h; if (AMB.birdT <= 0) { AMB.birdT = rnd(22, 50); if (!night && !space && calm) spawnFlock(); }
+    for (const f of AMB.flocks) {
+      f.t += h; f.x += f.vx * h; const y = skyY(f.f) + Math.sin(f.t * .6) * 6;
+      f.e.setAttribute("transform", `translate(${f.x.toFixed(1)} ${y.toFixed(1)})`);
+      for (const b of f.birds) { const a = Math.sin(f.t * 8 + b.ph) * 4 * f.sz, k = f.sz; b.p.setAttribute("d", `M${(b.dx - 6 * k).toFixed(1)} ${(b.dy + a).toFixed(1)}Q${(b.dx - 3 * k).toFixed(1)} ${(b.dy - 4 * k).toFixed(1)} ${b.dx.toFixed(1)} ${b.dy.toFixed(1)}Q${(b.dx + 3 * k).toFixed(1)} ${(b.dy - 4 * k).toFixed(1)} ${(b.dx + 6 * k).toFixed(1)} ${(b.dy + a).toFixed(1)}`); }
+    }
+    AMB.flocks = AMB.flocks.filter(f => { if (f.x < -120 || f.x > W + 120) { f.e.remove(); return false; } return true; });
+    // luciernagas de noche y mariposas de dia, cerca del suelo
+    const lowOk = !space && calm;
+    const wantFl = night && lowOk ? 14 : 0, wantBf = !night && lowOk ? 4 : 0;
+    while (AMB.flies.length < wantFl) { const e = el("g", {}, gAmb); e.innerHTML = `<circle r="5" fill="#d8ff6a" opacity=".22"/><circle r="1.7" fill="#eaffa0"/>`; AMB.flies.push({ e, x: rnd(0, W), oy: rnd(10, 95), vx: rnd(-8, 8), ph: rnd(0, 6.28), t: 0 }); }
+    while (AMB.bf.length < wantBf) { const e = el("g", {}, gAmb), col = pick(["#ff8fb3", "#ffb347", "#8fd0ff", "#c79bff", "#fff27a"]); e.innerHTML = `<ellipse class="w1" cx="-2.5" cy="0" rx="3" ry="4" fill="${col}"/><ellipse class="w2" cx="2.5" cy="0" rx="3" ry="4" fill="${col}"/><rect x="-.5" y="-3" width="1" height="6" fill="#444"/>`; AMB.bf.push({ e, x: rnd(0, W), oy: rnd(18, 80), vx: rnd(-14, 14), ph: rnd(0, 6.28), t: 0 }); }
+    for (const q of AMB.flies) { q.t += h; q.vx += rnd(-1, 1) * h * 20; q.vx = clamp(q.vx, -14, 14); q.x = (q.x + q.vx * h + W) % W; q.e.setAttribute("transform", `translate(${q.x.toFixed(1)} ${(floorY() - q.oy + Math.sin(q.t * 1.1 + q.ph) * 8).toFixed(1)})`); q.e.setAttribute("opacity", (.3 + .7 * (.5 + .5 * Math.sin(q.t * 2.2 + q.ph))).toFixed(2)); }
+    for (const q of AMB.bf) { q.t += h; q.vx = Math.sin(q.t * .6 + q.ph) * 20; q.x = (q.x + q.vx * h + W) % W; const fl = Math.abs(Math.sin(q.t * 11 + q.ph)); q.e.setAttribute("transform", `translate(${q.x.toFixed(1)} ${(floorY() - q.oy + Math.sin(q.t * 1.5 + q.ph) * 14).toFixed(1)})`); q.e.querySelector(".w1").setAttribute("rx", (3 * fl + .6).toFixed(1)); q.e.querySelector(".w2").setAttribute("rx", (3 * fl + .6).toFixed(1)); }
+    if (!wantFl && AMB.flies.length) { AMB.flies.forEach(q => q.e.remove()); AMB.flies = []; }
+    if (!wantBf && AMB.bf.length) { AMB.bf.forEach(q => q.e.remove()); AMB.bf = []; }
+    // estrella fugaz
+    AMB.starT -= h; if (AMB.starT <= 0) { AMB.starT = rnd(18, 45); if (night && !space) fx("g", { x: rnd(W * .25, W * .95), y: skyY(rnd(.05, .35)), vx: -rnd(260, 360), vy: rnd(80, 130), life: .9, html: `<line x1="0" y1="0" x2="38" y2="-13" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".9"/>` }); }
   }
   const THOUGHTS = {
     any: ["Hmm… ¿y si…?", "¡Qué buen día!", "Tengo sueño…", "Me pica la espalda", "¿Qué estarán pensando los demás?", "Qué linda tribu tenemos", "¿Habrá algo de comer?", "¿Y si descansamos un poco?", "Mañana será mejor", "¡Cómo pasa el tiempo!", "¿Habrá terminado mi job?", "Me falta un párrafo del paper", "¿Y si repito el experimento?", "Tengo que hacer backup", "¿Quedará café en el lab?", "Mi tesis me espera"],
@@ -2139,6 +2198,7 @@ const World = (function () {
   }
   function step(h) {
     S.t += h;
+    ambient(h);
     S.spawnT += h;
     if (S.spawnT >= SPAWN_S) {
       S.spawnT -= SPAWN_S;
@@ -2356,7 +2416,7 @@ const World = (function () {
     for (let i = 0; i < 14; i++) plan();
     if (S.era >= 3 && S.era <= 4) addStruct("castle", W * .5, { tribe: 1 });
     S.structs.forEach(s => s.built = 1);
-    const DO = { nube: () => skyMessage("¿Ya corriste GTDB-Tk en tus MAGs?", W / 2), guerra: () => { if (!tribalWar()) startWar(); }, caceria: startHunt, cohete: () => { S.destSeen = true; ensureDest(); tryLaunch(); }, meteorito: meteor, ovni: ufo, plaga: () => hurt(.25, "Plaga"),
+    const DO = { pajaros: spawnFlock, nube: () => skyMessage("¿Ya corriste GTDB-Tk en tus MAGs?", W / 2), guerra: () => { if (!tribalWar()) startWar(); }, caceria: startHunt, cohete: () => { S.destSeen = true; ensureDest(); tryLaunch(); }, meteorito: meteor, ovni: ufo, plaga: () => hurt(.25, "Plaga"),
       terremoto: quake, volcan: volcano, festival, eclipse: () => { S.eclipse = 10; }, lluvia: () => { S.rain = 12; }, cometa: comet };
     Object.assign(DO, { cataclismo: () => cataclysm({ surv: 4 }), pandemia: pandemic, incendio: fire, inundacion: () => flood(14, "Inundación"), tormenta: storm, aurora, estrellas: starShower,
       exploradores: explorers, comercio: trade, misioneros: missionaries, tratado: treaty, ayuda: aid, bodareal: royalWedding,

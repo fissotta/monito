@@ -231,7 +231,11 @@ svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
 .row span b { font-weight: 600; }
 .legend { color: var(--muted); font-size: 12px; text-align: center; margin-top: 6px; }
 .age { color: var(--muted); font-size: 12px; text-align: center; margin-top: 2px; }
-.legendbar { color: var(--muted); font-size: 12px; padding: 0 4px; }
+.legendbar { color: var(--muted); font-size: 12px; padding: 0 4px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; }
+.powers { display: flex; flex-wrap: wrap; gap: 2px; justify-content: flex-end; margin-left: auto; }
+.pw { display: inline-flex; align-items: center; gap: 3px; padding: 2px 5px; min-height: 26px; font-size: 11px; font-weight: 600; border-radius: 999px; color: var(--text); white-space: nowrap; }
+.pw.bad { border-color: rgba(229,72,77,.5); } .pw.good { border-color: rgba(47,168,79,.55); }
+.pw:disabled { opacity: .4; cursor: default; }
 .sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin: 0 3px 0 8px; vertical-align: baseline; }
 </style>
 </head>
@@ -255,11 +259,9 @@ svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
   </aside>
   <main id="grid"></main>
   <div class="legendbar">
-  CPU por hilo y total: <span class="sw" style="background:var(--ok)"></span>&lt; 50 %
-  <span class="sw" style="background:var(--warn)"></span>50–80 %
-  <span class="sw" style="background:var(--bad)"></span>≥ 80 %.
-  Anillo exterior: hilos (arco fino = CPU total). Anillo interior: RAM.
-</div>
+    <span class="legtxt"><span class="sw" style="background:var(--ok)"></span>&lt; 50 % <span class="sw" style="background:var(--warn)"></span>50–80 % <span class="sw" style="background:var(--bad)"></span>≥ 80 % · exterior: hilos · interior: RAM</span>
+    <div id="powers" class="powers" aria-label="Poderes sobre la civilización"></div>
+  </div>
   <div class="eraRow"><div id="papers" class="news" hidden><span class="news-tag" id="papersTag">Papers</span><div class="news-view"><div class="news-track" id="papersTrack"></div></div></div></div>
 </div>
 <div id="papPop" role="dialog" aria-label="Paper" hidden></div>
@@ -271,8 +273,8 @@ svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
 if (/[?&]ua\b/.test(location.search)) addEventListener("load", () => { const d = document.createElement("div"); d.style.cssText = "position:fixed;left:8px;right:8px;top:40px;z-index:99;background:#fff;color:#000;border:2px solid #c00;padding:10px;font:16px monospace;word-break:break-all"; d.textContent = navigator.userAgent + " | " + innerWidth + "x" + innerHeight + " @" + devicePixelRatio; document.body.appendChild(d); setTimeout(() => d.remove(), 60000); });
 </script>
 <script src="qrcode.min.js?v=1"></script>
-<script src="zoo.js?v=20261031c"></script>
-<script src="world.js?v=20261031c"></script>
+<script src="zoo.js?v=20261031f"></script>
+<script src="world.js?v=20261031f"></script>
 <script>
 // ====== Configuración ======
 const REPO = "fissotta/monito"; // "usuario/monito"  (vacío = modo demo)
@@ -293,7 +295,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
 const demo = !REPO || new URLSearchParams(location.search).has("demo");
-const BUILD = "20261031c";   // subir junto con los ?v= de los <script> en cada publicacion
+const BUILD = "20261031f";   // subir junto con los ?v= de los <script> en cada publicacion
 const state = { data: {}, next: 0, timer: null, stale: 300 };
 // si se publica una version nueva, la pagina (p. ej. en la TV) se recarga sola; revisa cada 10 min
 setInterval(async () => {

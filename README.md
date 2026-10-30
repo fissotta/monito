@@ -121,6 +121,14 @@ Las decoraciones salen solas según la fecha del navegador: **en el suelo de la 
 - **Estaciones** (hemisferio sur): otoño (hojas que caen), invierno (más nubes y llovizna), primavera (flores y más mariposas), verano (sol más grande y menos nubes).
 - Pruebas: `?fecha=2026-10-28` simula esa fecha, `?fiesta=halloween,navidad` fuerza fiestas.
 
+## Poderes sobre la civilización
+
+A la derecha de la leyenda de colores hay 12 botones para intervenir en la civilización (pensados para la pantalla táctil de la TV; cada botón tiene un enfriamiento de 20 s):
+
+- **Para mal:** ☄️ Meteorito, 🌋 Volcán, 🌊 Inundación, ⛈️ Tormenta, 🌍 Terremoto, 🔥 Incendio, 🦠 Plaga y 🛸 Abducción. Usan las animaciones de los sucesos que ya existían: destruyen construcciones, dejan fuera de combate a animales o reducen la población.
+- **Para bien:** 🍎 Comida del cielo (llueven frutas y panes y llega más gente), 👽 Aliens (una nave baja un rayo y deja un regalo de tecnología: se desbloquean hitos nuevos), 🌠 Deseos (lluvia de estrellas, +población) y 🎉 Fiesta.
+- No funcionan durante un cataclismo o una saga, ni antes de que empiece la civilización. Prueba: `?power=regalo&pstep=5` (ejecuta el poder y adelanta 5 s de animación).
+
 ## Popups
 
 Clic en la fecha/hora abre el calendario; clic en «Próximo seminario» abre la lista completa de seminarios. Las ventanas se cierran con ×, tocando fuera o solas: el calendario a los 10 s, el tiempo y la lista de seminarios a los 30 s, el resumen de época a 1 min, planetas 15 s y edificios 5 s.

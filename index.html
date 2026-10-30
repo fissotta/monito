@@ -56,6 +56,9 @@ h1 { font-size: 20px; margin: 0; letter-spacing: .12em; }
 #papPop { position: fixed; z-index: 50; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(820px, 94vw); max-height: 88vh; overflow: auto; padding: 14px 16px;
   background: var(--card); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,.4); font-size: 14px; }
 #papPop[hidden] { display: none; }
+#labLogo { position: fixed; left: 12px; top: 0; z-index: 31; height: clamp(34px, 6vh, 66px); width: auto; pointer-events: none; opacity: .95; }
+#labLogo[hidden] { display: none; }
+:root[data-theme="dark"] #labLogo { background: rgba(255,255,255,.9); border-radius: 10px; padding: 3px 8px; }
 #papPop .x { float: right; margin: 0 0 6px 8px; padding: 0 9px; min-height: 26px; font-size: 18px; line-height: 1; }
 #papPop .pp-body { display: flex; gap: 18px; align-items: flex-start; }
 #papPop .pp-txt { flex: 1; min-width: 0; }
@@ -244,14 +247,15 @@ svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
   <div class="eraRow"><div id="papers" class="news" hidden><span class="news-tag" id="papersTag">Papers</span><div class="news-view"><div class="news-track" id="papersTrack"></div></div></div></div>
 </div>
 </div>
+<img id="labLogo" src="logoMEL.svg" alt="Microbial Ecophysiology Lab · Fundación Ciencia &amp; Vida" hidden>
 <div id="papPop" role="dialog" aria-label="Paper" hidden></div>
 <div id="semPop" role="dialog" aria-label="Seminarios" hidden></div>
 <div id="wxPop" role="dialog" aria-label="El tiempo" hidden></div>
 
 
 <script src="qrcode.min.js?v=1"></script>
-<script src="zoo.js?v=20261030p"></script>
-<script src="world.js?v=20261030p"></script>
+<script src="zoo.js?v=20261030q"></script>
+<script src="world.js?v=20261030q"></script>
 <script>
 // ====== Configuración ======
 const REPO = "fissotta/monito"; // "usuario/monito"  (vacío = modo demo)
@@ -272,7 +276,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
 const demo = !REPO || new URLSearchParams(location.search).has("demo");
-const BUILD = "20261030p";   // subir junto con los ?v= de los <script> en cada publicacion
+const BUILD = "20261030q";   // subir junto con los ?v= de los <script> en cada publicacion
 const state = { data: {}, next: 0, timer: null, stale: 300 };
 // si se publica una version nueva, la pagina (p. ej. en la TV) se recarga sola; revisa cada 10 min
 setInterval(async () => {

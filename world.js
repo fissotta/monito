@@ -75,6 +75,8 @@ const World = (function () {
     rails.innerHTML = `<rect x="0" y="${H - 9}" width="${W}" height="2.5" fill="#444"/>` +
       `<line x1="0" y1="${H - 5}" x2="${W}" y2="${H - 5}" stroke="#5a4630" stroke-width="3" stroke-dasharray="3 9"/>`;
     SKY = measureSky();
+    const logo = document.getElementById("labLogo");   // logo del laboratorio en la esquina superior izquierda de la civilizacion
+    if (logo) { logo.hidden = !SKY; logo.style.top = (SKY + 8) + "px"; }
     dark.setAttribute("y", SKY); dark.setAttribute("height", H - SKY); tint.setAttribute("y", SKY);
     tint.setAttribute("width", W); tint.setAttribute("height", H - SKY); water.setAttribute("width", W);
     const sb = skyBg.querySelector(".sb"), sl = skyBg.querySelector(".sl"), st = skyBg.querySelector(".stars");

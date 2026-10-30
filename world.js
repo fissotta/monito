@@ -681,7 +681,7 @@ const World = (function () {
     for (const c of AMB.clouds) { c.x += c.vx * h; c.e.setAttribute("transform", `translate(${c.x.toFixed(1)} ${skyY(c.f).toFixed(1)}) scale(${c.s.toFixed(2)})`); c.e.setAttribute("opacity", (c.op * (night ? .75 : 1)).toFixed(2)); }
     AMB.clouds = AMB.clouds.filter(c => { if (space || c.x > W + c.w * c.s) { c.e.remove(); return false; } return true; });
     // pajaros de dia
-    AMB.birdT -= h; if (AMB.birdT <= 0) { AMB.birdT = rnd(22, 50); if (!night && !space && calm) spawnFlock(); }
+    AMB.birdT -= h; if (AMB.birdT <= 0) { AMB.birdT = rnd(40, 90); if (!night && !space && calm) spawnFlock(); }
     for (const f of AMB.flocks) {
       f.t += h; f.x += f.vx * h; const y = skyY(f.f) + Math.sin(f.t * .6) * 6;
       f.e.setAttribute("transform", `translate(${f.x.toFixed(1)} ${y.toFixed(1)})`);
@@ -690,7 +690,7 @@ const World = (function () {
     AMB.flocks = AMB.flocks.filter(f => { if (f.x < -120 || f.x > W + 120) { f.e.remove(); return false; } return true; });
     // luciernagas de noche y mariposas de dia, cerca del suelo
     const lowOk = !space && calm;
-    const wantFl = night && lowOk ? 14 : 0, wantBf = !night && lowOk ? (FEST.season === "primavera" ? 8 : 4) : 0;
+    const wantFl = night && lowOk ? 6 : 0, wantBf = !night && lowOk ? (FEST.season === "primavera" ? 3 : 2) : 0;
     while (AMB.flies.length < wantFl) { const e = el("g", {}, gAmb); e.innerHTML = `<circle r="5" fill="#d8ff6a" opacity=".22"/><circle r="1.7" fill="#eaffa0"/>`; AMB.flies.push({ e, x: rnd(0, W), oy: rnd(10, 95), vx: rnd(-8, 8), ph: rnd(0, 6.28), t: 0 }); }
     while (AMB.bf.length < wantBf) { const e = el("g", {}, gAmb), col = pick(["#ff8fb3", "#ffb347", "#8fd0ff", "#c79bff", "#fff27a"]); e.innerHTML = `<ellipse class="w1" cx="-2.5" cy="0" rx="3" ry="4" fill="${col}"/><ellipse class="w2" cx="2.5" cy="0" rx="3" ry="4" fill="${col}"/><rect x="-.5" y="-3" width="1" height="6" fill="#444"/>`; AMB.bf.push({ e, x: rnd(0, W), oy: rnd(18, 80), vx: rnd(-14, 14), ph: rnd(0, 6.28), t: 0 }); }
     for (const q of AMB.flies) { q.t += h; q.vx += rnd(-1, 1) * h * 20; q.vx = clamp(q.vx, -14, 14); q.x = (q.x + q.vx * h + W) % W; q.e.setAttribute("transform", `translate(${q.x.toFixed(1)} ${(floorY() - q.oy + Math.sin(q.t * 1.1 + q.ph) * 8).toFixed(1)})`); q.e.setAttribute("opacity", (.3 + .7 * (.5 + .5 * Math.sin(q.t * 2.2 + q.ph))).toFixed(2)); }
@@ -744,7 +744,8 @@ const World = (function () {
   const seasonOf = d => { const v = (d.getMonth() + 1) * 100 + d.getDate(); return v >= 1221 || v < 320 ? "verano" : v < 621 ? "otoño" : v < 922 ? "invierno" : "primavera"; };
   const PAL = ["#ff4d6d", "#ffb347", "#8fd0ff", "#c79bff", "#fff27a", "#7ed957", "#ff8fb3"];
   const FEST = { sig: "", active: [], season: "verano", kinds: [], fl: [], items: [], tm: {}, chk: 0, rainT: 120, fwT: 5 };
-  const RATE = { heart: 3, balloon: 5, kite: 9, lantern: 4, bat: 5, ghost: 7, bacterium: 5, helix: 8, pi: 6, clover: 5, leaf: 2.5, petal: 2.5, star: 5, ship: 14, confetti: 4, snow: .35, bird: 9 };
+  const RATE = { heart: 3, balloon: 5, kite: 9, lantern: 4, bat: 5, ghost: 7, bacterium: 5, helix: 8, pi: 6, clover: 5, leaf: 2.5, petal: 2.5, star: 5, ship: 14, confetti: 7, snow: .8, bird: 14 };
+  const CAP = { heart: 3, balloon: 3, kite: 3, lantern: 3, bat: 2, ghost: 3, bacterium: 3, helix: 2, pi: 2, clover: 3, leaf: 4, petal: 4, star: 3, ship: 1 };   // maximo de cada cosa flotando a la vez
   function activeFiestas(d) {
     const force = (Q.get("fiesta") || "").split(",").filter(Boolean);
     if (force.length) return FIESTAS.filter(f => force.includes(f.id)).map(f => ({ f, main: d, dist: 0 }));
@@ -799,7 +800,7 @@ const World = (function () {
     gDeco.innerHTML = ""; FEST.items = [];
     const gk = []; FEST.active.forEach(a => (a.f.g || []).forEach(k => { if (!gk.includes(k)) gk.push(k); }));
     if (FEST.season === "primavera" && !gk.includes("flower")) gk.push("flower");
-    const N = { pumpkin: 9, tree: 4, gift: 6, egg: 14, flag: 7, fonda: 3, flower: 12, clover: 9 };
+    const N = { pumpkin: 3, tree: 2, gift: 3, egg: 6, flag: 3, fonda: 1, flower: 5, clover: 4 };   // pocas cosas, para no recargar la civilizacion
     for (const k of gk) {
       const pal = (FEST.active.find(a => (a.f.g || []).includes(k)) || {}).f; const colors = (pal && pal.pal) || PAL;
       for (let i = 0; i < (N[k] || 6); i++) {
@@ -816,10 +817,10 @@ const World = (function () {
     A.setFestive(hats);
   }
   function festSpawn(kind) {
-    if (kind === "confetti") { for (let i = 0; i < 10; i++) fx("conf", { x: rnd(0, W), y: SKY, vy: rnd(40, 70), life: 7, col: pick(PAL) }); return; }
-    if (kind === "snow") { for (let i = 0; i < 2; i++) fx("flake", { x: rnd(0, W), y: SKY - 10, vy: rnd(28, 52), life: 12 }); return; }
-    if (kind === "bird") { spawnFlock(); return; }
-    if (FEST.fl.length > 30) return;
+    if (kind === "confetti") { for (let i = 0; i < 4; i++) fx("conf", { x: rnd(0, W), y: SKY, vy: rnd(40, 70), life: 7, col: pick(PAL) }); return; }
+    if (kind === "snow") { fx("flake", { x: rnd(0, W), y: SKY - 10, vy: rnd(28, 52), life: 12 }); return; }
+    if (kind === "bird") { if (!AMB.flocks.length) spawnFlock(); return; }
+    if (FEST.fl.length > 14 || FEST.fl.filter(o => o.kind === kind).length >= (CAP[kind] || 3)) return;
     const e = el("g", {}, gAmb), pal = (FEST.active.find(a => (a.f.f || []).includes(kind)) || {}).f, col = pick((pal && pal.pal) || PAL);
     e.innerHTML = decoSvg(kind, col);
     const o = { e, kind, t: 0, ph: rnd(0, 6.28), x: rnd(0, W), y: 0, vx: 0, vy: 0, rot: 0, rs: 0, s: 1, f: null };

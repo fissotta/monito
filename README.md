@@ -81,6 +81,13 @@ crontab -e   # agregar:
   También se entienden `2026-11-09 Abraham 15:00`, `09/11/2026; Abraham`, `9 de noviembre: Abraham`, líneas con `#` (comentarios) y líneas sin fecha (se agregan como nota a la anterior). Si no hay año, se toma el que deje la fecha más cerca de hoy.
 - Para actualizarlo: editar `seminarios.txt` → rama → pull request → merge (el archivo es público, igual que el resto del repo).
 
+## Feed de papers
+
+Segunda cinta junto al indicador de época, con papers nuevos de los temas del laboratorio (acidófilos, *Acidithiobacillus*, biominería, hierro y azufre, metagenómica, genómica, extremófilos, elementos móviles) más los trabajos de R. Quatrini (marcados con ★). Cada paper abre su página (PubMed, DOI o Europe PMC).
+
+- `collector/papers.py` consulta PubMed (E-utilities de NCBI) y los preprints de Europe PMC (bioRxiv y otros), filtra por una lista de palabras clave sacada de los abstracts de Quatrini y publica `papers.json` en la rama `papers`. Lo ejecuta el mismo cron de `news.py`. Prueba: `python3 papers.py --dry-run`.
+- Las palabras clave y las consultas están al comienzo de `papers.py` (`TOPICS`, `EPMC_TOPICS`, `KEYWORDS`, `KEY_MIN`); se pueden editar.
+
 ## Mensajes de pantalla completa y clima
 
 - A ciertas horas aparece, en una franja en la parte superior, un mensaje con un mono grande haciendo lo que dice. A la hora del evento sale 5 veces durante 1 minuto (8 s cada vez); si lo tocas se va y no vuelve: 12:00 «¡A almorzar!» (comiendo), jueves 9:20 «¡Seminario FCV!» (caminando), jueves 9:30 «¿Qué hacen acá? ¿No deberían estar en el seminario???» (saltando enojado), 16:00 café y 18:00 recordatorio de jobs/respaldo. Prueba: `?big=almuerzo|seminario|tarde|cafe|casa`.

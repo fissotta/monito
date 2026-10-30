@@ -382,7 +382,8 @@ document.addEventListener("click", () => { if (!$("cal").hidden) toggleCal(false
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("cal").hidden) { toggleCal(false); $("clock").focus(); } });
 tickClock(); setInterval(tickClock, 1000); loadSems();
 if (new URLSearchParams(location.search).has("cal")) toggleCal(true);
-if (new URLSearchParams(location.search).has("sofi")) setTimeout(() => { const z = Object.values(Zoo._zoos)[0]; if (z) for (let i = 0; i < 5; i++) Zoo._test.react(z.ms[0]); }, 1500);   // prueba: 5 toques seguidos
+{ const q = new URLSearchParams(location.search); const taps = q.has("sofi") ? 5 : q.has("hola") ? 1 : 0;   // prueba: toques seguidos sobre el primer animal
+  if (taps) setTimeout(() => { for (const z of Object.values(Zoo._zoos)) for (let i = 0; i < taps; i++) Zoo._test.react(z.ms[0]); }, 1500); }
 
 // ---------- monos ----------
 Zoo.init(MACHINES.map(m => m.id), () => state.data, Object.fromEntries(MACHINES.map(m => [m.id, m.animal])));

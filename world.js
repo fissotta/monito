@@ -74,7 +74,7 @@ const World = (function () {
     { name: "Edad de Piedra",           dur: 55, y0: -50000, y1: -30000, min: 0,  cap: 8,  ground: "#8b7b5c" },
     { name: "Descubrimiento del fuego", dur: 50, y0: -30000, y1: -15000, min: 4,  cap: 12, ground: "#85774f" },
     { name: "Era nómada",               dur: 55, y0: -15000, y1: -10000, min: 6,  cap: 16, ground: "#7c8a55" },
-    { name: "Era sedentaria",           dur: 65, y0: -10000, y1: 1400,   min: 9,  cap: 22, ground: "#6f9a4a" },
+    { name: "Era sedentaria",           dur: 150, y0: -10000, y1: 1400,   min: 9,  cap: 22, ground: "#6f9a4a" },
     { name: "Era colonial",             dur: 55, y0: 1400,   y1: 1760,   min: 13, cap: 30, ground: "#6a9446" },
     { name: "Revolución industrial",    dur: 55, y0: 1760,   y1: 1950,   min: 18, cap: 40, ground: "#6c7a58" },
     { name: "Era moderna",              dur: 55, y0: 1950,   y1: 2030,   min: 24, cap: 52, ground: "#5e6a63" },
@@ -88,6 +88,14 @@ const World = (function () {
   const SYL = ["ba", "na", "mo", "ku", "pi", "ri", "tu", "ma", "ko", "lu", "chi", "ta", "ni", "go", "zu", "bu", "fe"];
   const nm = () => { const s = Array.from({ length: 2 + (chance(.5) ? 1 : 0) }, () => pick(SYL)).join(""); return s[0].toUpperCase() + s.slice(1); };
 
+  // tres pueblos, uno por animal (monos=akaza, jirafas=ymir, focas=inozuke); en la era espacial se funden en uno solo
+  const TRIBE_KINDS = ["mono", "jirafa", "foca"];
+  const TRIBE_INFO = { mono: { plural: "monos", art: "los" }, jirafa: { plural: "jirafas", art: "las" }, foca: { plural: "focas", art: "las" } };
+  function makeTribes() {
+    S.tribes = TRIBE_KINDS.map((k, i) => ({ i, kind: k, nm: nm(), hue: rnd(0, 360), rel: null, rel2: null, cult: null }));
+    S.dip = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];   // relaciones entre pueblos: -3 guerra ... +3 alianza
+    S.unified = false; S.nation = nm() + "ia";
+  }
   const S = {
     t: 0, started: false, era: 0, eraT: 0, eraDur: 55, boost: 1, boostT: 0,
     extra: 0, spawnT: 0, evT: 16, msT: 9, planT: 0, hudT: 0, deadT: 0,
@@ -102,20 +110,30 @@ const World = (function () {
     drought: 0, flood: 0, spice: 0, code: 0, crumble: 0, crumbT: 0, fightBack: false, wormCalm: 0, fastLaunch: 0, station: null, cata: null,
     planetT: null, sea: 0, waterH: 0, hole: null, aurora: 0, locust: 0, strike: 0, music: 0, floodMax: 14, launchT: null,
   };
+  makeTribes();
   S.eraDur = ERAS[0].dur * rnd(.75, 1.35);
 
   const fmtYear = y => y < 0 ? `${Math.abs(Math.round(y / 10) * 10).toLocaleString("es")} a.C.` : `${Math.round(y)} d.C.`;
   const curYear = () => { const e = ERAS[S.era]; return lerp(e.y0, e.y1, clamp(S.eraT / S.eraDur, 0, 1)); };
   const popTotal = () => groundMons().length + Math.floor(S.extra);
+  const zone = t => S.unified || t == null ? [0, W] : [W * t / 3, W * (t + 1) / 3];   // el territorio de cada pueblo
+  const popOf = t => groundMons().filter(g => S.unified || t == null || g.tribe === t).length + Math.floor(S.extra / (S.unified || t == null ? 1 : 3));
+  const tn = i => { const t = S.tribes[i], d = TRIBE_INFO[t.kind]; return `${d.art} ${d.plural} ${t.nm}`; };
+  const natName = () => S.unified ? S.nation : tn(0);
+  const dip = (a, b) => S.dip[a][b];
+  const dipAdd = (a, b, d) => { S.dip[a][b] = S.dip[b][a] = clamp(S.dip[a][b] + d, -3, 3); };
+  function pushToast(text) {
+    const t = document.createElement("div"); t.className = "toast"; t.textContent = text; toasts.appendChild(t);
+    while (toasts.children.length > 3) toasts.removeChild(toasts.firstChild);
+    setTimeout(() => t.remove(), 7200);
+  }
+  A.setCelebHandler(m => { const t = `Llega ${m.celeb.name}, disfrazado de ${m.kind}: tócalo para saludar`; if (S.started) logEv(t); else pushToast(t); });
   function logEv(text) {
+    text = text.charAt(0).toUpperCase() + text.slice(1);
     S.log.unshift({ y: fmtYear(curYear()), text });
     if (S.log.length > 40) S.log.length = 40;
     S.hudT = 0;
-    if (S.started) {   // aviso flotante que se desvanece
-      const t = document.createElement("div"); t.className = "toast"; t.textContent = text; toasts.appendChild(t);
-      while (toasts.children.length > 3) toasts.removeChild(toasts.firstChild);
-      setTimeout(() => t.remove(), 7200);
-    }
+    if (S.started) pushToast(text);   // aviso flotante que se desvanece
   }
   function showBanner(text) {
     banner.textContent = text; banner.classList.remove("on"); void banner.offsetWidth; banner.classList.add("on");
@@ -127,10 +145,11 @@ const World = (function () {
   const Cir = (cx, cy, r, f, x2) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${f}" ${x2 || ""}/>`;
   const Ell = (cx, cy, rx, ry, f, x2) => `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${f}" ${x2 || ""}/>`;
   const hsl = (h, s, l) => `hsl(${Math.round(h)} ${s}% ${l}%)`;
-  const wall = () => hsl(S.hue + rnd(-25, 25), 38, 76), roof = () => hsl(S.hue + 180 + rnd(-20, 20), 42, 40);
+  const thue = s => s && S.tribes[s.tribe] ? S.tribes[s.tribe].hue : S.hue;
+  const wall = s => hsl(thue(s) + rnd(-25, 25), 38, 76), roof = s => hsl(thue(s) + 180 + rnd(-20, 20), 42, 40);
 
-  const relColor = i => hsl(i === 0 ? (S.rel ? S.rel.hue : 40) : (S.rel2 ? S.rel2.hue : 200), 55, 52);
-  const relInit = s => { s.rc = relColor(alive(s.kind).length); };
+  const relColor = (t, i) => { const tr = S.tribes[t], r1 = tr && tr.rel || S.rel, r2 = tr && tr.rel2 || S.rel2; return hsl(i === 0 ? (r1 ? r1.hue : 40) : (r2 ? r2.hue : 200), 55, 52); };
+  const relInit = s => { s.rc = relColor(s.tribe, alive(s.kind, s.tribe).length); };
   const SACRED = ["totem", "pyramid", "temple", "cathedral", "orb"];
   const KINDS = {
     cave: { w: 50, draw: () => Pth("M-42 0Q-38 -38 0 -44Q40 -38 44 0Z", "#857b6e") +
@@ -151,7 +170,7 @@ const World = (function () {
     tent: { w: 44, init: s => { s.col = hsl(rnd(15, 45), 50, 50); },
       draw: s => Pth("M-21 0L0 -42L21 0Z", s.col) + Pth("M-5 0L0 -24L5 0Z", "rgba(60,30,10,.7)") +
         `<path d="M-3 -38L-9 -48M3 -38L9 -48" stroke="#6b4a2a" stroke-width="2"/>` },
-    hut: { w: 40, init: s => { s.col = hsl(rnd(28, 40), 45, 62); },
+    hut: { w: 40, init: s => { s.col = hsl(S.tribes[s.tribe] ? thue(s) % 40 + 20 : rnd(28, 40), 45, 62); },
       draw: s => R(-15, -17, 30, 17, s.col) + Pth("M-20 -17L0 -37L20 -17Z", "#a67c2e") + R(-4, -11, 8, 11, "#5a3b22") },
     field: { w: 70, noflip: true, init: s => { s.g = rnd(0, 1); },
       draw: () => R(-32, -5, 64, 5, "#6b4a2a") + Array.from({ length: 9 }, (_, i) =>
@@ -170,7 +189,7 @@ const World = (function () {
     mammoth: { w: 62, mobile: true, draw: () => Ell(0, -17, 23, 14, "#6b4a32") + Cir(22, -19, 10, "#6b4a32") +
       `<path d="M30 -14Q40 -6 35 3" stroke="#6b4a32" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M27 -11Q39 -10 36 -2" stroke="#f4f1ea" stroke-width="2.6" fill="none"/>` +
       R(-16, -9, 7, 9, "#5a3b27") + R(9, -9, 7, 9, "#5a3b27") + Cir(26, -22, 1.4, "#111") },
-    house: { w: 44, init: s => { s.w1 = wall(); s.r1 = roof(); },
+    house: { w: 44, init: s => { s.w1 = wall(s); s.r1 = roof(s); },
       draw: s => R(-18, -22, 36, 22, s.w1) + Pth("M-23 -22L0 -41L23 -22Z", s.r1) + R(-4, -13, 8, 13, "#5a3b22") +
         R(-14, -17, 6, 6, "#ffe08a") + R(8, -17, 6, 6, "#ffe08a") + R(10, -38, 5, 10, "#7a4a3a") },
     fort: { w: 62, noflip: true, init: s => { s.col = hsl(S.flag[0], 70, 50); },
@@ -234,6 +253,26 @@ const World = (function () {
       draw: () => R(-14, -6, 28, 4, "#6b4a2a") + Cir(-9, -3, 4, "#4a3220") + Cir(9, -3, 4, "#4a3220") + `<path d="M-8 -6L0 -16L8 -6" stroke="#6b4a2a" stroke-width="3" fill="none"/>` +
         `<g class="arm" transform="translate(0 -14) rotate(-60)">${R(-1.5, -22, 3, 24, "#8b6b44")}${Cir(0, -23, 4, "#6d6a64")}</g>`,
       tick(s, h) { s.fire = Math.max(0, s.fire - h * 1.6); s.$(".arm").setAttribute("transform", `translate(0 -14) rotate(${(-60 + s.fire * 100).toFixed(0)})`); } },
+    colosseum: { w: 114, noflip: true, draw: () => Pth("M-56 0L-52 -44Q0 -60 52 -44L56 0Z", "#d8c9a8") + [0, 1, 2].map(r => Array.from({ length: 9 }, (_, i) => `<path d="M${-47 + i * 11.7} ${-5 - r * 13}v-6a4 4 0 0 1 8 0v6z" fill="#a8956d"/>`).join("")).join("") + Pth("M-52 -44Q0 -60 52 -44L47 -48Q0 -64 -47 -48Z", "#c6b48c") },
+    aqueduct: { w: 154, noflip: true, draw: () => R(-76, -64, 152, 7, "#cdbb94") + Array.from({ length: 8 }, (_, i) => `<path d="M${-74 + i * 19} 0V-26A9.5 9.5 0 0 1 ${-55 + i * 19} -26V0Z" fill="#cdbb94"/>`).join("") + Array.from({ length: 8 }, (_, i) => `<path d="M${-74 + i * 19} -26V-44A9.5 9.5 0 0 1 ${-55 + i * 19} -44V-26Z" fill="#c2b088"/>`).join("") + R(-76, -57, 152, 4, "#b6a47c") },
+    villa: { w: 56, noflip: true, draw: () => R(-24, -22, 48, 22, "#efe4cc") + Pth("M-28 -22L0 -38L28 -22Z", "#b5502e") + [-18, -9, 0, 9, 18].map(x => R(x - 1.5, -22, 3, 22, "#fffaf0")).join("") + R(-4, -12, 8, 12, "#6b4a2a") },
+    obelisk: { w: 18, noflip: true, draw: () => Pth("M-5.5 0L-3.4 -80L0 -92L3.4 -80L5.5 0Z", "#d6c08c") + `<path d="M0 -70v8M0 -54v8M0 -38v8M0 -22v8" stroke="#a8915a" stroke-width="1.4"/>` + R(-8, -3, 16, 3, "#b6a074") },
+    sphinx: { w: 70, noflip: true, draw: () => Pth("M-32 0L-30 -14Q-10 -20 14 -16L16 -26Q20 -34 26 -30Q30 -26 28 -16L30 0Z", "#d9bd7a") + Cir(24, -26, 6, "#d9bd7a") + R(18, -34, 12, 3, "#2f7fc0") + Cir(27, -27, 1, "#222") + R(-28, -4, 56, 4, "#c8aa66") },
+    longhouse: { w: 78, noflip: true, draw: () => R(-34, -16, 68, 16, "#8a5a32") + Pth("M-38 -16L-26 -34L26 -34L38 -16Z", "#5a3a1e") + `<path d="M-26 -34L-31 -42M26 -34L31 -42" stroke="#5a3a1e" stroke-width="2.4" stroke-linecap="round"/>` + R(-5, -12, 10, 12, "#3b2a18") + [-26, -16, 16, 26].map(x => Cir(x, -9, 3, "#c9a24a")).join("") },
+    runestone: { w: 18, noflip: true, draw: () => Pth("M-6 0L-5 -22Q0 -28 5 -22L6 0Z", "#8d8f94") + `<path d="M-2 -18l3 4-3 4M-1 -8l3-3" stroke="#c0392b" stroke-width="1.2" fill="none"/>` },
+    pagoda: { w: 46, noflip: true, init: s => { const c = S.tribes[s.tribe] && S.tribes[s.tribe].cult; s.col = c === "japonesa" ? "#d9d4c4" : "#b3282d"; s.n = c === "japonesa" ? 3 : 5; },
+      draw: s => { let o = R(-3, -s.n * 17 - 10, 6, 10, "#444"); for (let i = 0; i < s.n; i++) { const y = -i * 17, w = 20 - i * 2.2; o += R(-w + 3, y - 14, 2 * w - 6, 14, s.col) + Pth(`M${-w - 4} ${y - 14}Q0 ${y - 22} ${w + 4} ${y - 14}L${w + 1} ${y - 11}L${-w - 1} ${y - 11}Z`, "#3b2f2a") + R(-2, y - 10, 4, 10, "#5a3b22"); } return o; } },
+    greatwall: { w: 176, noflip: true, draw: () => R(-86, -26, 172, 26, "#a39a86") + Array.from({ length: 16 }, (_, i) => R(-86 + i * 11, -31, 7, 6, "#a39a86")).join("") + [-70, 0, 70].map(x => R(x - 9, -48, 18, 48, "#938a76") + Pth(`M${x - 11} -48L${x} -58L${x + 11} -48Z`, "#7a3b2a") + R(x - 2, -40, 4, 7, "#2a2520")).join("") },
+    pavilion: { w: 46, noflip: true, draw: () => [-17, 17].map(x => R(x - 2, -24, 4, 24, "#b3282d")).join("") + Pth("M-26 -24Q0 -34 26 -24L20 -30Q0 -42 -20 -30Z", "#2f6b4a") + R(-19, -3, 38, 3, "#8a6a4a") },
+    torii: { w: 44, noflip: true, draw: () => [-14, 14].map(x => R(x - 2.2, -40, 4.4, 40, "#c0392b")).join("") + R(-22, -40, 44, 5, "#c0392b") + R(-17, -32, 34, 3.4, "#a82f23") },
+    dojo: { w: 56, noflip: true, draw: () => R(-22, -16, 44, 16, "#9a7a52") + Pth("M-30 -16Q0 -34 30 -16L24 -20Q0 -32 -24 -20Z", "#4a3a30") + R(-5, -12, 10, 12, "#3b2a18") + [-14, 14].map(x => R(x - 3, -13, 6, 8, "#efe4cc")).join("") },
+    stepped: { w: 80, noflip: true, draw: () => [0, 1, 2, 3, 4].map(i => R(-38 + i * 7, -i * 12 - 12, 76 - i * 14, 12, i % 2 ? "#b8a27a" : "#a8926a")).join("") + R(-3, -62, 6, 6, "#6b4a2a") + R(-5, -68, 10, 8, "#c0392b") + R(-4, -52, 8, 52, "#8a7650", 'opacity=".5"') },
+    palace: { w: 76, noflip: true, draw: () => R(-26, -34, 52, 34, "#efe6d2") + Pth("M-22 -34A22 20 0 0 1 22 -34Z", "#2f7fc0") + Cir(0, -56, 2, "#d4a82a") + [-34, 34].map(x => R(x - 4, -78, 8, 78, "#e8dcc0") + Pth(`M${x - 5} -78Q${x} -92 ${x + 5} -78Z`, "#2f7fc0") + Cir(x, -93, 1.6, "#d4a82a")).join("") + Pth("M-7 0V-14A7 7 0 0 1 7 -14V0Z", "#3b2f2a") },
+    yurt: { w: 42, noflip: true, draw: () => R(-16, -14, 32, 14, "#eee6d4") + Pth("M-19 -14Q0 -34 19 -14Z", "#f6f0e2") + `<path d="M-19 -14Q0 -34 19 -14" fill="none" stroke="#b5502e" stroke-width="1.6"/>` + R(-4, -11, 8, 11, "#6b4a2a") + Cir(0, -30, 1.4, "#b5502e") },
+    taj: { w: 100, noflip: true, draw: () => R(-34, -34, 68, 34, "#f4f1ea") + Pth("M-22 -34A22 24 0 0 1 22 -34Z", "#f8f6f0") + Pth("M-3 -58L0 -72L3 -58Z", "#d4a82a") + [-46, 46].map(x => R(x - 4, -62, 8, 62, "#f1eee6") + Pth(`M${x - 5} -62Q${x} -74 ${x + 5} -62Z`, "#f8f6f0")).join("") + Pth("M-8 0V-16A8 8 0 0 1 8 -16V0Z", "#bfc7d4") + R(-40, -2, 80, 2, "#9fd3ff", 'opacity=".6"') },
+    tflag: { w: 26, temp: true, noflip: true, init: s => { const tr = S.tribes[s.tribe]; s.col = hsl(tr.hue, 70, 48); s.ch = TRIBE_INFO[tr.kind].plural[0].toUpperCase(); },
+      draw: s => `<line x1="0" y1="0" x2="0" y2="-46" stroke="#555" stroke-width="2.2"/><path class="fg" d="M0 -46L28 -41L0 -35Z" fill="${s.col}"/><text x="9" y="-38" style="fill:#fff;font-size:8px;font-weight:800;text-anchor:middle">${s.ch}</text>`,
+      tick(s, h) { s.t += h; const w = 3 * Math.sin(s.t * 5); s.$(".fg").setAttribute("d", `M0 -46Q10 ${-46 + w} 28 ${-41 + w}Q10 ${-38 - w} 0 -35Z`); } },
     wreck: { w: 82, temp: true, noflip: true, draw: () => Pth("M-38 0Q-34 -16 -2 -20L34 -12Q40 -4 30 0Z", "#6e7681") + R(-6, -28, 12, 10, "#4a515b", 'transform="rotate(-18 0 -23)"') + Cir(14, -8, 2.4, "#e53935"),
       tick(s, h) { s.sm = (s.sm || 0) - h; if (s.sm <= 0) { s.sm = .45; smoke(s.x - 4, floorY() - 22); } } },
     egg: { w: 14, temp: true, noflip: true, draw: () => Ell(0, -8, 6, 9, "#6f7f3c") + `<path d="M-3 -14L0 -10L3 -14" stroke="#3a4620" stroke-width="1" fill="none"/>` },
@@ -288,14 +327,15 @@ const World = (function () {
     if (!def.mobile) dust(s.x, 10);
     return s;
   }
-  function freeX(w) {
+  function freeX(w, t) {
+    const z = zone(t);
     for (let i = 0; i < 40; i++) {
-      const x = rnd(40 + w / 2, W - 40 - w / 2);
+      const x = rnd(Math.max(40, z[0] + 14) + w / 2, Math.min(W - 40, z[1] - 14) - w / 2);
       if (S.structs.every(s => s.mobile || s.dying || s.temp || Math.abs(s.x - x) > (s.w + w) / 2 + 6)) return x;
     }
     return null;
   }
-  const alive = k => S.structs.filter(s => s.kind === k && !s.dying);
+  const alive = (k, t) => S.structs.filter(s => s.kind === k && !s.dying && (t == null || S.unified || s.tribe === t));
   function sacredKind() {   // el tipo de templo depende de la epoca
     const d = S.done, any = d.templo || d.piramide || d.catedral || d.iglesia_cosmica || d.nuevaera || d.fuego_sagrado;
     if (!any) return null;
@@ -304,22 +344,22 @@ const World = (function () {
     if (S.era <= 6) return "cathedral";
     return "orb";
   }
-  function GLOBAL() {   // lo que se conserva en cualquier epoca una vez descubierto
+  function GLOBAL(t) {   // lo que se conserva en cualquier epoca una vez descubierto (cada pueblo tiene los suyos)
     const d = S.done, o = {
       cart: d.rueda ? 1 : 0, library: d.escritura || d.imprenta ? 1 : 0, market: d.comercio || d.trueque ? 1 : 0, dog: d.lobos ? 1 : 0,
-      lamp: d.electricidad ? Math.min(7, 2 + S.era) : 0, academia: d.academia ? 1 : 0, observatory: d.astronomia || d.telescopio_optico ? 1 : 0,
+      lamp: d.electricidad ? (S.unified ? Math.min(7, 2 + S.era) : Math.min(4, 1 + (S.era >> 1))) : 0, academia: d.academia ? 1 : 0, observatory: d.astronomia || d.telescopio_optico ? 1 : 0,
       university: d.universidad ? 1 : 0, laboratory: d.laboratorio ? 1 : 0, hospital: d.antibioticos || d.vacunas ? 1 : 0, antenna: d.radio ? 1 : 0,
       stadium: d.deporte ? 1 : 0, statue: d.heroe ? 1 : 0, castle: d.castillo || d.feudalismo ? 1 : 0,
     };
     const sk = sacredKind();
-    if (sk) o[sk] = S.rel2 && d.reforma ? 2 : 1;
+    if (sk) o[sk] = (t != null && !S.unified && S.tribes[t] ? S.tribes[t].rel2 : S.rel2) && d.reforma ? 2 : 1;
     return o;
   }
   const PLAN = [
     p => ({ cave: p > 5 ? 2 : 1, rock: 3, bones: 2, mammoth: 1 }),
     p => ({ cave: 1, campfire: p > 10 ? 2 : 1, rock: 2, mammoth: 1 }),
     (p, b) => ({ tent: Math.min(6, 2 + (p / 4 | 0)), campfire: 1, mammoth: 1, sheep: b ? 2 : 0 }),
-    (p, b) => ({ hut: Math.min(8, 2 + (p / 3 | 0)), field: Math.min(5, 1 + (p / 5 | 0)), sheep: Math.min(5, p / 4 | 0), campfire: 1, windmill: b ? 1 : 0 }),
+    (p, b) => ({ hut: S.medieval ? Math.min(3, 1 + (p / 8 | 0)) : Math.min(8, 2 + (p / 3 | 0)), field: Math.min(5, 1 + (p / 5 | 0)), sheep: Math.min(5, p / 4 | 0), campfire: 1, windmill: b ? 1 : 0 }),
     (p, b) => b ? { house: Math.min(8, 2 + (p / 4 | 0)), fort: 1, ship: 1, field: 2, hut: 1 } : { house: Math.min(8, 2 + (p / 4 | 0)), windmill: 1 + (p > 25 ? 1 : 0), ship: 1, field: 2 },
     (p, b) => ({ factory: Math.min(4, 1 + (p / 10 | 0)), brickhouse: Math.min(9, 2 + (p / 4 | 0)), train: 1, house: b ? 2 : 0 }),
     (p, b) => ({ skyscraper: Math.min(10, 2 + (p / 5 | 0)), house: 2, car: Math.min(4, 1 + (p / 12 | 0)), plane: 1, factory: b ? 1 : 0 }),
@@ -327,21 +367,90 @@ const World = (function () {
     (p, b) => ({ tower: b ? 6 : 4, skyscraper: 3, dome: 2, starport: 1, dish: 1, hovercar: 4, pad: 1 }),
   ];
   function plan() {
-    const want = Object.assign({}, PLAN[S.era](popTotal(), S.branch[S.era]), GLOBAL());
-    let added = false;
-    for (const k in want) {
-      const have = alive(k).length;
-      if (have < want[k] && !added) {
-        const def = KINDS[k], x = def.fixed != null ? def.fixed : def.mobile ? rnd(60, W - 60) : freeX(def.w);
-        if (x != null && !(def.fixed != null && have)) { addStruct(k, x); added = true; }
-      }
-    }
-    for (const s of S.structs) {   // lo viejo se va retirando
-      const have = alive(s.kind).length;
-      if (!s.dying && !s.temp && have > (want[s.kind] || 0)) { s.dying = .001; dust(s.x, 8); break; }
+    const groups = S.unified ? [null] : S.tribes.map(t => t.i);
+    for (const t of groups) planGroup(t);
+    if (!S.unified) for (const tr of S.tribes) {   // bandera de cada pueblo en el centro de su territorio
+      if (popOf(tr.i) >= 1 && !S.structs.some(q => q.kind === "tflag" && q.tribe === tr.i && !q.dying)) { const z = zone(tr.i); addStruct("tflag", (z[0] + z[1]) / 2, { tribe: tr.i }); }
     }
     rails.style.display = S.era >= 5 ? "" : "none";
   }
+  function planGroup(t) {
+    const pop = popOf(t), want = Object.assign({}, cultureWant(t, pop), PLAN[S.era](pop, S.branch[S.era]), GLOBAL(t));   // primero lo propio de su cultura
+    let added = 0;
+    const limit = S.era === 3 || S.era === 4 ? 2 : 1;
+    for (const k in want) {
+      const have = alive(k, t).length;
+      if (have < want[k] && added < limit) {
+        const def = KINDS[k];
+        if (def.fixed != null && t != null && t > 0) continue;   // el puerto solo en la costa del primer pueblo
+        const z = zone(t), x = def.fixed != null ? def.fixed : def.mobile ? rnd(z[0] + 30, z[1] - 30) : freeX(def.w, t);
+        if (x != null && !(def.fixed != null && have)) { addStruct(k, x, { tribe: t == null ? 0 : t }); added++; }
+      }
+    }
+    for (const q of S.structs) {   // lo viejo se va retirando
+      if (q.dying || q.temp || (t != null && !S.unified && q.tribe !== t)) continue;
+      if (alive(q.kind, t).length > (want[q.kind] || 0)) { q.dying = .001; dust(q.x, 8); break; }
+    }
+  }
+  const CULTURES = {
+    romana:   { name: "romana",   desc: "construyen un coliseo y acueductos como los romanos",             want: p => ({ colosseum: p >= 6 ? 1 : 0, aqueduct: p >= 4 ? 1 : 0, villa: Math.min(4, 1 + (p / 4 | 0)), academia: 1 }) },
+    egipcia:  { name: "egipcia",  desc: "levantan obeliscos y una esfinge como en el antiguo Egipto",      want: p => ({ obelisk: Math.min(3, 1 + (p / 6 | 0)), sphinx: p >= 5 ? 1 : 0, pyramid: 1 }) },
+    vikinga:  { name: "vikinga",  desc: "construyen casas largas y piedras rúnicas como los vikingos",     want: p => ({ longhouse: Math.min(4, 1 + (p / 5 | 0)), runestone: Math.min(3, 1 + (p / 8 | 0)) }) },
+    china:    { name: "china",    desc: "levantan pagodas y una gran muralla como en la antigua China",    want: p => ({ pagoda: Math.min(3, 1 + (p / 6 | 0)), greatwall: p >= 6 ? 1 : 0, pavilion: Math.min(3, 1 + (p / 6 | 0)) }) },
+    japonesa: { name: "japonesa", desc: "construyen pagodas, dojos y puertas torii como en el Japón feudal", want: p => ({ pagoda: 1, torii: 1, dojo: Math.min(2, 1 + (p / 8 | 0)) }) },
+    azteca:   { name: "azteca",   desc: "erigen pirámides escalonadas como los aztecas",                   want: p => ({ stepped: Math.min(2, 1 + (p / 8 | 0)), market: 1 }) },
+    arabe:    { name: "árabe",    desc: "levantan palacios de cúpulas y minaretes como en los califatos",  want: p => ({ palace: Math.min(2, 1 + (p / 8 | 0)), market: 1 }) },
+    mongola:  { name: "mongola",  desc: "viven en yurtas y cabalgan por la estepa como los mongoles",      want: p => ({ yurt: Math.min(5, 2 + (p / 4 | 0)) }) },
+    europea:  { name: "europea",  desc: "construyen castillos y molinos como en la Europa medieval",       want: p => ({ castle: 1, windmill: 1 }) },
+    india:    { name: "india",    desc: "levantan un mausoleo de mármol como en la India de los mogoles",  want: p => ({ taj: 1, palace: p >= 6 ? 1 : 0 }) },
+  };
+  function assignCultures(forced) {
+    const keys = shuffle(Object.keys(CULTURES));
+    S.tribes.forEach((t, i) => { t.cult = forced && forced[i] && CULTURES[forced[i]] ? forced[i] : keys[i]; });
+  }
+  const eraName = () => S.era === 3 && S.medieval ? "Antigüedad y Edad Media" : ERAS[S.era].name;
+  function startMedieval() {   // la segunda mitad de la era sedentaria: grandes culturas del mundo
+    S.medieval = true; assignCultures();
+    showBanner("Antigüedad y Edad Media");
+    logEv(`Comienza la Antigüedad y la Edad Media: el mundo se llena de grandes culturas`);
+    S.tribes.forEach((t, i) => later(1.5 + i * 2.5, () => logEv(`${tn(i)} ${CULTURES[t.cult].desc}`)));
+  }
+  function cultureWant(t, pop) {   // lo que construye cada pueblo segun su cultura (en la era colonial queda a la mitad)
+    const tr = t == null ? null : S.tribes[t];
+    if (S.era < 3 || S.era > 4) return {};
+    if (S.unified || !tr || !tr.cult || (S.era === 3 && !S.medieval)) return {};
+    const w = CULTURES[tr.cult].want(pop);
+    if (S.era === 4) for (const k in w) w[k] = Math.min(w[k], 1);
+    return w;
+  }
+  // sucesos de las culturas
+  function gladiators() {
+    const c = alive("colosseum")[0]; if (!c) return;
+    const gs = alive2(c.tribe).filter(g => Math.abs(g.x - c.x) < 400).slice(0, 8); if (gs.length < 4) return;
+    sendTo(gs[0], c.x - 18, "fight", 1, 7); sendTo(gs[1], c.x + 18, "fight", -1, 7);
+    gs.slice(2).forEach((g, i) => sendTo(g, c.x + (i % 2 ? 1 : -1) * (52 + (i >> 1) * 14), "cheer", 0, 7));
+    logEv(`Combates de gladiadores en el Coliseo de ${tn(c.tribe)}`);
+    later(7.5, () => { const l = pick([gs[0], gs[1]]); l.act = "ko"; l.stay = 3; l.m.t = 0; boom(c.x, floorY() - 14, false); floatText(c.x, floorY() - 46, "¡Ave!"); });
+    later(11, () => releaseAll(gs));
+  }
+  function legion() {
+    const t = S.tribes.find(q => q.cult === "romana"), gs = t ? alive2(t.i).slice(0, 8) : []; if (gs.length < 5) return;
+    const z = zone(t.i), dir = z[0] < W / 2 ? 1 : -1, tx = dir > 0 ? z[1] - 20 : z[0] + 20;
+    gs.forEach((g, i) => { sendTo(g, tx - dir * i * 12, "cheer", dir, 6); g.act = "walk"; g.sp = 1; });
+    logEv(`Las legiones de ${tn(t.i)} marchan hacia la frontera`); dipAdd(t.i, (t.i + 1 + Math.floor(Math.random() * 2)) % 3, -1);
+    later(14, () => { sendHome(gs, t.i); later(6, () => releaseAll(gs)); });
+  }
+  function horde() {
+    const t = S.tribes.find(q => q.cult === "mongola"); if (!t || S.unified) return;
+    const dir = chance(.5) ? 1 : -1, dur = 5.5, x0 = dir > 0 ? -60 : W + 60;
+    for (let i = 0; i < 6; i++) later(i * .35, () => {
+      const f = fx("g", { x: x0, y: floorY() + 10 + (i % 3) * 5, vx: dir * (W + 120) / dur, life: dur, flip: dir < 0,
+        html: `<g transform="scale(1.1)">${Ell(0, -9, 11, 5, "#5a3b22")}${R(-8, -5, 2.4, 6, "#3b2616")}${R(6, -5, 2.4, 6, "#3b2616")}${Cir(11, -13, 3.4, "#5a3b22")}${R(-2, -20, 4, 9, "#c0392b")}${Cir(0, -22, 2.6, "#d9b66a")}</g>` });
+      f.dt = 0; f.tick = (g, h) => { g.dt -= h; if (g.dt <= 0) { g.dt = .35; destroyAt(g.x, 36, .25); dust(g.x, 1); } };
+    });
+    logEv(`Una horda de jinetes de ${tn(t.i)} cabalga a toda velocidad por las llanuras`); S.shake = 1;
+  }
+
 
   // ---------- efectos ----------
   function fx(type, o) {
@@ -441,13 +550,14 @@ const World = (function () {
     7: ["¿Viviremos en otro planeta?", "Quiero ir a la Luna", "¿Habrá bananas en Marte?"],
     8: ["¿Estamos solos?", "Esa nave me da mala espina", "¿Será seguro el hiperespacio?"],
   };
-  const thoughtFor = g => pick(chance(.55) ? THOUGHTS.any.concat(THOUGHTS[Math.min(S.era, 8)] || []) : (THOUGHTS[Math.min(S.era, 8)] || THOUGHTS.any));
+  const KIND_THOUGHTS = { mono: ["¿Habrá bananas?", "Quiero trepar ese árbol", "¡Uh uh!"], jirafa: ["Las hojas ricas están arriba", "Qué lindo se ve todo desde acá", "¿Habrá acacias mañana?"], foca: ["¿Dónde está el pescado?", "Quiero un chapuzón", "Mmm… huele a mar"] };
+  const thoughtFor = g => g.m.celeb && chance(.4) ? `“${g.m.celeb.quote}”` : chance(.28) ? pick(KIND_THOUGHTS[g.m.kind] || KIND_THOUGHTS.mono) : pick(chance(.55) ? THOUGHTS.any.concat(THOUGHTS[Math.min(S.era, 8)] || []) : (THOUGHTS[Math.min(S.era, 8)] || THOUGHTS.any));
   function say(text) { const g = pick(groundMons()); if (g && g.m.mode !== "sleep") { g.m.say = text; g.m.mode = "react"; g.m.t = 0; g.m.dur = 1.7; } }
   function adopt(m, x, y, id) {   // un mono se desborda del anillo hacia el mundo
     gMon.appendChild(m.parts.root);
     m.dir = chance(.5) ? 1 : -1; m.mode = "run"; m.theta = 0; m.mood = { low: 0, mid: 1, high: 0 }; m.pop = undefined;
     const zoo = document.querySelector(`.zoo[data-id="${id}"]`), card = zoo ? zoo.closest(".card") : null;
-    const g = { m, state: "climb", card, x, y, rot: 0, vx: 0, vy: 0, vr: 0, dy: rnd(6, GROUND_H - 12), sp: rnd(.85, 1.2), climbT: rnd(5, 10), stay: 0, tu: .5, tv: .5, act: "idle" };
+    const g = { m, tribe: Math.max(0, TRIBE_KINDS.indexOf(m.kind)), state: "climb", card, x, y, rot: 0, vx: 0, vy: 0, vr: 0, dy: rnd(6, GROUND_H - 12), sp: rnd(.85, 1.2), climbT: rnd(5, 10), stay: 0, tu: .5, tv: .5, act: "idle" };
     S.mon.push(g);
     if (!card) fall(g);
   }
@@ -547,13 +657,14 @@ const World = (function () {
     if (g.act === "eat") { g.m.dur = g.stay; g.m.food = pick(["banana", "berry", "leaf"]); }
     if (g.onArrive) { const f = g.onArrive; g.onArrive = null; f(g); }
   }
-  const anchor = kinds => { const c = S.structs.filter(s => kinds.includes(s.kind) && !s.dying && s.built > .5); return c.length ? pick(c).x : null; };
+  const anchor = (kinds, t) => { const c = S.structs.filter(s => kinds.includes(s.kind) && !s.dying && s.built > .5 && (t == null || S.unified || s.tribe == null || s.tribe === t)); return c.length ? pick(c).x : null; };
   function think(g) {
-    const e = S.era, r = Math.random(), go = (x, act, stay, face) => {
-      g.tx = clamp(x == null ? rnd(30, W - 30) : x, 18, W - 18); g.next = act; g.stayT = stay == null ? rnd(2, 6) : stay; g.face = face || 0;
+    const e = S.era, r = Math.random(), z = zone(g.tribe), go = (x, act, stay, face) => {
+      g.tx = clamp(x == null ? (chance(.07) && !S.unified ? rnd(30, W - 30) : rnd(z[0] + 22, z[1] - 22)) : x, 18, W - 18); g.next = act; g.stayT = stay == null ? rnd(2, 6) : stay; g.face = face || 0;
       g.act = chance(.12) ? "run" : "walk"; g.m.t = 0;
     };
-    const at = (kinds, sp) => { const x = anchor(kinds); return x == null ? null : x + rnd(-sp, sp); };
+    const at = (kinds, sp) => { const x = anchor(kinds, g.tribe); return x == null ? null : x + rnd(-sp, sp); };
+    if (!S.unified && g.tribe != null && (g.x < z[0] - 50 || g.x > z[1] + 50)) return go(null, "sit", rnd(1, 3));   // vuelve a su pueblo
     if (chance(.06) && e >= 1) return go(null, "cheer", rnd(2, 4));
     if (e === 0) { r < .3 ? go(at(["cave", "rock", "bones"], 60), "sit") : r < .5 ? go(at(["cave"], 30), "sleep", rnd(6, 11)) : go(null, "sit"); }
     else if (e === 1) { r < .65 ? go(at(["campfire"], 34), pick(["sit", "sit", "sleep", "eat"]), rnd(4, 9)) : go(null, "sit"); }
@@ -569,10 +680,11 @@ const World = (function () {
   const sendTo = (g, x, act, face, stay) => { g.tx = clamp(x, 14, W - 14); g.act = "run"; g.next = act; g.face = face || 0; g.stayT = stay == null ? 99 : stay; g.hold = true; g.m.t = 0; };
 
   // ---------- hitos canonicos y sucesos al azar ----------
-  const T = () => S.tribe;
-  const REL_A = ["Sol", "Luna", "Gran Banana", "Árbol Sagrado", "Río Eterno", "Trueno", "Cielo", "Montaña", "Estrellas", "Gran Mono"];
-  const REL_B = ["Hijos del", "Orden del", "Culto del", "Iglesia del", "Camino del", "Los Fieles del"];
+  const T = () => S.unified ? S.nation : tn(Math.floor(Math.random() * S.tribes.length));
+  const REL_A = ["del Sol", "de la Luna", "de la Gran Banana", "del Árbol Sagrado", "del Río Eterno", "del Trueno", "del Cielo", "de la Montaña", "de las Estrellas", "del Gran Mono"];
+  const REL_B = ["Hijos", "Orden", "Culto", "Iglesia", "Camino", "Los Fieles"];
   const newRel = () => ({ name: `${pick(REL_B)} ${pick(REL_A)}`, hue: rnd(0, 360) });
+  const setRels = fn => { S.tribes.forEach(t => { t.rel = fn(t); }); S.rel = S.tribes[0].rel; };   // cada pueblo con su propia fe
   const DISEASES = ["Peste Gris", "Fiebre del Plátano", "Tos Simiesca", "Gripe Roja", "Mal del Sueño", "Viruela de los Árboles", "Fiebre Negra", "Sarampión Peludo", "Gripe de la Selva", "Mal de las Pulgas"];
   const cheerSome = (n, secs) => free().slice(0, n).forEach(g => { g.act = "cheer"; g.stay = secs; g.m.t = 0; });
   const releaseAll = list => list.forEach(g => { g.hold = false; g.stay = 0; });
@@ -593,7 +705,7 @@ const World = (function () {
     M(1, "cocina", `Descubren que la comida cocida sabe mejor`, () => free().slice(0, 4).forEach(g => { g.act = "eat"; g.stay = 5; g.m.food = "banana"; g.m.dur = 5; g.m.t = 0; })),
     M(1, "ritual", `Primer ritual bailando alrededor del fuego`, () => cheerSome(7, 6)),
     M(1, "pieles", `Se abrigan con pieles para el frío`),
-    M(1, "fuego_sagrado", `Un fuego eterno arde en la cueva y un chamán lo cuida: nace el «Culto al Fuego Eterno»`, () => { S.rel = { name: "Culto al Fuego Eterno", hue: 20 }; }),
+    M(1, "fuego_sagrado", `Un fuego eterno arde en la cueva y un chamán lo cuida: nace el «Culto al Fuego Eterno»`, () => setRels(t => ({ name: ["Culto al Fuego Eterno", "Guardianes de la Llama", "Hijos del Ascua"][t.i], hue: 20 + t.i * 50 }))),
     M(1, "ceramica", `Cuecen barro en el fuego: nace la cerámica`),
     M(1, "cobre", `Funden cobre en la hoguera`),
     M(1, "mitos", `Se cuentan historias junto al fuego: nacen los mitos`, () => say("érase una vez…")),
@@ -604,7 +716,7 @@ const World = (function () {
     M(2, "arco", `Inventan el arco y la flecha`),
     M(2, "jefe", `Aparece un jefe que guía al clan`),
     M(2, "chamanismo", `Un chamán dice hablar con los espíritus`, () => say("¡espíritus!")),
-    M(2, "totems", () => `Tallan tótems: nace la fe en «${S.rel.name}»`, () => { S.rel = { name: `Espíritus del ${pick(["Bosque", "Río", "Viento", "Trueno", "Lobo"])}`, hue: rnd(0, 360) }; }),
+    M(2, "totems", () => `Tallan tótems: nace la fe en «${S.rel.name}»`, () => setRels(() => ({ name: `Espíritus del ${pick(["Bosque", "Río", "Viento", "Trueno", "Lobo"])}`, hue: rnd(0, 360) }))),
     M(2, "calendario", `Siguen a la luna: nace el primer calendario`),
     M(2, "balsas", `Cruzan los ríos en balsas`),
     M(2, "trueque", `Intercambian pieles y comida: nace el trueque`),
@@ -618,7 +730,7 @@ const World = (function () {
     M(3, "rueda", `Inventan la rueda`),
     M(3, "escritura", `Nace la escritura`),
     M(3, "comercio", `Abren el primer mercado`),
-    M(3, "templo", () => `Levantan el primer templo: nace la religión «${S.rel.name}»`, () => { S.rel = newRel(); }),
+    M(3, "templo", () => `Levantan el primer templo: nace la religión «${S.rel.name}»`, () => setRels(() => newRel())),
     M(3, "astronomia", `Observan los astros: primeros astrónomos`),
     M(3, "matematicas", `Inventan los números y la geometría`, () => say("1+1=2")),
     M(3, "filosofia", `Surge el primer filósofo: «¿por qué hay bananas?»`, () => say("¿por qué?")),
@@ -627,7 +739,7 @@ const World = (function () {
     M(3, "hierro", `Dominan el hierro: armas y arados más fuertes`),
     M(3, "leyes", `Escriben el primer código de leyes`),
     M(3, "moneda", `Acuñan las primeras monedas`),
-    M(3, "piramide", `Levantan una gigantesca pirámide para sus dioses`, () => { if (!S.rel) S.rel = newRel(); }),
+    M(3, "piramide", `Levantan una gigantesca pirámide para sus dioses`, () => { if (!S.rel) setRels(() => newRel()); }),
     M(3, "curanderos", `Los curanderos descubren plantas medicinales`),
     M(3, "teatro", `Nace el teatro: los monos se burlan de los reyes`),
     M(3, "dioses", () => S.branch[3] ? `Creen en muchos dioses: uno para la lluvia, otro para las bananas` : `Surge la idea de un único dios supremo`),
@@ -637,7 +749,7 @@ const World = (function () {
     M(4, "navegacion", `Zarpan hacia tierras desconocidas`, () => { const sh = alive("ship")[0]; if (sh) burst(sh.x, floorY() - 20, 8, "#fff", 60); }),
     M(4, "imprenta", `Inventan la imprenta: las ideas viajan rápido`),
     M(4, "colonia", () => `Fundan la colonia de ${S.city}`),
-    M(4, "catedral", () => `Construyen una gran catedral para «${S.rel.name}»`, () => { if (!S.rel) S.rel = newRel(); }),
+    M(4, "catedral", () => `Construyen una gran catedral para «${S.rel.name}»`, () => { if (!S.rel) setRels(() => newRel()); }),
     M(4, "reforma", () => `Una reforma divide a los creyentes: nace «${S.rel2.name}»`, () => { S.rel2 = newRel(); }),
     M(4, "renacimiento", `Renacimiento: florecen el arte y la ciencia`),
     M(4, "telescopio_optico", `Inventan el telescopio: la Tierra ya no es el centro`),
@@ -695,7 +807,7 @@ const World = (function () {
     M(6, "ecologia", `Nace el movimiento ecologista`),
     M(6, "smartphone", `Todos tienen un teléfono inteligente (y no levantan la vista)`),
     M(6, "ia", `Primeras inteligencias artificiales`),
-    M(6, "nuevaera", () => `Surgen nuevas espiritualidades: «${S.rel.name}»`, () => { S.rel = newRel(); S.rel2 = null; S.done.reforma = false; }),
+    M(6, "nuevaera", () => `Surgen nuevas espiritualidades: «${S.rel.name}»`, () => { setRels(() => newRel()); S.tribes.forEach(t => { t.rel2 = null; }); S.rel2 = null; S.done.reforma = false; }),
     M(6, "cuantica", `La física cuántica desafía el sentido común`),
     M(6, "laboratorio", `Enormes laboratorios de investigación`),
     M(6, "carrera", `Comienza la carrera espacial`),
@@ -709,7 +821,7 @@ const World = (function () {
     M(7, "exoplanetas", `Descubren miles de exoplanetas`),
     M(7, "fusion", `Logran la energía de fusión`),
     M(7, "genetica", `Editan los genes: monos a la carta`),
-    M(7, "iglesia_cosmica", () => `Nace una fe cósmica: «${S.rel.name}»`, () => { S.rel = newRel(); S.rel2 = null; S.done.reforma = false; }),
+    M(7, "iglesia_cosmica", () => `Nace una fe cósmica: «${S.rel.name}»`, () => { setRels(() => newRel()); S.tribes.forEach(t => { t.rel2 = null; }); S.rel2 = null; S.done.reforma = false; }),
     M(7, "filosofia_cosmica", `¿Estamos solos en el universo? Los filósofos debaten`, () => say("¿solos?")),
     M(7, "conciencia_ia", `Una IA pide derechos`),
     M(7, "ascensor", `Construyen un ascensor espacial`),
@@ -718,7 +830,7 @@ const World = (function () {
   ];
   const sacredX = () => anchor(SACRED);
   const EVENTS = [
-    { id: "guerra", min: 1, w: () => S.traits.war * 1.4 * (free().length >= 6 ? 1 : 0), run: () => startWar() },
+    { id: "guerra", min: 1, w: () => S.traits.war * 1.4 * (free().length >= 6 ? 1 : 0), run: () => { if (!tribalWar()) startWar(); } },
     { id: "caceria", max: 2, w: () => alive("mammoth").length && free().length >= 4 ? 1.1 : 0, run: () => startHunt() },
     { id: "festival", min: 1, w: () => 1, run: () => festival() },
     { id: "pandemia", min: 2, w: () => S.pandemic ? 0 : .8 * (2 - S.traits.luck), run: () => pandemic() },
@@ -759,6 +871,16 @@ const World = (function () {
     { id: "heroe", min: 2, w: () => S.done.heroe ? 0 : .4, run: () => hero() },
     { id: "tribu", max: 3, w: () => .5, run: () => { S.extra += rnd(2, 4); logEv(`Otra tribu se une a ${T()}`); } },
     { id: "falsoovni", min: 6, w: () => .3, run: () => logEv(`Falsa alarma: el «ovni» era un globo meteorológico`) },
+    { id: "gladiadores", min: 3, max: 4, w: () => alive("colosseum").length ? .8 : 0, run: () => gladiators() },
+    { id: "legion", min: 3, max: 4, w: () => !S.unified && S.tribes.some(t => t.cult === "romana") ? .55 : 0, run: () => legion() },
+    { id: "horda", min: 3, max: 4, w: () => !S.unified && S.tribes.some(t => t.cult === "mongola") ? .5 : 0, run: () => horde() },
+    // --- diplomacia entre pueblos (mientras no sean uno solo) ---
+    { id: "exploradores", min: 2, w: () => !S.unified && twoTribes() ? .9 : 0, run: () => explorers() },
+    { id: "comercio", min: 2, w: () => !S.unified && twoTribes() ? .8 : 0, run: () => trade() },
+    { id: "misioneros", min: 2, w: () => !S.unified && S.tribes.some(t => t.rel) && twoTribes() ? .6 : 0, run: () => missionaries() },
+    { id: "tratado", min: 2, w: () => !S.unified && twoTribes() ? .45 + Math.max(0, -Math.min(...S.dip.flat())) * .5 : 0, run: () => treaty() },
+    { id: "ayuda", min: 2, w: () => S.pandemic && !S.unified ? 1.2 : 0, run: () => aid() },
+    { id: "bodareal", min: 3, w: () => !S.unified && twoTribes() ? .4 : 0, run: () => royalWedding() },
     { id: "tsunami", min: 3, w: () => alive("ship").length ? .3 : 0, run: () => flood(18, `Tsunami: una ola gigante golpea la costa`) },
     // --- medievales ---
     { id: "asedio", min: 3, max: 4, w: () => (alive("castle").length || alive("fort").length) && free().length >= 10 ? .9 * S.traits.war : 0, run: () => siege() },
@@ -1000,8 +1122,9 @@ const World = (function () {
     logEv(`Milagro en el templo de «${S.rel.name}»: un haz de luz baja del cielo`);
   }
   function schism() {
-    S.done.reforma = true; S.rel2 = newRel();
-    logEv(`Cisma: nace «${S.rel2.name}», rival de «${S.rel.name}»`);
+    const t = pick(S.tribes);
+    S.done.reforma = true; t.rel2 = S.rel2 = newRel();
+    logEv(`Cisma entre ${S.unified ? S.nation : tn(t.i)}: nace «${t.rel2.name}», rival de «${(t.rel || S.rel).name}»`);
   }
   function prophet() {
     logEv(`Un profeta anuncia el fin del mundo para mañana... y no pasa nada`);
@@ -1135,15 +1258,25 @@ const World = (function () {
   // --- guerra y paz ---
   const WEAPON = ["stone", "stone", "arrow", "arrow", "ball", "ball", "bullet", "laser"];
   function startWar(label, opts) {
-    const gs = shuffle(free());
-    if (gs.length < 6) return false;
-    const cx = rnd(W * .3, W * .7), L = [], R2 = [];
-    gs.slice(0, 22).forEach((g, i) => {
-      const left = i % 2 === 0, side = left ? L : R2; side.push(g);
-      sendTo(g, cx + (left ? -1 : 1) * (60 + side.length * 9), "fight", left ? 1 : -1, 999);
-    });
+    opts = opts || {};
+    const L = [], R2 = []; let cx = rnd(W * .3, W * .7), tribes = null;
+    if (opts.tribes) {   // guerra entre dos pueblos: cada uno pone a los suyos a ambos lados de la frontera
+      const [a, b] = opts.tribes[0] < opts.tribes[1] ? opts.tribes : [opts.tribes[1], opts.tribes[0]];
+      const la = shuffle(free().filter(g => g.tribe === a)).slice(0, 11), lb = shuffle(free().filter(g => g.tribe === b)).slice(0, 11);
+      if (la.length < 3 || lb.length < 3) return false;
+      cx = (zone(a)[1] + zone(b)[0]) / 2; tribes = [a, b];
+      la.forEach(g => { L.push(g); sendTo(g, cx - (60 + L.length * 9), "fight", 1, 999); });
+      lb.forEach(g => { R2.push(g); sendTo(g, cx + (60 + R2.length * 9), "fight", -1, 999); });
+    } else {
+      const gs = shuffle(free());
+      if (gs.length < 6) return false;
+      gs.slice(0, 22).forEach((g, i) => {
+        const left = i % 2 === 0, side = left ? L : R2; side.push(g);
+        sendTo(g, cx + (left ? -1 : 1) * (60 + side.length * 9), "fight", left ? 1 : -1, 999);
+      });
+    }
     S.stats.guerras++;
-    S.war = { phase: "march", t: 0, cx, L, R: R2, shot: 0, ko: 3, dur: (opts && opts.dur) || rnd(11, 17), weapon: WEAPON[Math.min(S.era, 7)] };
+    S.war = { phase: "march", t: 0, cx, L, R: R2, shot: 0, ko: 3, dur: opts.dur || rnd(11, 17), weapon: WEAPON[Math.min(S.era, 7)], tribes };
     S.busy = true;
     const pool = S.era <= 2 ? [`Las tribus se disputan el territorio de caza`, `Estalla la guerra entre dos bandos de ${T()}`, `Disputa por el agua: ${T()} toma las armas`]
       : S.era <= 4 ? [`Guerra entre señores feudales por unas tierras`, `Guerra de sucesión: dos primos reclaman la corona`, `Guerra civil: el reino se divide`, `Los ejércitos de ${T()} se enfrentan en el campo de batalla`]
@@ -1179,11 +1312,102 @@ const World = (function () {
         fx("g", { x: dir > 0 ? -20 : W + 20, y: H * .3, vx: dir * 120, vy: 0, life: (W + 40) / 120, html: `<ellipse rx="6" ry="3.5" fill="#fff" stroke="#ddd"/><path class="wg" d="M-2 0Q-6 -12 2 -8Z" fill="#fff"/><path d="M2 0Q6 -12 -2 -8Z" fill="#fff"/>`,
           tick: f => { f.e.setAttribute("transform", `translate(${f.x.toFixed(1)} ${(f.y + Math.sin(f.t * 9) * 6).toFixed(1)}) scale(${dir} 1)`); } });
         for (let i = 0; i < 45; i++) fx("conf", { x: w.cx + rnd(-160, 160), y: rnd(-40, H * .3), vy: rnd(40, 90), life: 6, col: `hsl(${rnd(0, 360)} 85% 60%)` });
-        logEv(pick([`Firman la paz: ${T()} vuelve a ser una sola`, `Tregua y abrazos: se acabó la guerra`, `La paloma llega y los bandos hacen las paces`]));
+        if (w.tribes) tribalOutcome(w); else logEv(pick([`Firman la paz: ${T()} vuelve a ser una sola`, `Tregua y abrazos: se acabó la guerra`, `La paloma llega y los bandos hacen las paces`]));
       }
       return;
     }
     if (w.phase === "peace" && w.t > 6) { all.forEach(g => { g.hold = false; g.stay = 0; }); S.war = null; S.busy = false; }
+  }
+
+  const alive2 = i => free().filter(g => g.tribe === i);
+  function twoTribes(minA) {   // hay al menos un pueblo con gente libre y otro distinto
+    return S.tribes.filter(t => alive2(t.i).length >= (minA || 3)).length >= 1 && S.tribes.length > 1;
+  }
+  function pairFor(minA) {
+    const ok = S.tribes.filter(t => alive2(t.i).length >= (minA || 3));
+    if (!ok.length) return null;
+    const a = pick(ok).i, b = pick(S.tribes.filter(t => t.i !== a)).i;
+    return [a, b];
+  }
+  const homeOf = i => { const z = zone(i); return rnd(z[0] + 30, z[1] - 30); };
+  const sendHome = (gs, i) => gs.forEach(g => { sendTo(g, homeOf(i), "sit", 0, 2); });
+  function explorers() {
+    const pr = pairFor(3); if (!pr) return;
+    const [a, b] = pr, gs = alive2(a).slice(0, 3), z = zone(b), tx = (z[0] + z[1]) / 2 + rnd(-40, 40);
+    gs.forEach((g, i) => sendTo(g, tx + i * 14, "cheer", 0, 7));
+    logEv(`Exploradores de ${tn(a)} llegan a las tierras de ${tn(b)}`); dipAdd(a, b, 1);
+    later(9, () => sendHome(gs, a)); later(15, () => releaseAll(gs));
+  }
+  function trade() {
+    const pr = pairFor(2); if (!pr) return;
+    const [a, b] = pr, za = zone(a), zb = zone(b), x0 = (za[0] + za[1]) / 2, x1 = (zb[0] + zb[1]) / 2, dur = Math.abs(x1 - x0) / 60;
+    fx("g", { x: x0, y: floorY() + 20, vx: (x1 - x0) / dur, life: dur, flip: x1 < x0,
+      html: R(-14, -14, 28, 8, "#a67c2e") + Cir(-9, -4, 5, "#5a3b22") + Cir(9, -4, 5, "#5a3b22") + Cir(-5, -17, 4, "#e8c96a") + Cir(3, -18, 5, "#d9b53a") + Cir(9, -16, 3.5, "#e53935") });
+    S.extra += 2; dipAdd(a, b, 1);
+    logEv(`Caravana comercial: ${tn(a)} intercambian mercancías con ${tn(b)}`);
+  }
+  function missionaries() {
+    const pr = pairFor(3); if (!pr) return;
+    const [a, b] = pr, ta = S.tribes[a], tb = S.tribes[b];
+    if (!ta.rel) return;
+    const gs = alive2(a).slice(0, 3), z = zone(b), tx = (z[0] + z[1]) / 2 + rnd(-30, 30);
+    gs.forEach((g, i) => sendTo(g, tx + i * 14, "cheer", 0, 7));
+    if (tb.rel && tb.rel.name !== ta.rel.name && !tb.rel2) {
+      tb.rel2 = ta.rel; S.rel2 = ta.rel; S.done.reforma = true; dipAdd(a, b, 1);
+      logEv(`Misioneros de ${tn(a)} difunden «${ta.rel.name}»: parte de ${tn(b)} se convierte`);
+    } else { logEv(`Misioneros de ${tn(a)} predican en las tierras de ${tn(b)}, sin demasiado éxito`); }
+    later(9, () => sendHome(gs, a)); later(15, () => releaseAll(gs));
+  }
+  function treaty() {
+    const pr = pairFor(2); if (!pr) return;
+    let [a, b] = pr;
+    for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) if (dip(i, j) < dip(a, b) && alive2(i).length && alive2(j).length) { a = i; b = j; }   // el par mas enemistado
+    const l = Math.min(a, b), rr = Math.max(a, b), cx = (zone(l)[1] + zone(rr)[0]) / 2, ga = alive2(a)[0], gb = alive2(b)[0];
+    if (!ga || !gb) return;
+    sendTo(ga, cx + (a < b ? -14 : 14), "cheer", a < b ? 1 : -1, 6); sendTo(gb, cx + (a < b ? 14 : -14), "cheer", a < b ? -1 : 1, 6);
+    fx("g", { x: cx, y: floorY() - 20, life: 8, html: `<line x1="0" y1="0" x2="0" y2="-36" stroke="#6b4a2a" stroke-width="2"/><path d="M0 -36L22 -32L0 -26Z" fill="#fff" stroke="#ccc"/>` });
+    dipAdd(a, b, 2); logEv(`Tratado de ${pick(["paz", "amistad", "comercio"])} entre ${tn(a)} y ${tn(b)}`);
+    later(8, () => releaseAll([ga, gb]));
+  }
+  function aid() {
+    const p = S.pandemic; if (!p) return;
+    const pr = pairFor(2); if (!pr) return;
+    p.lethal = Math.max(.08, (p.lethal != null ? p.lethal : .4) - .15); dipAdd(pr[0], pr[1], 1);
+    logEv(`${tn(pr[0])} envían médicos y medicinas a ${tn(pr[1])} para frenar ${p.name}`);
+  }
+  function royalWedding() {
+    const pr = pairFor(2); if (!pr) return;
+    const [a, b] = pr, gs = alive2(a).slice(0, 4).concat(alive2(b).slice(0, 4)), cx = (zone(Math.min(a, b))[1] + zone(Math.max(a, b))[0]) / 2;
+    gs.forEach((g, i) => sendTo(g, cx + (i - 4) * 12, "cheer", 0, 7));
+    fireworks(cx, H * .4); dipAdd(a, b, 2);
+    logEv(`Boda real: se casan un príncipe de ${tn(a)} y una princesa de ${tn(b)}`);
+    later(9, () => releaseAll(gs));
+  }
+  function tribalWar() {   // guerra entre dos pueblos (mas probable si ya estaban enemistados)
+    if (S.unified) return false;
+    const cand = [];
+    for (let a = 0; a < 3; a++) for (let b = a + 1; b < 3; b++) if (free().filter(g => g.tribe === a).length >= 3 && free().filter(g => g.tribe === b).length >= 3) cand.push([a, b]);
+    const pr = wpick(cand, q => 1 + Math.max(0, -dip(q[0], q[1])) * 1.5 - Math.max(0, dip(q[0], q[1])) * .4);
+    if (!pr) return false;
+    const [a, b] = pr;
+    if (startWar(pick([`${tn(a)} y ${tn(b)} entran en guerra por el territorio`, `Frontera en llamas: ${tn(a)} contra ${tn(b)}`, `Guerra entre ${tn(a)} y ${tn(b)}`]), { tribes: pr }) === false) return false;
+    dipAdd(a, b, -2);
+    return true;
+  }
+  function tribalOutcome(w) {
+    const [a, b] = w.tribes, win = chance(.5) ? a : b, lose = win === a ? b : a;
+    if (chance(.55)) {   // conquista
+      S.structs.filter(q => q.tribe === lose && !q.mobile && !q.dying && !q.temp && Math.abs(q.x - w.cx) < 150).slice(0, 3).forEach(ruinOf);
+      S.extra = Math.max(0, S.extra - 1); dipAdd(a, b, -1);
+      logEv(`${tn(win)} vencen y toman tierras de ${tn(lose)}`);
+    } else { dipAdd(a, b, 2); logEv(`Tablas: ${tn(a)} y ${tn(b)} firman una tregua`); }
+  }
+  function unify() {   // en la era espacial los pueblos se funden en uno solo
+    if (S.unified) return;
+    S.unified = true; S.structs.forEach(q => { if (q.kind === "tflag") q.dying = .001; });
+    showBanner(`Un solo pueblo: ${S.nation}`);
+    logEv(`${S.tribes.map((t, i) => tn(i)).join(", ")} se unen en un solo pueblo: ${S.nation}`);
+    for (let i = 0; i < 4; i++) later(i * .5, () => fireworks(rnd(W * .15, W * .85), rnd(H * .2, H * .5)));
   }
 
   // --- planetas, cohetes y colonizacion ---
@@ -1217,7 +1441,7 @@ const World = (function () {
     return { tipo, datos: [`Diámetro: ${km(ri(4000, 15000))} km`, `Gravedad: ${rnd(.4, 1.6).toFixed(1)} g`, `Temperatura media: ${temp} °C`, `Atmósfera: ${atm}`, `Distancia: ${ly} años luz`, `Día: ${ri(8, 60)} h`], desc };
   }
   function showPlanet(p) {
-    const i = p.info, col = p.col > 0 ? `${p.col} mono${p.col > 1 ? "s" : ""} de ${S.tribe}` : p.alien ? "territorio alienígena" : "ninguna todavía";
+    const i = p.info, col = p.col > 0 ? `${p.col} colono${p.col > 1 ? "s" : ""} de ${natName()}` : p.alien ? "territorio alienígena" : "ninguna todavía";
     planetPop.innerHTML = `<button class="x" aria-label="Cerrar">×</button><b>${p.name}</b><div class="sub">${i.tipo}</div>` +
       `<ul>${i.datos.map(x => `<li>${x}</li>`).join("")}<li>Descubierto: ${p.disc}</li><li>Colonias: ${col}</li></ul><p>${i.desc}</p>`;
     planetPop.hidden = false;
@@ -1306,7 +1530,7 @@ const World = (function () {
     f.pl.col += f.n; S.colonists += f.n; boom(f.x1, f.y1, false); renderColonies(f.pl);
     logEv(`Llegan ${f.n} colonos a ${f.pl.name}: ya son ${S.colonists}`);
     if (!S.won && S.colonists >= S.goal) {
-      S.won = true; showBanner(`¡${S.tribe} colonizó ${S.dest.name}!`);
+      S.won = true; showBanner(`¡${natName()} colonizó ${S.dest.name}!`);
       logEv(`¡${T()} COLONIZÓ ${S.dest.name.toUpperCase()}!`);
       for (let i = 0; i < 6; i++) later(i * .5, () => fireworks(rnd(W * .1, W * .9), rnd(H * .15, H * .5)));
     }
@@ -1710,15 +1934,15 @@ const World = (function () {
     S.sea = 0; S.waterH = 0; water.setAttribute("height", 0); dark.setAttribute("opacity", 0);
     groundMons().forEach(g => { g.sick = 0; g.hold = false; g.stay = 0; g.m.parts.root.style.filter = ""; });
     S.cycle++;
-    S.era = o.era || 0; S.eraT = 0; S.eraDur = ERAS[S.era].dur * rnd(.75, 1.35); S.extra = o.extra || 0;
+    S.medieval = false; S.era = o.era || 0; S.eraT = 0; S.eraDur = ERAS[S.era].dur * rnd(.75, 1.35); S.extra = o.extra || 0;
     S.done = {}; S.recent = {}; S.won = false; S.destSeen = false; S.dest = wpick(DESTS, d => d.w); S.goal = 4 + (Math.random() * 3 | 0);
     S.traits = { war: rnd(.25, 1.8), curious: rnd(.7, 1.5), luck: rnd(.6, 1.4) };
     S.branch = [0, 0, 0, 0, 0, 0, 0, 0, 0].map(() => chance(.5) ? 1 : 0);
-    S.rel = S.rel2 = null; S.tribe = nm(); S.city = nm(); S.hue = rnd(0, 360); S.flag = [rnd(0, 360), rnd(0, 360)];
+    S.rel = S.rel2 = null; makeTribes(); S.city = nm(); S.hue = rnd(0, 360); S.flag = [rnd(0, 360), rnd(0, 360)];
     S.planPause = 0; S.planT = 0; S.msT = 6; S.evT = 12; S.launchT = null; S.mammothT = 0; S.planetT = null;
     setLook(null); rails.style.display = "none";
     showBanner(o.era ? "El conocimiento sobrevive" : "Los supervivientes empiezan de nuevo");
-    logEv(`— Ciclo ${S.cycle}: ${S.tribe} ${o.era ? "reconstruye la civilización" : "vuelve a la Edad de Piedra"} —`);
+    logEv(`— Ciclo ${S.cycle}: ${S.tribes.map((t, i) => tn(i)).join(", ")} ${o.era ? "reconstruyen la civilización" : "vuelven a la Edad de Piedra"} —`);
     S.hudT = 0;
   }
 
@@ -1729,12 +1953,12 @@ const World = (function () {
     showBanner(ERAS[0].name);
   }
   function eraUp() {
-    S.era++; S.eraT = 0; S.eraDur = ERAS[S.era].dur * rnd(.75, 1.35); S.msT = 4;
+    S.era++; S.eraT = 0; S.eraDur = ERAS[S.era].dur * rnd(.75, 1.35); S.msT = 4; S.medieval = false;
     ground.setAttribute("fill", ERAS[S.era].ground);
     showBanner(ERAS[S.era].name); logEv(`Comienza: ${ERAS[S.era].name}`);
     if (S.era === 3) logEv(`Nace ${S.city}, la primera aldea de ${T()}`);
     burst(W / 2, floorY() - 20, 14, "#ffd23f", 100);
-    if (S.era === 7) { S.msT = 6; }
+    if (S.era === 7) { S.msT = 6; unify(); }
     if (S.era === 8) startSaga();
   }
   function step(h) {
@@ -1769,6 +1993,7 @@ const World = (function () {
     for (const g of S.mon.slice()) stepMon(g, h);
     if (S.started) {
       S.eraT += h * S.boost;
+      if (S.era === 3 && !S.medieval && S.eraT >= S.eraDur * .3) startMedieval();
       const ground2 = groundMons().length;
       if (ground2 >= 2 && popTotal() < ERAS[S.era].cap) S.extra += h * (.12 + ground2 * .012) * S.traits.luck;
       if (S.era < 7 && S.eraT >= S.eraDur && popTotal() >= ERAS[S.era + 1].min) eraUp();
@@ -1779,7 +2004,7 @@ const World = (function () {
       if (S.era >= 7 && S.destSeen && !S.busy && !S.launch && !S.cata) { S.launchT = (S.launchT == null ? 8 : S.launchT) - h; if (S.launchT <= 0) { S.launchT = S.fastLaunch > 0 ? rnd(5, 8) : rnd(14, 22); tryLaunch(); } }
       if (S.era >= 7 && S.destSeen && !S.cata) { S.planetT = (S.planetT == null ? 20 : S.planetT) - h; if (S.planetT <= 0 && S.planets.length < 5) { S.planetT = rnd(24, 40); const pl = addPlanet({}); logEv(`El telescopio descubre ${pl.name}`); } }
       if (S.mammothT > 0) { S.mammothT -= h; }
-      if (S.returnT > 0) { S.returnT -= h; if (S.returnT <= 0 && S.returnMon) { const m = S.returnMon; S.returnMon = null; gMon.appendChild(m.parts.root); const g = { m, state: "ground", x: 0, y: 0, rot: 0, vx: 0, vy: 0, vr: 0, dy: rnd(6, GROUND_H - 12), sp: 1, act: "idle", stay: 0 }; g.x = rnd(60, W - 60); g.y = -40; S.mon.push(g); fall(g); m.say = "¡¿?!"; logEv(`El mono abducido regresó... con cara de susto`); } }
+      if (S.returnT > 0) { S.returnT -= h; if (S.returnT <= 0 && S.returnMon) { const m = S.returnMon; S.returnMon = null; gMon.appendChild(m.parts.root); const g = { m, tribe: Math.max(0, TRIBE_KINDS.indexOf(m.kind)), state: "ground", x: 0, y: 0, rot: 0, vx: 0, vy: 0, vr: 0, dy: rnd(6, GROUND_H - 12), sp: 1, act: "idle", stay: 0 }; g.x = rnd(60, W - 60); g.y = -40; S.mon.push(g); fall(g); m.say = "¡¿?!"; logEv(`El mono abducido regresó... con cara de susto`); } }
     }
     for (const s of S.structs) {
       const def = KINDS[s.kind];
@@ -1822,11 +2047,12 @@ const World = (function () {
       g.m.parts.root.style.opacity = g.dead > 0 ? clamp(g.dead, 0, 1).toFixed(2) : 1;
     }
   }
+  const popLine = () => S.unified ? `Población ${popTotal()} · ${S.nation}` : S.tribes.map(t => { const w = TRIBE_INFO[t.kind].plural; return `${w[0].toUpperCase() + w.slice(1)} ${popOf(t.i)}`; }).join(" · ");
   function renderHud() {
     if (!S.started || S.hudT > 0) return;
     S.hudT = .3;
     const e = ERAS[S.era], pop = popTotal(), st = S.stats;
-    let h = `<b>${e.name}</b> · ${fmtYear(curYear())} ${hudOpen ? "▾" : "▸"}<br>Población ${pop} · ${S.tribe}` + (S.cycle > 1 ? ` · Ciclo ${S.cycle}` : "") +
+    let h = `<b>${eraName()}</b> · ${fmtYear(curYear())} ${hudOpen ? "▾" : "▸"}<br>${popLine()}` + (S.cycle > 1 ? ` · Ciclo ${S.cycle}` : "") + (S.tribes.some(t => t.cult) && !S.unified && S.era <= 4 ? `<br>Culturas: ${S.tribes.map(t => `${TRIBE_INFO[t.kind].plural} ${CULTURES[t.cult] ? CULTURES[t.cult].name : "—"}`).join(" · ")}` : "") +
       (S.saga ? `<br>Saga: ${S.saga.def.name}` : "") +
       (S.era === 7 && S.destSeen ? ` · ${S.dest.name}: ${S.colonists}${S.won ? " ✔" : "/" + S.goal}` : "");
     if (hudOpen) {
@@ -1859,21 +2085,26 @@ const World = (function () {
     const flags = [[1, ["fuego_sagrado"]], [2, ["totems", "trueque"]], [3, ["rueda", "escritura", "comercio", "templo", "academia", "astronomia", "castillo"]], [4, ["catedral", "universidad", "reforma", "imprenta", "feudalismo"]],
       [5, ["electricidad", "deporte", "heroe"]], [6, ["radio", "laboratorio", "antibioticos", "vacunas"]]];
     flags.forEach(([e, fl]) => { if (S.era >= e) fl.forEach(f => { S.done[f] = true; }); });
-    if (S.era >= 1) S.rel = newRel();
-    if (S.era >= 4) S.rel2 = newRel();
+    if (S.era >= 1) setRels(() => newRel());
+    if (S.era >= 4) { S.tribes.forEach(t => { t.rel2 = newRel(); }); S.rel2 = S.tribes[0].rel2; }
+    if (S.era >= 7) { S.unified = true; }
+    if (S.era === 3 && Q.has("medieval")) { S.eraT = S.eraDur * .31; }
+    if (S.era === 3 && Q.has("medieval") || S.era === 4) assignCultures((Q.get("cult") || "").split(",")), S.medieval = S.era === 3;
     ground.setAttribute("fill", ERAS[S.era].ground);
     S.started = true; gGround.style.opacity = 1; gStruct.style.opacity = 1; hud.style.opacity = 1;
     for (let i = 0; i < 14; i++) {
-      const m = A.make(); gMon.appendChild(m.parts.root); m.mood = { low: 0, mid: 1, high: 0 }; m.theta = 0;
-      S.mon.push({ m, state: "ground", x: rnd(40, W - 40), y: 0, rot: 0, vx: 0, vy: 0, vr: 0, dy: rnd(6, GROUND_H - 12), sp: rnd(.85, 1.2), act: "idle", stay: rnd(0, 3) });
+      const tr = i % 3, m = A.make(TRIBE_KINDS[tr]), zz = zone(tr); gMon.appendChild(m.parts.root); m.mood = { low: 0, mid: 1, high: 0 }; m.theta = 0;
+      S.mon.push({ m, tribe: tr, state: "ground", x: rnd(zz[0] + 30, zz[1] - 30), y: 0, rot: 0, vx: 0, vy: 0, vr: 0, dy: rnd(6, GROUND_H - 12), sp: rnd(.85, 1.2), act: "idle", stay: rnd(0, 3) });
     }
     if (S.era >= 7) { ensureDest(); for (let i = 0; i < 3; i++) addPlanet({}); }
     for (let i = 0; i < 14; i++) plan();
-    if (S.era >= 3 && S.era <= 4) addStruct("castle", W * .72);
+    if (S.era >= 3 && S.era <= 4) addStruct("castle", W * .5, { tribe: 1 });
     S.structs.forEach(s => s.built = 1);
-    const DO = { guerra: startWar, caceria: startHunt, cohete: () => { S.destSeen = true; ensureDest(); tryLaunch(); }, meteorito: meteor, ovni: ufo, plaga: () => hurt(.25, "Plaga"),
+    const DO = { guerra: () => { if (!tribalWar()) startWar(); }, caceria: startHunt, cohete: () => { S.destSeen = true; ensureDest(); tryLaunch(); }, meteorito: meteor, ovni: ufo, plaga: () => hurt(.25, "Plaga"),
       terremoto: quake, volcan: volcano, festival, eclipse: () => { S.eclipse = 10; }, lluvia: () => { S.rain = 12; }, cometa: comet };
     Object.assign(DO, { cataclismo: () => cataclysm({ surv: 4 }), pandemia: pandemic, incendio: fire, inundacion: () => flood(14, "Inundación"), tormenta: storm, aurora, estrellas: starShower,
+      exploradores: explorers, comercio: trade, misioneros: missionaries, tratado: treaty, ayuda: aid, bodareal: royalWedding,
+      gladiadores: gladiators, legion, horda: horde, medieval: startMedieval,
       asedio: siege, justas: joust, cruzada: crusade, invasores: raid, pestenegra: () => pandemic({ name: "Peste Negra", lethal: .75, dur: 40 }), dragon, naval: navalBattle, guerramundial: worldWar, guerrafria: coldWar,
       olimpiadas: olympics, peregrinacion: pilgrimage, milagro: miracle, cisma: schism, huelga: strike, crisis, langostas: locusts, sequia: drought, genio: genius, concierto: () => { S.music = 10; cheerSome(10, 8); } });
     if (START_ERA === 8) setTimeout(() => startSaga(Q.get("saga")), 600);

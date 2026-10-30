@@ -97,10 +97,10 @@ const World = (function () {
     rain: 0, eclipse: 0, colonists: 0, goal: 4 + (Math.random() * 3 | 0), won: false, destSeen: false, log: [], busy: false,
     tribe: nm(), city: nm(), hue: rnd(0, 360), flag: [rnd(0, 360), rnd(0, 360)],
     dest: wpick(DESTS, d => d.w), returnT: 0, returnMon: null, mammothT: 0,
-    stats: { guerras: 0, plagas: 0, hambrunas: 0, terremotos: 0, meteoritos: 0, festivales: 0, cohetes: 0, hitos: 0, pandemias: 0, devorados: 0, cataclismos: 0, incendios: 0 },
+    stats: { guerras: 0, plagas: 0, hambrunas: 0, terremotos: 0, meteoritos: 0, festivales: 0, cohetes: 0, hitos: 0, pandemias: 0, devorados: 0, cataclismos: 0, incendios: 0, choques: 0 },
     planets: [], q: [], crits: [], fleet: [], cycle: 1, saga: null, lastSaga: null, planPause: 0, rel: null, rel2: null, pandemic: null,
     drought: 0, flood: 0, spice: 0, code: 0, crumble: 0, crumbT: 0, fightBack: false, wormCalm: 0, fastLaunch: 0, station: null, cata: null,
-    planetT: null, hole: null, aurora: 0, locust: 0, strike: 0, music: 0, floodMax: 14, launchT: null,
+    planetT: null, sea: 0, waterH: 0, hole: null, aurora: 0, locust: 0, strike: 0, music: 0, floodMax: 14, launchT: null,
   };
   S.eraDur = ERAS[0].dur * rnd(.75, 1.35);
 
@@ -220,10 +220,20 @@ const World = (function () {
     tower: { w: 26, noflip: true, draw: () => Pth("M-7 0L-3 -96L3 -96L7 0Z", "#e8eff6") + `<ellipse cx="0" cy="-56" rx="11" ry="3.2" fill="none" stroke="#6fe3ff" stroke-width="2"/><ellipse cx="0" cy="-76" rx="9" ry="2.6" fill="none" stroke="#6fe3ff" stroke-width="2"/>` + Cir(0, -98, 3, "#6fe3ff", 'class="bk"'),
       tick(s, h) { s.t += h; s.$(".bk").setAttribute("opacity", (.5 + .5 * Math.sin(s.t * 4)).toFixed(2)); } },
     starport: { w: 86, noflip: true, draw: () => R(-40, -4, 80, 4, "#7b8494") + Ell(0, -14, 26, 7, "#aab4c2") + Ell(0, -19, 12, 8, "#9fe3ff", 'opacity=".8"') + [-16, -5, 6, 16].map(x => Cir(x, -12, 1.6, "#ffd23f")).join("") + R(-28, -12, 3, 8, "#5a6270") + R(25, -12, 3, 8, "#5a6270") },
-    hovercar: { w: 24, mobile: true, noflip: true, init: s => { s.dy = -rnd(30, 120); s.v = (chance(.5) ? 1 : -1) * rnd(40, 90); },
+    hovercar: { w: 24, mobile: true, init: s => { s.dy = -rnd(30, 120); s.v = (chance(.5) ? 1 : -1) * rnd(40, 90); },
       draw: () => Ell(0, -5, 10, 4, "#dfe9f2") + Ell(0, -6.5, 5, 3, "#8fd3ff") + Ell(0, 0, 8, 1.6, "#6fe3ff", 'opacity=".6"'),
       tick(s, h) { s.x += s.v * h; s.dy += Math.sin(S.t * 2 + s.x) * h * 6; if (s.x > W + 30) s.x = -30; if (s.x < -30) s.x = W + 30; s.flip = s.v < 0; } },
     ruin: { w: 46, temp: true, draw: () => Pth("M-20 0L-18 -9L-10 -5L-5 -15L3 -7L10 -12L20 0Z", "#6e6a64") + Pth("M-8 0L-6 -6L0 -3L6 -8L9 0Z", "#8a857d") },
+    castle: { w: 90, noflip: true, init: s => { s.col = hsl(S.flag[0], 70, 50); },
+      draw: s => R(-34, -28, 68, 28, "#a4a29b") + [-34, -20, -6, 8, 22].map(x => R(x, -33, 8, 5, "#a4a29b")).join("") +
+        R(-42, -52, 18, 52, "#93918a") + R(24, -52, 18, 52, "#93918a") + Pth("M-44 -52L-33 -72L-22 -52Z", "#8c3b2a") + Pth("M22 -52L33 -72L44 -52Z", "#8c3b2a") +
+        R(-9, -44, 18, 44, "#9a988f") + Pth("M-11 -44L0 -60L11 -44Z", "#8c3b2a") + Pth("M-8 0L-8 -14Q0 -22 8 -14L8 0Z", "#3b3530") +
+        R(-38, -42, 3, 6, "#2a2520") + R(35, -42, 3, 6, "#2a2520") + `<line x1="0" y1="-60" x2="0" y2="-80" stroke="#444" stroke-width="2"/><path class="fg" d="M0 -80L16 -76L0 -71Z" fill="${s.col}"/>`,
+      tick(s, h) { s.t += h; const w = 3 * Math.sin(s.t * 6); s.$(".fg").setAttribute("d", `M0 -80Q8 ${-80 + w} 16 ${-76 + w}Q8 ${-73 - w} 0 -71Z`); } },
+    catapult: { w: 38, temp: true, init: s => { s.fire = 0; },
+      draw: () => R(-14, -6, 28, 4, "#6b4a2a") + Cir(-9, -3, 4, "#4a3220") + Cir(9, -3, 4, "#4a3220") + `<path d="M-8 -6L0 -16L8 -6" stroke="#6b4a2a" stroke-width="3" fill="none"/>` +
+        `<g class="arm" transform="translate(0 -14) rotate(-60)">${R(-1.5, -22, 3, 24, "#8b6b44")}${Cir(0, -23, 4, "#6d6a64")}</g>`,
+      tick(s, h) { s.fire = Math.max(0, s.fire - h * 1.6); s.$(".arm").setAttribute("transform", `translate(0 -14) rotate(${(-60 + s.fire * 100).toFixed(0)})`); } },
     wreck: { w: 82, temp: true, noflip: true, draw: () => Pth("M-38 0Q-34 -16 -2 -20L34 -12Q40 -4 30 0Z", "#6e7681") + R(-6, -28, 12, 10, "#4a515b", 'transform="rotate(-18 0 -23)"') + Cir(14, -8, 2.4, "#e53935"),
       tick(s, h) { s.sm = (s.sm || 0) - h; if (s.sm <= 0) { s.sm = .45; smoke(s.x - 4, floorY() - 22); } } },
     egg: { w: 14, temp: true, noflip: true, draw: () => Ell(0, -8, 6, 9, "#6f7f3c") + `<path d="M-3 -14L0 -10L3 -14" stroke="#3a4620" stroke-width="1" fill="none"/>` },
@@ -238,23 +248,23 @@ const World = (function () {
       tick(s, h) { s.sm -= h; if (s.sm <= 0) { s.sm = .5; smoke(s.x - 16, floorY() - 54); smoke(s.x + 12, floorY() - 48); } } },
     brickhouse: { w: 38, init: s => { s.col = hsl(rnd(8, 20), 46, 42); },
       draw: s => R(-16, -26, 32, 26, s.col) + R(-18, -30, 36, 4, "#3b3530") + [-11, 3].map(x => R(x, -21, 7, 8, "#ffe08a")).join("") + R(-3, -12, 6, 12, "#2a1a10") },
-    train: { w: 130, mobile: true, noflip: true, init: s => { s.dy = GROUND_H - 12; s.v = chance(.5) ? 70 : -70; s.sm = 0; },
+    train: { w: 130, mobile: true, init: s => { s.dy = GROUND_H - 12; s.v = chance(.5) ? 70 : -70; s.sm = 0; s.flip = s.v > 0; },
       draw: () => R(-60, -18, 40, 14, "#c0392b") + R(-60, -26, 14, 8, "#333") + R(-36, -30, 6, 12, "#222") + Pth("M-60 -4L-20 -4L-20 -2L-60 -2Z", "#222") +
         [-52, -40, -28].map(x => Cir(x, -3, 5, "#222")).join("") + R(-16, -20, 36, 16, "#3a6ea5") + R(24, -20, 36, 16, "#d6a62a") +
         [-8, 30, 44].map(x => Cir(x, -3, 5, "#222")).join(""),
-      tick(s, h) { s.x += s.v * h; s.sm -= h; if (s.sm <= 0) { s.sm = .4; smoke(s.x + (s.v > 0 ? -33 : 33), floorY() + s.dy - 32); } if (s.x > W + 150) s.x = -150; if (s.x < -150) s.x = W + 150; s.flip = s.v < 0; } },
+      tick(s, h) { s.x += s.v * h; s.sm -= h; if (s.sm <= 0) { s.sm = .4; smoke(s.x + (s.v > 0 ? 33 : -33), floorY() + s.dy - 32); } if (s.x > W + 150) s.x = -150; if (s.x < -150) s.x = W + 150; s.flip = s.v > 0; } },
     skyscraper: { w: 32, noflip: true, init: s => { s.h = rnd(62, 128); s.cw = rnd(24, 33); s.col = hsl(210, 16, rnd(30, 52)); s.lit = {}; },
       draw: s => { let o = R(-s.cw / 2, -s.h, s.cw, s.h, s.col) + `<line x1="0" y1="${-s.h}" x2="0" y2="${-s.h - 12}" stroke="#555" stroke-width="1.5"/>`;
         for (let y = 8; y < s.h - 6; y += 10) for (let x = -s.cw / 2 + 4; x < s.cw / 2 - 4; x += 8) o += R(x, -s.h + y, 4, 5, chance(.45) ? "#ffe28a" : "rgba(0,0,0,.28)", `class="wn"`);
         return o; },
       tick(s, h) { s.bt = (s.bt || 0) - h; if (s.bt <= 0) { s.bt = rnd(.6, 2); const w = s.el.querySelectorAll(".wn"); if (w.length) w[Math.random() * w.length | 0].setAttribute("fill", chance(.5) ? "#ffe28a" : "rgba(0,0,0,.28)"); } } },
-    car: { w: 30, mobile: true, noflip: true, init: s => { s.dy = GROUND_H - 14; s.v = (chance(.5) ? 1 : -1) * rnd(45, 90); s.col = hsl(rnd(0, 360), 70, 50); },
+    car: { w: 30, mobile: true, init: s => { s.dy = GROUND_H - 14; s.v = (chance(.5) ? 1 : -1) * rnd(45, 90); s.col = hsl(rnd(0, 360), 70, 50); s.flip = s.v < 0; },
       draw: s => R(-12, -10, 24, 6, s.col) + R(-7, -15, 14, 6, s.col) + R(-5, -14, 4, 4, "#bfe3ff") + R(1, -14, 4, 4, "#bfe3ff") + Cir(-7, -3, 3.4, "#222") + Cir(7, -3, 3.4, "#222"),
       tick(s, h) { s.x += s.v * h; if (s.x > W + 40) s.x = -40; if (s.x < -40) s.x = W + 40; s.flip = s.v < 0; } },
-    plane: { w: 56, mobile: true, noflip: true, init: s => { s.dy = -rnd(160, 300); s.v = (chance(.5) ? 1 : -1) * rnd(110, 160); s.x = s.v > 0 ? -80 : W + 80; s.wait = 0; },
+    plane: { w: 56, mobile: true, init: s => { s.dy = -rnd(160, 300); s.v = (chance(.5) ? 1 : -1) * rnd(110, 160); s.x = s.v > 0 ? -80 : W + 80; s.wait = 0; s.flip = s.v < 0; },
       draw: () => Ell(0, 0, 22, 4, "#f4f1ea") + Pth("M-4 0L-14 -14L-8 -14L6 0Z", "#cfd6dd") + Pth("M-4 2L-14 12L-8 12L6 2Z", "#cfd6dd") + Pth("M-20 0L-26 -8L-22 -8L-16 0Z", "#cfd6dd"),
       tick(s, h) { if (s.wait > 0) { s.wait -= h; return; } s.x += s.v * h; s.flip = s.v < 0; if (chance(h * 10)) smoke(s.x - Math.sign(s.v) * 24, floorY() + s.dy, 1);
-        if (s.x > W + 100 || s.x < -100) { s.wait = rnd(8, 20); s.dy = -rnd(160, 300); s.v = (chance(.5) ? 1 : -1) * rnd(110, 160); s.x = s.v > 0 ? -80 : W + 80; } } },
+        if (s.x > W + 100 || s.x < -100) { s.wait = rnd(8, 20); s.dy = -rnd(160, 300); s.v = (chance(.5) ? 1 : -1) * rnd(110, 160); s.x = s.v > 0 ? -80 : W + 80; s.flip = s.v < 0; } } },
     pad: { w: 50, noflip: true, init: s => { s.ready = true; s.readyT = 0; },
       draw: () => `<g stroke="#8a8f99" stroke-width="2"><line x1="14" y1="0" x2="14" y2="-70"/><line x1="24" y1="0" x2="24" y2="-70"/><path d="M14 -10L24 -22M24 -10L14 -22M14 -30L24 -42M24 -30L14 -42M14 -50L24 -62M24 -50L14 -62" fill="none"/></g>` +
         R(-22, -3, 52, 3, "#666") + `<g class="rk">${Pth("M-6 -14Q-6 -64 2 -72Q10 -64 10 -14Z", "#f4f1ea")}${Pth("M-6 -52Q2 -76 10 -52Z", "#e53935")}${Cir(2, -40, 3.2, "#6fb7ff")}${Pth("M-6 -14L-13 -4L-6 -4Z", "#e53935")}${Pth("M10 -14L17 -4L10 -4Z", "#e53935")}</g>`,
@@ -299,7 +309,7 @@ const World = (function () {
       cart: d.rueda ? 1 : 0, library: d.escritura || d.imprenta ? 1 : 0, market: d.comercio || d.trueque ? 1 : 0, dog: d.lobos ? 1 : 0,
       lamp: d.electricidad ? Math.min(7, 2 + S.era) : 0, academia: d.academia ? 1 : 0, observatory: d.astronomia || d.telescopio_optico ? 1 : 0,
       university: d.universidad ? 1 : 0, laboratory: d.laboratorio ? 1 : 0, hospital: d.antibioticos || d.vacunas ? 1 : 0, antenna: d.radio ? 1 : 0,
-      stadium: d.deporte ? 1 : 0, statue: d.heroe ? 1 : 0,
+      stadium: d.deporte ? 1 : 0, statue: d.heroe ? 1 : 0, castle: d.castillo || d.feudalismo ? 1 : 0,
     };
     const sk = sacredKind();
     if (sk) o[sk] = S.rel2 && d.reforma ? 2 : 1;
@@ -465,12 +475,24 @@ const World = (function () {
       default:
         m.mode = MODE_OF[g.act] || "rest"; m.phase += h * (g.act === "work" || g.act === "fight" ? 9 : 3);
         g.stay -= h;
-        if (g.stay <= 0 && !g.hold) think(g);
+        if (g.act === "ko" && chance(h * 2.5)) floatText(g.x + rnd(-8, 8), floorY() + g.dy - 34, "★", "#f5c518");   // estrellitas
+        if (g.stay <= 0 && g.complain) {   // el aplastado despierta y reclama
+          g.complain = false; g.m.say = pick(COMPLAINTS); g.m.mode = "react"; g.m.t = 0; g.m.dur = 2.6; g.act = "idle"; g.stay = 2.8;
+        } else if (g.stay <= 0 && !g.hold) think(g);
     }
+  }
+  const COMPLAINTS = ["¡oye, fíjate!", "¡mi cabeza!", "¡quítate!", "¡ay, mi espalda!", "¡qué pesado!", "¿no ves dónde caes?", "¡esa era mi banana!", "¡mira por dónde!"];
+  function crashOnto(g, v) {   // g cayo encima de v: los dos quedan inconscientes unos segundos
+    S.stats.choques++;
+    for (const k of [g, v]) { k.act = "ko"; k.stay = rnd(2.5, 4.5); k.m.t = 0; k.m.mode = "ko"; k.hold = false; }
+    v.complain = true;
+    dust(g.x, 5); floatText(g.x, floorY() - 40, "¡PAF!", "#e53935");
   }
   function land(g) {
     if (!S.started) startWorld();
     g.act = "idle"; g.stay = rnd(.3, 1); g.m.mode = "rest"; g.m.t = 0;
+    const v = groundMons().find(o => o !== g && Math.abs(o.x - g.x) < 20 && !(o.dead > 0));
+    if (v) crashOnto(g, v);
     if (groundMons().length > MAX_SPRITES) {   // demasiados: el mas viejo se va caminando y se suma a la poblacion invisible
       const old = groundMons().filter(x => !x.hold)[0];
       if (old) { old.tx = old.x < W / 2 ? -30 : W + 30; old.act = "walk"; old.next = "leave"; old.hold = true; }
@@ -569,6 +591,7 @@ const World = (function () {
     M(3, "teatro", `Nace el teatro: los monos se burlan de los reyes`),
     M(3, "dioses", () => S.branch[3] ? `Creen en muchos dioses: uno para la lluvia, otro para las bananas` : `Surge la idea de un único dios supremo`),
     M(3, "arquitectura", `Aprenden arquitectura: nacen las primeras ciudades`),
+    M(3, "castillo", `Los señores levantan castillos para defenderse`),
     // --- Colonial ---
     M(4, "navegacion", `Zarpan hacia tierras desconocidas`, () => { const sh = alive("ship")[0]; if (sh) burst(sh.x, floorY() - 20, 8, "#fff", 60); }),
     M(4, "imprenta", `Inventan la imprenta: las ideas viajan rápido`),
@@ -587,6 +610,12 @@ const World = (function () {
     M(4, "imperio", `Se funda un gran imperio colonial`),
     M(4, "bancos", `Abren el primer banco`),
     M(4, "independencia", `Las colonias se rebelan y se independizan`),
+    M(4, "feudalismo", `Nace el feudalismo: cada señor levanta su castillo`),
+    M(4, "caballeria", `Surgen los caballeros: armadura, espada y honor`),
+    M(4, "gremios", `Los artesanos se organizan en gremios`),
+    M(4, "juglares", `Los juglares recorren las villas cantando hazañas`, () => { S.music = 8; }),
+    M(4, "magna_carta", `Se firma una carta que limita el poder del rey`),
+    M(4, "gotico", `El arte gótico levanta catedrales con vitrales`),
     // --- Industrial ---
     M(5, "vapor", `Máquina de vapor: ¡las fábricas no paran!`),
     M(5, "ferrocarril", `Llega el ferrocarril`),
@@ -690,6 +719,20 @@ const World = (function () {
     { id: "tribu", max: 3, w: () => .5, run: () => { S.extra += rnd(2, 4); logEv(`Otra tribu se une a ${T()}`); } },
     { id: "falsoovni", min: 6, w: () => .3, run: () => logEv(`Falsa alarma: el «ovni» era un globo meteorológico`) },
     { id: "tsunami", min: 3, w: () => alive("ship").length ? .3 : 0, run: () => flood(18, `Tsunami: una ola gigante golpea la costa`) },
+    // --- medievales ---
+    { id: "asedio", min: 3, max: 4, w: () => (alive("castle").length || alive("fort").length) && free().length >= 10 ? .9 * S.traits.war : 0, run: () => siege() },
+    { id: "justas", min: 3, max: 4, w: () => free().length >= 8 ? .65 : 0, run: () => joust() },
+    { id: "cruzada", min: 3, max: 4, w: () => free().length >= 8 ? .45 : 0, run: () => crusade() },
+    { id: "invasores", min: 3, max: 4, w: () => .55, run: () => raid() },
+    { id: "pestenegra", min: 3, max: 4, w: () => S.pandemic ? 0 : .45 * (2 - S.traits.luck), run: () => pandemic({ name: "Peste Negra", lethal: .75, dur: 40, text: `La Peste Negra asola a ${T()}: mueren aldeas enteras` }) },
+    { id: "dragon", min: 3, max: 4, w: () => .22, run: () => dragon() },
+    { id: "feria", min: 3, max: 4, w: () => .5, run: () => { S.music = 9; cheerSome(10, 8); logEv(`Feria medieval: juglares, mercaderes y torneos`); } },
+    { id: "campesinos", min: 3, max: 4, w: () => .5 * S.traits.war * (free().length >= 6 ? 1 : 0), run: () => startWar(`Revuelta campesina: los campesinos se alzan contra el señor`) },
+    { id: "naval", min: 4, max: 4, w: () => alive("ship").length ? .45 : 0, run: () => navalBattle() },
+    { id: "cienanos", min: 4, max: 4, w: () => .3 * S.traits.war * (free().length >= 8 ? 1 : 0), run: () => startWar(`Guerra de los Cien Años: las batallas no terminan nunca`, { dur: 30 }) },
+    // --- modernas ---
+    { id: "guerramundial", min: 6, max: 6, w: () => .6 * S.traits.war * (free().length >= 8 ? 1 : 0), run: () => worldWar() },
+    { id: "guerrafria", min: 6, max: 6, w: () => .4, run: () => coldWar() },
   ];
   function nextMilestone() {
     let c = MILESTONES.filter(m => m.era === S.era && !S.done[m.id]);
@@ -796,12 +839,13 @@ const World = (function () {
   }
 
   // --- mas sucesos: pandemias, desastres, religion, ciencia ---
-  function pandemic() {
+  function pandemic(o) {
     if (S.pandemic) return;
-    const name = pick(DISEASES), med = S.done.vacunas || S.done.antibioticos;
-    S.pandemic = { name, t: 0, dur: med ? rnd(10, 16) : S.era >= 5 ? rnd(18, 26) : rnd(26, 40), dead: 0, sick: 0 };
+    o = o || {};
+    const name = o.name || pick(DISEASES), med = S.done.vacunas || S.done.antibioticos;
+    S.pandemic = { name, t: 0, dur: o.dur || (med ? rnd(10, 16) : S.era >= 5 ? rnd(18, 26) : rnd(26, 40)), dead: 0, sick: 0, lethal: o.lethal };
     S.stats.pandemias++;
-    logEv(`Pandemia: ${name} se propaga por ${T()}`);
+    logEv(o.text || `Pandemia: ${name} se propaga por ${T()}`);
   }
   function pandemicStep(h) {
     const p = S.pandemic; if (!p) return;
@@ -817,7 +861,7 @@ const World = (function () {
       if (chance(h * 3)) fx("puff", { x: g.x, y: floorY() + g.dy - 14, vy: -12, r0: 2, r1: 6, life: .8, col: "#7fbf3f", op: .6 });
       if (g.sick <= 0) {
         g.sick = 0; g.m.parts.root.style.filter = "";
-        if (chance(S.done.antibioticos ? .1 : S.done.vacunas ? .2 : S.era >= 5 ? .3 : .5)) { g.dead = 1.2; p.dead++; }
+        if (chance(p.lethal != null ? p.lethal : S.done.antibioticos ? .1 : S.done.vacunas ? .2 : S.era >= 5 ? .3 : .5)) { g.dead = 1.2; p.dead++; }
       }
     }
     if (p.t > p.dur) {
@@ -926,9 +970,130 @@ const World = (function () {
     S.done.heroe = true; logEv(`Un héroe salva a ${T()} y le erigen una estatua`); cheerSome(6, 5);
   }
 
+  // --- medievales y guerras ---
+  function siege() {
+    const cs = alive("castle")[0] || alive("fort")[0], gs = shuffle(free());
+    if (!cs || gs.length < 8) return;
+    const side = cs.x > W / 2 ? -1 : 1, att = gs.slice(0, 8), def = gs.slice(8, 12);
+    att.forEach((g, i) => sendTo(g, clamp(cs.x + side * (190 + i * 9), 20, W - 20), "fight", -side, 999));
+    def.forEach((g, i) => sendTo(g, cs.x + (i % 2 ? 22 : -22), "fight", side, 999));
+    const cats = [0, 1].map(i => { const c = addStruct("catapult", clamp(cs.x + side * (235 + i * 40), 30, W - 30)); c.flip = side > 0; c.lifeT = 45; return c; });
+    S.siege = { cs, att, def, cats, t: 0, ph: "march", shot: 0, dur: rnd(14, 19), hits: 0 };
+    S.busy = true; S.stats.guerras++;
+    logEv(`Asedio: ${T()} sitia ${cs.kind === "castle" ? "el castillo" : "la fortaleza"}`);
+  }
+  function siegeStep(h) {
+    const u = S.siege; if (!u) return;
+    u.t += h;
+    const att = u.att.filter(g => S.mon.includes(g) && !(g.dead > 0));
+    if (u.ph === "march") { if (u.t > 8 || att.every(g => g.act === "fight")) { u.ph = "fight"; u.t = 0; } return; }
+    if (u.ph === "fight") {
+      u.shot -= h;
+      if (u.shot <= 0) {
+        u.shot = rnd(.7, 1.3);
+        const c = pick(u.cats), x0 = c ? c.x : u.cs.x - 200, tx = u.cs.x + rnd(-14, 14);
+        if (c) c.fire = 1;
+        fx("proj", { kind: S.era >= 4 ? "ball" : "stone", x: x0, y: floorY() - 22, vx: (tx - x0) / .9, vy: -405, g: 900, life: 1.6, tx });
+        later(.9, () => { u.hits++; S.shake = .5; });
+      }
+      if (att.length > 4 && chance(h * .15)) pick(att).dead = 1.2;
+      if (u.t > u.dur) {
+        u.ph = "end"; u.t = 0;
+        if (u.hits >= 8 || chance(.4)) { ruinOf(u.cs); logEv(`El castillo cae: los sitiadores toman la fortaleza`); } else logEv(`El asedio fracasa: los defensores resisten`);
+        att.concat(u.def).forEach(g => { g.act = "cheer"; g.stay = 5; g.m.t = 0; });
+      }
+      return;
+    }
+    if (u.ph === "end" && u.t > 5) { releaseAll(u.att.concat(u.def)); u.cats.forEach(c => { c.dying = c.dying || .001; }); S.siege = null; S.busy = false; }
+  }
+  function joust() {
+    const gs = shuffle(free()); if (gs.length < 8) return;
+    const a = gs[0], b = gs[1], crowd = gs.slice(2, 8), cx = rnd(W * .35, W * .65);
+    sendTo(a, cx - 130, "idle", 1, 1); sendTo(b, cx + 130, "idle", -1, 1);
+    crowd.forEach((g, i) => sendTo(g, cx + (i % 2 ? 1 : -1) * (165 + (i >> 1) * 20), "cheer", 0, 12));
+    logEv(`Torneo de justas: dos caballeros se enfrentan`);
+    later(3, () => { a.tx = cx - 6; a.act = "run"; a.sp = 2.1; a.next = "idle"; b.tx = cx + 6; b.act = "run"; b.sp = 2.1; b.next = "idle"; });
+    later(5, () => {
+      boom(cx, floorY() - 18, false); floatText(cx, floorY() - 44, "¡CLANG!");
+      const w = chance(.5) ? a : b, l = w === a ? b : a;
+      l.act = "ko"; l.stay = 3.5; l.m.t = 0; w.act = "cheer"; w.stay = 4; w.m.t = 0;
+      logEv(`Un caballero derriba al otro y gana la justa`);
+    });
+    later(10, () => releaseAll([a, b].concat(crowd)));
+  }
+  function crusade() {
+    const gs = free().slice(0, 10); if (gs.length < 5) return;
+    const dir = chance(.5) ? 1 : -1;
+    gs.forEach(g => { sendTo(g, dir > 0 ? W - 10 : 10, "leave", dir, 0); g.act = "walk"; g.sp = rnd(.9, 1.15); });
+    logEv(`Cruzada: ${gs.length} monos parten con estandartes hacia tierras lejanas`);
+  }
+  function raid() {
+    const kind = S.era >= 4 ? "galleon" : "longship", dir = chance(.5) ? 1 : -1, x = rnd(W * .25, W * .75), x0 = dir > 0 ? -90 : W + 90, y = floorY() + 16;
+    S.sea = 20;
+    fx("g", { x: x0, y, life: 20, flip: dir < 0, html: `<g transform="scale(1.1)">${SHIP[kind]()}</g>`,
+      tick(g, h) {
+        if (g.t < 4) g.x = lerp(x0, x, out3(g.t / 4)); else if (g.t > 11) g.x += dir * 90 * h;
+        g.y = floorY() + 16 + Math.sin(g.t * 2) * 1.6;   // sigue al suelo aunque cambie el tamaño de la ventana
+        if (g.t >= 4 && !g.sacked) { g.sacked = true; boom(x, floorY() - 10, true); destroyAt(x, 90, .55); S.shake = 1; groundMons().slice(0, 4).forEach(q => { q.m.say = "¡al ataque!"; q.m.mode = "react"; q.m.t = 0; q.m.dur = 1.7; }); }
+      } });
+    logEv(S.era >= 4 ? `Piratas asaltan el puerto` : `Invasores del norte desembarcan y saquean la costa`);
+  }
+  function navalBattle() {
+    S.sea = 22;
+    const cx = rnd(W * .35, W * .65), ships = [1, -1].map(dir => fx("g", { x: dir > 0 ? -90 : W + 90, y: floorY() + 16, life: 17, flip: dir < 0, shot: rnd(.5, 1.2), sunk: 0,
+      html: `<g transform="scale(1.1)">${SHIP.galleon()}</g>`,
+      tick(g, h) {
+        const tx = cx - dir * 80;
+        g.x = g.t < 4 ? lerp(dir > 0 ? -90 : W + 90, tx, out3(g.t / 4)) : g.x;
+        g.y = floorY() + 16 + Math.sin(g.t * 2 + dir) * 1.6 + g.sunk * 22; g.shot -= h;
+        if (g.t > 4 && g.shot <= 0 && !g.sunk) { g.shot = rnd(.6, 1.2); fx("proj", { kind: "ball", x: g.x + dir * 30, y: floorY() + 4, vx: dir * 250, vy: -190, g: 600, life: 1.5 }); }
+        if (g.sunk) { g.sunk = Math.min(1, g.sunk + h * .4); g.e.style.opacity = 1 - g.sunk; }
+      } }));
+    logEv(`Batalla naval: dos flotas se cañonean frente al puerto`);
+    later(11, () => { const l = pick(ships); l.sunk = .01; boom(l.x, floorY() + 8, true); logEv(`Un galeón se hunde: la flota rival gana la batalla`); });
+  }
+  function dragon() {
+    const dir = chance(.5) ? 1 : -1, y = H * rnd(.2, .35), x0 = dir > 0 ? -90 : W + 90, x1 = dir > 0 ? W + 90 : -90, dur = 9, tx = rnd(W * .25, W * .75);
+    fx("g", { x: x0, y, vx: (x1 - x0) / dur, life: dur, flip: dir < 0,
+      html: `<g transform="scale(1.1)"><path d="M-30 0Q-52 -10 -66 6Q-48 -2 -34 8Z" fill="#2f7a3a"/><ellipse rx="30" ry="9" fill="#3f9a4a"/><g class="wg"><path d="M-6 -6Q-14 -42 12 -48Q4 -26 8 -6Z" fill="#2f7a3a"/></g><path d="M26 -2Q44 -8 52 0Q44 6 28 4Z" fill="#3f9a4a"/><circle cx="46" cy="-3" r="1.8" fill="#ffd23f"/><path d="M52 0L60 -2L54 3Z" fill="#e53935"/></g>`,
+      tick(g, h) {
+        g.vy = Math.sin(g.t * 2) * 12;
+        g.e.querySelector(".wg").setAttribute("transform", `rotate(${(Math.sin(g.t * 9) * 22).toFixed(0)} -4 -6)`);
+        if (!g.fired && Math.abs(g.x - tx) < 40) {
+          g.fired = true;
+          laser(g.x + dir * 58, g.y, tx + dir * 20, floorY(), "#ff7a1a", 12, .9); burst(tx + dir * 20, floorY() - 10, 18, "#ff9a3c", 120);
+          const t = S.structs.find(q => !q.mobile && !q.dying && !q.temp && Math.abs(q.x - tx) < 70);
+          if (t) t.fireT = 8;
+          groundMons().forEach(q => { if (Math.abs(q.x - tx) < 120) { q.m.say = "¡un dragón!"; q.m.mode = "react"; q.m.t = 0; q.m.dur = 1.7; } });
+        }
+      } });
+    logEv(`¡Un dragón sobrevuela las aldeas de ${T()}!`);
+  }
+  function bombers(n) {
+    for (let i = 0; i < n; i++) later(2 + i * 1.5, () => {
+      const dir = chance(.5) ? 1 : -1, y = rnd(H * .2, H * .4), x0 = dir > 0 ? -50 : W + 50, x1 = dir > 0 ? W + 50 : -50;
+      const f = flyShip("bomber", x0, y, x1, y + 30, 6, { s: 1.4 });
+      f.bt = rnd(.3, 1);
+      f.tick = (g, h) => {
+        g.bt -= h;
+        if (g.bt <= 0 && g.x > 40 && g.x < W - 40) {
+          g.bt = rnd(.5, 1.1);
+          const b = fx("g", { x: g.x, y: g.y + 8, vy: 40, g: 700, life: 3, html: `<ellipse rx="3" ry="5" fill="#333"/>` });
+          b.tick = q => { if (q.y >= floorY()) { q.life = 0; boom(q.x, floorY() - 4, true); destroyAt(q.x, 45, .6); } };
+        }
+      };
+    });
+  }
+  function worldWar() { startWar(`Guerra mundial: los bandos se enfrentan en trincheras`); bombers(3); logEv(`Los bombarderos cruzan el cielo`); }
+  function coldWar() {
+    logEv(`Guerra fría: dos potencias acumulan misiles sin atreverse a dispararlos`);
+    for (let i = 0; i < 3; i++) later(1 + i * 1.2, () => { const x = rnd(W * .15, W * .85); flyShip("missile", x, floorY() - 10, x + rnd(-50, 50), -40, 2.6, { s: 2 }); });
+    free().slice(0, 6).forEach(g => { g.m.say = "¡calma!"; g.m.mode = "react"; g.m.t = 0; g.m.dur = 1.7; });
+  }
+
   // --- guerra y paz ---
   const WEAPON = ["stone", "stone", "arrow", "arrow", "ball", "ball", "bullet", "laser"];
-  function startWar(label) {
+  function startWar(label, opts) {
     const gs = shuffle(free());
     if (gs.length < 6) return false;
     const cx = rnd(W * .3, W * .7), L = [], R2 = [];
@@ -937,9 +1102,14 @@ const World = (function () {
       sendTo(g, cx + (left ? -1 : 1) * (60 + side.length * 9), "fight", left ? 1 : -1, 999);
     });
     S.stats.guerras++;
-    S.war = { phase: "march", t: 0, cx, L, R: R2, shot: 0, ko: 3, dur: rnd(11, 17), weapon: WEAPON[Math.min(S.era, 7)] };
+    S.war = { phase: "march", t: 0, cx, L, R: R2, shot: 0, ko: 3, dur: (opts && opts.dur) || rnd(11, 17), weapon: WEAPON[Math.min(S.era, 7)] };
     S.busy = true;
-    logEv(label || pick([`Estalla la guerra entre dos bandos de ${T()}`, `Guerra civil: el clan se divide`, `Disputa por el agua: ${T()} toma las armas`]));
+    const pool = S.era <= 2 ? [`Las tribus se disputan el territorio de caza`, `Estalla la guerra entre dos bandos de ${T()}`, `Disputa por el agua: ${T()} toma las armas`]
+      : S.era <= 4 ? [`Guerra entre señores feudales por unas tierras`, `Guerra de sucesión: dos primos reclaman la corona`, `Guerra civil: el reino se divide`, `Los ejércitos de ${T()} se enfrentan en el campo de batalla`]
+      : S.era === 5 ? [`Guerra de independencia: el pueblo se levanta`, `Los ejércitos se alinean con cañones y fusiles`, `Guerra entre imperios por las colonias`]
+      : S.era === 6 ? [`Estalla una guerra a gran escala`, `Conflicto fronterizo: suenan las ametralladoras`, `Guerra civil: el país se divide`]
+      : [`Guerra espacial entre colonias rivales`, `Los bandos de ${T()} se enfrentan con láseres`];
+    logEv(label || pick(pool));
   }
   function warStep(h) {
     const w = S.war; if (!w) return;
@@ -976,6 +1146,42 @@ const World = (function () {
   }
 
   // --- planetas, cohetes y colonizacion ---
+  const planetPop = document.createElement("div"); planetPop.id = "planetPop"; planetPop.hidden = true; document.body.appendChild(planetPop);
+  planetPop.addEventListener("click", e => { e.stopPropagation(); if (e.target.classList && e.target.classList.contains("x")) planetPop.hidden = true; });
+  document.addEventListener("click", () => { planetPop.hidden = true; });
+  addEventListener("keydown", e => { if (e.key === "Escape") planetPop.hidden = true; });
+  const REAL_INFO = {
+    "Marte": { tipo: "Planeta rocoso (el 4.º del Sistema Solar)", datos: ["Diámetro: 6.779 km", "Gravedad: 0,38 g", "Temperatura media: −63 °C", "Atmósfera: muy fina, de CO₂", "Lunas: Fobos y Deimos", "Día: 24 h 37 min"],
+      desc: "El «planeta rojo» debe su color al óxido de hierro. Tiene el volcán más alto del Sistema Solar, el Monte Olimpo, y un cañón de 4.000 km, el Valles Marineris." },
+    "la Luna": { tipo: "Satélite natural de la Tierra", datos: ["Diámetro: 3.474 km", "Gravedad: 0,17 g", "Temperatura: de −173 °C a 127 °C", "Atmósfera: prácticamente ninguna", "Distancia a la Tierra: 384.400 km"],
+      desc: "Estabiliza la inclinación de la Tierra y provoca las mareas. En cohete se llega en unos tres días." },
+    "Europa": { tipo: "Luna helada de Júpiter", datos: ["Diámetro: 3.122 km", "Gravedad: 0,13 g", "Temperatura en superficie: −160 °C", "Océano de agua salada bajo el hielo", "Período orbital: 3,5 días"],
+      desc: "Uno de los mejores candidatos para albergar vida fuera de la Tierra: su corteza helada esconde un océano global." },
+    "Titán": { tipo: "Luna de Saturno", datos: ["Diámetro: 5.149 km", "Gravedad: 0,14 g", "Temperatura: −179 °C", "Atmósfera densa de nitrógeno", "Lagos y ríos de metano líquido"],
+      desc: "La única luna con una atmósfera espesa. Allí llueve metano y, con tan poca gravedad, los monos podrían volar con alas pequeñas." },
+  };
+  function planetInfo(p) {
+    if (REAL_INFO[p.name]) return REAL_INFO[p.name];
+    const hh = parseFloat((String(p.c1).match(/\d+/) || [0])[0]), ri = (a, b) => Math.round(rnd(a, b)), ly = ri(4, 420), km = n => n.toLocaleString("es");
+    if (p.alien) return { tipo: "Mundo alienígena", datos: [`Distancia: ${ly} años luz`, "Habitantes: desconocidos", `Gravedad: ${rnd(.6, 1.8).toFixed(1)} g`, "Atmósfera: no respirable (por ahora)"],
+      desc: "De aquí salen las naves extrañas que se ven en el cielo. Nadie ha vuelto para contar cómo es vivir allá." };
+    if (p.ring || p.r > 20) return { tipo: "Gigante gaseoso", datos: [`Diámetro: ${km(ri(60000, 140000))} km`, `Gravedad: ${rnd(1, 2.6).toFixed(1)} g`, "Atmósfera: hidrógeno y helio", `Temperatura: −${ri(100, 190)} °C`, `Distancia: ${ly} años luz`, p.ring ? "Tiene un sistema de anillos" : `Lunas: ${ri(2, 40)}`],
+      desc: "No tiene superficie sólida: los monos solo pueden instalarse en estaciones flotantes sobre las nubes." };
+    let tipo, temp, atm, desc;
+    if (hh >= 80 && hh < 170) { tipo = "Mundo selvático"; temp = ri(18, 34); atm = "respirable, con mucho oxígeno"; desc = "Selvas inmensas y bananos gigantes: el sueño de cualquier mono."; }
+    else if (hh >= 170 && hh < 260) { tipo = "Mundo oceánico"; temp = ri(5, 25); atm = "húmeda, con tormentas constantes"; desc = "Casi toda su superficie es agua; las colonias flotan sobre plataformas."; }
+    else if (hh < 50 || hh >= 330) { tipo = "Mundo desértico"; temp = ri(30, 70); atm = "seca y polvorienta"; desc = "Dunas hasta el horizonte. Dicen que bajo la arena duermen criaturas enormes."; }
+    else if (hh >= 260) { tipo = "Mundo de cristales"; temp = ri(-40, 10); atm = "tenue, con brillos de polvo mineral"; desc = "Sus montañas son de cristal y de noche brillan como una ciudad enorme."; }
+    else { tipo = "Planeta rocoso"; temp = ri(-60, 40); atm = "fina, con poco oxígeno"; desc = "Un mundo árido de rocas y cráteres, ideal para minas y observatorios."; }
+    return { tipo, datos: [`Diámetro: ${km(ri(4000, 15000))} km`, `Gravedad: ${rnd(.4, 1.6).toFixed(1)} g`, `Temperatura media: ${temp} °C`, `Atmósfera: ${atm}`, `Distancia: ${ly} años luz`, `Día: ${ri(8, 60)} h`], desc };
+  }
+  function showPlanet(p) {
+    const i = p.info, col = p.col > 0 ? `${p.col} mono${p.col > 1 ? "s" : ""} de ${S.tribe}` : p.alien ? "territorio alienígena" : "ninguna todavía";
+    planetPop.innerHTML = `<button class="x" aria-label="Cerrar">×</button><b>${p.name}</b><div class="sub">${i.tipo}</div>` +
+      `<ul>${i.datos.map(x => `<li>${x}</li>`).join("")}<li>Descubierto: ${p.disc}</li><li>Colonias: ${col}</li></ul><p>${i.desc}</p>`;
+    planetPop.hidden = false;
+    planetPop.style.left = clamp(p.x - 140, 8, W - 292) + "px"; planetPop.style.top = Math.min(Math.max(8, H - 260), p.y + p.r + 24) + "px";
+  }
   let pid = 0;
   function addPlanet(o) {
     const i = S.planets.length, r = Math.round((o && o.r) || (i === 0 ? 44 : rnd(13, 22)));
@@ -988,13 +1194,16 @@ const World = (function () {
       `<circle r="${r}" fill="url(#pg${p.id})"/><circle cx="${-r * .3}" cy="${-r * .22}" r="${r * .16}" fill="${p.c2}" opacity=".5"/><circle cx="${r * .35}" cy="${r * .3}" r="${r * .2}" fill="${p.c2}" opacity=".45"/>` +
       (p.ring ? `<path d="M${-rr} 0A${rr} ${rk} 0 0 0 ${rr} 0" fill="none" stroke="${p.c1}" stroke-width="${sw}" opacity=".7" transform="rotate(-18)"/>` : "") +
       `<g class="col"></g><text y="${r + 13}" text-anchor="middle" font-size="10" font-weight="700" style="fill:var(--muted)">${p.name}</text>`;
+    p.info = planetInfo(p); p.disc = fmtYear(curYear());
+    p.g.style.pointerEvents = "all"; p.g.style.cursor = "pointer";
+    p.g.addEventListener("click", e => { e.stopPropagation(); showPlanet(p); });
     S.planets.push(p); placePlanets(); renderColonies(p);
     return p;
   }
   function placePlanets() {   // arriba a la derecha primero, luego hacia la izquierda
     S.planets.forEach((p, i) => {
-      p.x = i === 0 ? W - 88 : 250 + (i - 1) * 105; p.y = i === 0 ? 96 : 30;   // los demas, en la franja libre del encabezado (entre el titulo y el estado)
-      if (i && p.x > W * .6) p.x = 250 + ((i * 97) % Math.max(60, W * .35));
+      p.x = i === 0 ? W - 88 : 340 + (i - 1) * 105; p.y = i === 0 ? 96 : 30;   // los demas, en la franja libre del encabezado (entre el titulo y el estado)
+      if (i && p.x > W * .6) p.x = 340 + ((i * 97) % Math.max(60, W * .25));
       p.g.setAttribute("transform", `translate(${p.x} ${p.y})`);
     });
   }
@@ -1089,6 +1298,11 @@ const World = (function () {
 
   // naves (miran hacia +x)
   const SHIP = {
+    longship: () => Pth("M-34 -2Q-34 6 -22 7L22 7Q34 6 36 -4L36 -12Q31 -10 30 -4L-30 -4Q-32 -8 -36 -14Q-34 -6 -34 -2Z", "#6b4226") + R(-1, -32, 2.4, 28, "#4a3220") +
+      Pth("M-16 -30L16 -30L12 -10L-12 -10Z", "#c0392b") + `<path d="M-14 -24L14 -24M-13 -17L13 -17" stroke="#f4efe2" stroke-width="2"/>` + Pth("M36 -12L45 -21L41 -8Z", "#6b4226") + [-18, -6, 6, 18].map(x => Cir(x, 1, 3, "#d9b66a")).join(""),
+    galleon: () => Pth("M-36 0Q-30 10 -14 10L22 10Q36 8 40 -4L36 -6L-32 -6Z", "#5a3a22") + R(-14, -36, 2.4, 30, "#3a2616") + R(10, -32, 2.4, 26, "#3a2616") +
+      Pth("M-12 -34L10 -34L8 -10L-12 -10Z", "#f4efe2") + Pth("M12 -30L30 -30L28 -10L12 -10Z", "#e8e0d0") + `<line x1="-36" y1="-6" x2="-45" y2="-13" stroke="#3a2616" stroke-width="2"/>`,
+    bomber: () => Ell(0, 0, 26, 5, "#6b7280") + Pth("M-4 0L-16 -16L-8 -16L8 0Z", "#59606b") + Pth("M-4 2L-16 18L-8 18L8 2Z", "#59606b") + Pth("M-24 0L-32 -9L-26 -9L-18 0Z", "#59606b") + Cir(20, -1, 2, "#bfe3ff"),
     destroyer: () => Pth("M-42 0L26 -11L46 0L26 11Z", "#59606b") + Pth("M-42 0L26 -11L46 0Z", "#6b7380") + Pth("M-12 -7L6 -7L2 -17L-8 -17Z", "#444b55") + Cir(-40, 0, 3.5, "#6fb7ff") + R(-30, -1, 40, 1.6, "#2d323a"),
     fighter: () => Pth("M-9 0L5 -4L11 0L5 4Z", "#cfd6dd") + Pth("M-3 -3L-8 -10L-1 -4Z", "#9aa4b2") + Pth("M-3 3L-8 10L-1 4Z", "#9aa4b2") + Cir(-9, 0, 2, "#ff9a3c"),
     saucer: () => Ell(0, 0, 30, 8, "#8d96a3") + Ell(0, -6, 14, 9, "#9fe3ff", 'opacity=".75"') + [-18, -6, 6, 18].map(x => Cir(x, 2, 1.8, "#ffd23f")).join(""),
@@ -1449,10 +1663,10 @@ const World = (function () {
     S.crits.forEach(c => { if (c.dots) c.dots.remove(); c.el.remove(); }); S.crits = []; S.fleet = [];
     clearPlanets();
     if (S.ufo) { S.ufo.e.remove(); S.ufo.beam.remove(); S.ufo = null; }
-    S.war = S.hunt = S.launch = S.saga = S.cata = S.station = S.hole = S.pandemic = null; S.busy = false;
+    S.war = S.hunt = S.launch = S.saga = S.cata = S.station = S.hole = S.pandemic = S.siege = null; S.busy = false;
     S.fightBack = false; S.wormCalm = S.spice = S.code = S.crumble = S.rain = S.snow = S.eclipse = S.shake = S.fastLaunch = 0;
     S.flood = S.locust = S.drought = S.aurora = S.music = 0;
-    water.setAttribute("height", 0); dark.setAttribute("opacity", 0);
+    S.sea = 0; S.waterH = 0; water.setAttribute("height", 0); dark.setAttribute("opacity", 0);
     groundMons().forEach(g => { g.sick = 0; g.hold = false; g.stay = 0; g.m.parts.root.style.filter = ""; });
     S.cycle++;
     S.era = o.era || 0; S.eraT = 0; S.eraDur = ERAS[S.era].dur * rnd(.75, 1.35); S.extra = o.extra || 0;
@@ -1497,7 +1711,9 @@ const World = (function () {
     if (S.snow > 0) { S.snow -= h; for (let i = 0; i < h * 30; i++) fx("flake", { x: rnd(0, W), y: -10, vy: rnd(40, 80), life: 8 }); }
     qStep(); pandemicStep(h);
     if (S.flood > 0) S.flood -= h;
-    { const k = S.flood > 0 ? Math.sin(Math.PI * clamp(1 - S.flood / S.floodMax, 0, 1)) : 0; water.setAttribute("height", (k * 30).toFixed(1)); water.setAttribute("y", (H - k * 30).toFixed(1)); }
+    if (S.sea > 0) S.sea -= h;
+    { const k = S.flood > 0 ? Math.sin(Math.PI * clamp(1 - S.flood / S.floodMax, 0, 1)) : 0, target = Math.max(k * 30, S.sea > 0 ? 17 : 0);
+      S.waterH += (target - S.waterH) * Math.min(1, h * 3); water.setAttribute("height", S.waterH.toFixed(1)); water.setAttribute("y", (H - S.waterH).toFixed(1)); }
     if (S.locust > 0) { S.locust -= h; for (let i = 0; i < h * 90; i++) fx("spark", { x: -10, y: rnd(H * .2, H * .8), vx: rnd(150, 260), vy: rnd(-20, 20), life: 4, col: "#3a2a14", r: 1.8 }); }
     if (S.drought > 0) { S.drought -= h; if (S.drought <= 0) { logEv(`La sequía termina: vuelve la lluvia`); S.rain = 8; if (!S.saga) tint.style.opacity = 0; } }
     if (S.music > 0) { S.music -= h; if (chance(h * 5)) { const g = pick(groundMons()); if (g) fx("note", { x: g.x, y: floorY() - 20, vy: -30, vx: rnd(-10, 10), life: 1.6, col: `hsl(${rnd(0, 360)} 70% 55%)` }); } }
@@ -1538,7 +1754,7 @@ const World = (function () {
     }
     S.structs = S.structs.filter(s => { if (s.dying > 1) { s.el.remove(); return false; } return true; });
     if (S.started && !S.structs.some(s => s.kind === "mammoth" && !s.dying) && S.era <= 2 && S.mammothT <= 0 && !S.hunt) { /* lo repone plan() */ }
-    warStep(h); huntStep(h); launchStep(h); flightStep(h); ufoStep(h);
+    warStep(h); siegeStep(h); huntStep(h); launchStep(h); flightStep(h); ufoStep(h);
     fxStep(h);
     S.hudT -= h;
     if (S.shake > 0) S.shake -= h;
@@ -1575,7 +1791,7 @@ const World = (function () {
       h += `<div class="ev" style="margin-top:4px;max-height:42vh;overflow:auto">` +
         S.log.slice(0, 14).map(l => `${l.y}: ${l.text}`).join("<br>") + `</div>` +
         (S.rel ? `<div style="margin-top:4px">Religión: ${S.rel.name}${S.rel2 && S.done.reforma ? " · rival: " + S.rel2.name : ""}</div>` : "") +
-        `<div style="margin-top:4px;border-top:1px solid var(--border);padding-top:3px">Guerras ${st.guerras} · Plagas ${st.plagas} · Hambrunas ${st.hambrunas} · Terremotos ${st.terremotos} · Meteoritos ${st.meteoritos} · Fiestas ${st.festivales} · Cohetes ${st.cohetes} · Pandemias ${st.pandemias} · Incendios ${st.incendios} · Bajas ${st.devorados} · Cataclismos ${st.cataclismos} · Hitos ${st.hitos}</div>`;
+        `<div style="margin-top:4px;border-top:1px solid var(--border);padding-top:3px">Guerras ${st.guerras} · Plagas ${st.plagas} · Hambrunas ${st.hambrunas} · Terremotos ${st.terremotos} · Meteoritos ${st.meteoritos} · Fiestas ${st.festivales} · Cohetes ${st.cohetes} · Pandemias ${st.pandemias} · Incendios ${st.incendios} · Bajas ${st.devorados} · Cataclismos ${st.cataclismos} · Choques ${st.choques} · Hitos ${st.hitos}</div>`;
     }
     hud.innerHTML = h + (Q.has("debug") ? `<br>t=${S.t.toFixed(1)} fx=${S.fx.length} mon=${S.mon.length} st=${S.structs.length}` : "");
     toasts.style.display = hudOpen ? "none" : "";
@@ -1598,7 +1814,7 @@ const World = (function () {
   function testSetup() {
     if (!START_ERA && !Q.get("do")) return;
     S.era = START_ERA; S.eraDur = ERAS[S.era].dur * 2; S.extra = ERAS[S.era].cap; S.destSeen = S.era >= 7; S.won = S.era >= 8;
-    const flags = [[1, ["fuego_sagrado"]], [2, ["totems", "trueque"]], [3, ["rueda", "escritura", "comercio", "templo", "academia", "astronomia"]], [4, ["catedral", "universidad", "reforma", "imprenta"]],
+    const flags = [[1, ["fuego_sagrado"]], [2, ["totems", "trueque"]], [3, ["rueda", "escritura", "comercio", "templo", "academia", "astronomia", "castillo"]], [4, ["catedral", "universidad", "reforma", "imprenta", "feudalismo"]],
       [5, ["electricidad", "deporte", "heroe"]], [6, ["radio", "laboratorio", "antibioticos", "vacunas"]]];
     flags.forEach(([e, fl]) => { if (S.era >= e) fl.forEach(f => { S.done[f] = true; }); });
     if (S.era >= 1) S.rel = newRel();
@@ -1610,14 +1826,22 @@ const World = (function () {
       S.mon.push({ m, state: "ground", x: rnd(40, W - 40), y: 0, rot: 0, vx: 0, vy: 0, vr: 0, dy: rnd(6, GROUND_H - 12), sp: rnd(.85, 1.2), act: "idle", stay: rnd(0, 3) });
     }
     if (S.era >= 7) { ensureDest(); for (let i = 0; i < 3; i++) addPlanet({}); }
-    for (let i = 0; i < 6; i++) plan();
+    for (let i = 0; i < 14; i++) plan();
+    if (S.era >= 3 && S.era <= 4) addStruct("castle", W * .72);
     S.structs.forEach(s => s.built = 1);
     const DO = { guerra: startWar, caceria: startHunt, cohete: () => { S.destSeen = true; ensureDest(); tryLaunch(); }, meteorito: meteor, ovni: ufo, plaga: () => hurt(.25, "Plaga"),
       terremoto: quake, volcan: volcano, festival, eclipse: () => { S.eclipse = 10; }, lluvia: () => { S.rain = 12; }, cometa: comet };
     Object.assign(DO, { cataclismo: () => cataclysm({ surv: 4 }), pandemia: pandemic, incendio: fire, inundacion: () => flood(14, "Inundación"), tormenta: storm, aurora, estrellas: starShower,
+      asedio: siege, justas: joust, cruzada: crusade, invasores: raid, pestenegra: () => pandemic({ name: "Peste Negra", lethal: .75, dur: 40 }), dragon, naval: navalBattle, guerramundial: worldWar, guerrafria: coldWar,
       olimpiadas: olympics, peregrinacion: pilgrimage, milagro: miracle, cisma: schism, huelga: strike, crisis, langostas: locusts, sequia: drought, genio: genius, concierto: () => { S.music = 10; cheerSome(10, 8); } });
     if (START_ERA === 8) setTimeout(() => startSaga(Q.get("saga")), 600);
+    DO.choque = () => { const gs = groundMons(); if (gs.length < 2) return; const a = gs[0], b = gs[1]; a.state = "fall"; a.x = b.x; a.y = -30; a.vx = 0; a.vy = 0; a.vr = 0; a.bounced = true; a.m.mode = "fall"; };
     const d = Q.get("do"); if (d && DO[d]) setTimeout(DO[d], 2500);
+    if (Q.get("planet") != null) setTimeout(() => { const pl = S.planets[+Q.get("planet")]; if (pl) showPlanet(pl); }, 1500);
+    if (Q.has("selftest")) setTimeout(() => {   // los vehiculos deben mirar hacia donde van
+      const bad = S.structs.filter(q => ["plane", "car", "train"].includes(q.kind) && q.v && (q.kind === "train" ? q.flip !== (q.v > 0) : q.flip !== (q.v < 0))).map(q => q.kind);
+      document.title = "selftest:H=" + H + ":floor=" + floorY() + ":" + (bad.length ? "FALLA " + bad.join(",") : "ok") + ":" + S.structs.filter(q => ["plane", "car", "train"].includes(q.kind)).map(q => q.kind + (q.v > 0 ? ">" : "<") + (q.flip ? "F" : "-")).join(",");
+    }, 6000);
   }
 
   const WARP = parseFloat(Q.get("warp")) || 0;   // ?warp=300 adelanta la simulacion 300 s (para pruebas)

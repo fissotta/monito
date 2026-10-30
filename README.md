@@ -65,3 +65,25 @@ crontab -e   # agregar:
 - **Sagas de la era galáctica** (una al azar por ciclo, sin repetir la anterior): *Guerra de las galaxias* (imperio, rebeldes y estación de combate), *El planeta de arena* (gusanos gigantes y especia), *La Fundación* (el imperio cae y el conocimiento sobrevive: renacen desde la era colonial), *El octavo pasajero* (un xenomorfo devorando monos), *El cazador* (un cazador interestelar con camuflaje), *La rebelión de las máquinas*, *La guerra de los mundos* (trípodes y platillos) y *Horizonte de sucesos* (un agujero negro).
 - Su ánimo en los anillos sigue el CPU de cada equipo. Panel de crónica abajo a la izquierda: tócalo para ver el historial, la religión y las estadísticas.
 - Pruebas: `?demo&turbo=20` acelera el tiempo, `?era=N` (0–8) empieza en esa era, `?era=8&saga=imperio|arrakis|fundacion|alien|predator|maquinas|invasion|agujero` fuerza una saga, `?warp=300` adelanta 300 s, `?hud` abre el panel, `?do=guerra|cohete|meteorito|ovni|pandemia|incendio|inundacion|tormenta|aurora|olimpiadas|peregrinacion|milagro|cisma|huelga|crisis|langostas|sequia|genio|concierto|cataclismo|plaga|terremoto|volcan|festival|eclipse|lluvia|cometa|caceria` dispara un suceso, `?debug` muestra contadores.
+
+## Reloj y calendario de seminarios
+
+- Arriba a la izquierda hay un reloj con la hora (`hh:mm`) y la fecha (`dd/mm`). Al tocarlo se abre el calendario del mes (semana desde el lunes, sábado y domingo en naranja, hoy marcado), con flechas para cambiar de mes y botón **Hoy**.
+- Los seminarios salen de **`seminarios.txt`** (en la raíz del repo, junto a `index.html`). Una fecha por línea; las fechas con seminario llevan un punto verde (hueco gris si dice «No hay») y al tocar un día se ve quién presenta. Sin tocar nada, el calendario muestra el próximo seminario.
+
+  ```
+  02/nov Celia
+  09/nov Abraham
+  16/nov No hay
+  23/nov Issotta
+  ```
+
+  También se entienden `2026-11-09 Abraham 15:00`, `09/11/2026; Abraham`, `9 de noviembre: Abraham`, líneas con `#` (comentarios) y líneas sin fecha (se agregan como nota a la anterior). Si no hay año, se toma el que deje la fecha más cerca de hoy.
+- Para actualizarlo: editar `seminarios.txt` → rama → pull request → merge (el archivo es público, igual que el resto del repo).
+
+## Planetas y más sucesos
+
+- Al tocar un planeta del cielo se abre un cuadro con su información: datos reales para Marte, la Luna, Europa y Titán, y datos inventados (tipo, diámetro, gravedad, temperatura, atmósfera, distancia, colonos) para los demás.
+- Sucesos medievales y de guerra: asedios con catapultas, torneos de justas, cruzadas, invasores y piratas por mar, Peste Negra, un dragón, feria medieval, revueltas campesinas, batalla naval y la Guerra de los Cien Años; y en la época moderna, guerra mundial con bombarderos y guerra fría. Aparecen castillos.
+- Si un mono cae encima de otro, los dos quedan inconscientes unos segundos y el aplastado reclama al despertar.
+- Más pruebas: `?do=asedio|justas|cruzada|invasores|pestenegra|dragon|naval|guerramundial|guerrafria|choque`, `?planet=N` abre el cuadro del planeta N, `?cal` abre el calendario.

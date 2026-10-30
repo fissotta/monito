@@ -206,12 +206,24 @@ svg { display: block; width: 100%; max-width: 360px; margin: 0 auto; }
 .ringwrap svg { max-width: none; margin: 0; }
 @media (min-width: 901px) {   /* 4 columnas iguales: reloj+tiempo ocupan lo mismo que cada monitor; la leyenda queda bajo akaza */
   .layout { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; }
-  .side { width: auto; grid-column: 1; grid-row: 1 / span 2; }
+  .layout { row-gap: 4px; }
+  .side { width: auto; grid-column: 1; grid-row: 1; gap: 8px; }
+  /* el reloj y el tiempo se achican con la altura de la pantalla para no ser mas altos que los monitores */
+  .clock { padding: clamp(8px, min(1.4vw, 1.2vh), 24px) 8px; }
+  .clock > b { font-size: clamp(30px, min(4.2vw, 7.6vh), 92px); }
+  .clock > span.d { font-size: clamp(18px, min(2.4vw, 4.3vh), 48px); }
+  .clock > small { font-size: clamp(13px, min(1.5vw, 2.5vh), 28px); }
+  .clock .next { font-size: clamp(11px, min(1.05vw, 1.8vh), 19px); margin-top: 4px; padding-top: 4px; }
+  .weather { padding: 6px 10px; }
+  .weather svg { width: clamp(52px, min(5vw, 7.5vh), 100px); height: clamp(52px, min(5vw, 7.5vh), 100px); }
+  .weather .wx-t { font-size: clamp(24px, min(2.6vw, 4.3vh), 54px); }
+  .weather .wx-s { font-size: clamp(11px, min(1vw, 1.7vh), 18px); }
   #grid { display: contents; }
-  .legendbar { grid-column: 2 / span 3; margin-top: -4px; }
-  .eraRow { grid-column: 1 / -1; margin-top: 0; }   /* la cinta de papers va de lado a lado */
+  .legendbar { grid-column: 2 / span 3; margin: 0; line-height: 1.2; }
+  .eraRow { grid-column: 1 / -1; margin-top: 0; }
+  .layout { padding-bottom: 6px; }   /* la cinta de papers va de lado a lado */
 }
-@media (min-width: 901px) { .ringwrap { max-width: min(360px, 27vh); } }   /* informacion arriba, civilizacion abajo: los anillos se achican segun el alto */
+@media (min-width: 901px) { .ringwrap { max-width: min(360px, 29vh); } }   /* informacion arriba, civilizacion abajo: los anillos se achican segun el alto */
 .ringwrap .zoo { position: absolute; left: 0; right: 0; top: 0; bottom: 0; height: 100%; pointer-events: none; overflow: visible; }
 svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
 .seg { transition: stroke .4s; }
@@ -259,8 +271,8 @@ svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
 if (/[?&]ua\b/.test(location.search)) addEventListener("load", () => { const d = document.createElement("div"); d.style.cssText = "position:fixed;left:8px;right:8px;top:40px;z-index:99;background:#fff;color:#000;border:2px solid #c00;padding:10px;font:16px monospace;word-break:break-all"; d.textContent = navigator.userAgent + " | " + innerWidth + "x" + innerHeight + " @" + devicePixelRatio; document.body.appendChild(d); setTimeout(() => d.remove(), 60000); });
 </script>
 <script src="qrcode.min.js?v=1"></script>
-<script src="zoo.js?v=20261031a"></script>
-<script src="world.js?v=20261031a"></script>
+<script src="zoo.js?v=20261031c"></script>
+<script src="world.js?v=20261031c"></script>
 <script>
 // ====== Configuración ======
 const REPO = "fissotta/monito"; // "usuario/monito"  (vacío = modo demo)
@@ -281,7 +293,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
 const demo = !REPO || new URLSearchParams(location.search).has("demo");
-const BUILD = "20261031a";   // subir junto con los ?v= de los <script> en cada publicacion
+const BUILD = "20261031c";   // subir junto con los ?v= de los <script> en cada publicacion
 const state = { data: {}, next: 0, timer: null, stale: 300 };
 // si se publica una version nueva, la pagina (p. ej. en la TV) se recarga sola; revisa cada 10 min
 setInterval(async () => {

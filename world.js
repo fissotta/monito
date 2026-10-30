@@ -70,7 +70,9 @@ const World = (function () {
   // logo del laboratorio (esquina superior izquierda de la civilizacion), dibujado dentro del propio svg del mundo para que funcione en cualquier navegador
   const logoG = el("g", { "pointer-events": "none" }, svg), logoBg = el("rect", { rx: 10, fill: "#fff" }, logoG), logoImg = el("image", { preserveAspectRatio: "xMinYMid meet" }, logoG);
   logoImg.setAttribute("href", "logoMEL.svg"); logoImg.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", "logoMEL.svg");
+  const ambClip = el("clipPath", { id: "ambclip" }, svg), ambClipR = el("rect", { x: 0, width: 99999 }, ambClip);   // lo del cielo no se sale hacia la zona de informacion
   function placeLogo() {
+    ambClipR.setAttribute("y", SKY); ambClipR.setAttribute("height", Math.max(0, H - SKY));
     const h = Math.max(34, Math.min(66, H * .06)), lw = h * 2383 / 578, dark = document.documentElement.dataset.theme === "dark", narrow = matchMedia("(max-width: 900px)").matches;
     // con pantalla dividida: esquina superior izquierda de la civilizacion; en pantallas bajas (sin division, p. ej. 1920x395): a la derecha, sobre el suelo
     const x = SKY ? 12 : W - lw - 36, y = SKY ? SKY + 8 : Math.round(H * .55 - h);
@@ -640,7 +642,7 @@ const World = (function () {
       tick: g => { g.y = y0 + Math.sin(g.t * .8) * 6; } });
   }
   // ---------- cielo vivo: nubes que pasan, pajaros, sol o luna, estrellas fugaces, luciernagas y mariposas ----------
-  const gAmb = el("g", { "pointer-events": "none" }, gSky); gSky.insertBefore(gAmb, dark);   // detras de edificios y animales
+  const gAmb = el("g", { "pointer-events": "none", "clip-path": "url(#ambclip)" }, gSky); gSky.insertBefore(gAmb, dark);   // detras de edificios y animales
   const celest = el("g", {}, gAmb), AMB = { clouds: [], flocks: [], flies: [], bf: [], cloudT: 0, birdT: 10, starT: 25, theme: null, init: false };
   function cloudMarkup(w) {   // nube esponjosa sin texto (mismo dibujo que las de los mensajes, sin sombra pesada)
     const n = Math.max(3, Math.round(w / 78)), lo = -w / 2 + 40, hi = w / 2 - 40;

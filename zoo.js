@@ -14,8 +14,11 @@ const Zoo = (function () {
   let CAP = 9;                          // monos por equipo antes de que los nuevos se desborden y caigan
   const SCALE = 1.25;                   // tamaño general de los monos
   const LOW = /Tizen|SMART-TV|SmartTV|Web0S/i.test(navigator.userAgent) || /[?&]lento\b/.test(location.search);   // TV: se dibuja a ~30 cuadros por segundo
+  const OFF = (new URLSearchParams(location.search).get("off") || "").split(",");   // ?off=anillos,mundo,cintas,todo: apaga partes para ver cuales pesan
+  const isOff = n => OFF.includes(n) || OFF.includes("todo");
   let MIN_DT = 0;   // limite de cuadros: 0 = libre (60 fps); 31 = ~30 fps. En la TV se decide midiendo (ver "probe")
-  const probe = { t0: 0, n: 0, done: !LOW, fps: 0 };   // en la TV se mide cuantos cuadros por segundo da sin limite; si no llega a ~48 se limita a 30 (mas parejo)
+  const NOCAP = /[?&]nocap\b/.test(location.search);   // ?nocap: sin limite de cuadros (lo usa test.html para medir)
+  const probe = { t0: 0, n: 0, done: !LOW || NOCAP, fps: 0, skip: 2000 };   // en la TV se mide cuantos cuadros por segundo da sin limite; si no llega a ~48 se limita a 30 (mas parejo)
   const GIRAFFE_K = 1.5;                // las jirafas se dibujan 1,5 veces mas grandes (globos y zzz suben con ellas)
   const kOf = m => (m.sp && m.sp.kind === "jirafa" ? GIRAFFE_K : 1);
 
@@ -750,8 +753,9 @@ const Zoo = (function () {
     raf = requestAnimationFrame(frame);
     if (!probe.done) {   // medicion inicial: se ignoran los primeros 2 s (la pagina esta cargando) y se miran 4 s
       if (!probe.t0) probe.t0 = now;
-      if (now - probe.t0 >= 2000) { if (!probe.s) { probe.s = now; probe.n = 0; } probe.n++; if (now - probe.s >= 4000) { probe.fps = Math.round(probe.n * 1000 / (now - probe.s)); MIN_DT = probe.fps < 48 ? 31 : 0; probe.done = true; } }
+      if (now - probe.t0 >= probe.skip) { if (!probe.s) { probe.s = now; probe.n = 0; } probe.n++; if (now - probe.s >= 3500) { probe.fps = Math.round(probe.n * 1000 / (now - probe.s)); MIN_DT = probe.fps < 48 ? 31 : 0; probe.done = true; } }
     }
+    if (isOff("anillos")) return;
     if (MIN_DT && now - last < MIN_DT) return;
     const dt = Math.min(.05, Math.max(0, (now - last) / 1000)); last = now;
     if (document.hidden) return;
@@ -784,7 +788,9 @@ const Zoo = (function () {
     kindOf, CELEBS, SPECIES_BY_KIND,
     setCelebHandler: fn => { onCeleb = fn; },
     setFestive: names => { FEST = names || []; },
-    low: LOW, minDt: () => MIN_DT, probe: () => (probe.done ? (LOW ? probe.fps : 0) : -1),
+    low: LOW, off: isOff, minDt: () => MIN_DT,
+    reprobe: () => { if (LOW && !NOCAP) { probe.done = false; probe.t0 = 0; probe.s = 0; probe.skip = 500; MIN_DT = 0; } },   // vuelve a medir sin limite unos segundos (la primera medicion cae justo cuando la pagina carga)
+    probe: () => (probe.done ? (LOW ? probe.fps : 0) : -1),
     setLunch: on => { LUNCH = on; if (on) for (const id in zoos) for (const m of zoos[id].ms) if (m.mode !== "cross" && m.ctx) enter(m, "eat", m.ctx); },
     setReleaseHandler: fn => { onRelease = fn; },
     setCap: n => { CAP = n; },

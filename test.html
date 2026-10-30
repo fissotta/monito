@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MONITO · prueba de rendimiento</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0d1117; color: #e6edf3; font: 16px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #frame { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; border: 0; background: #fff; }
+  #bar { position: fixed; z-index: 5; left: 50%; top: 10px; transform: translateX(-50%); padding: 10px 22px; border-radius: 14px; background: rgba(13,17,23,.92); border: 2px solid #58a6ff; font-size: 22px; font-weight: 700; text-align: center; box-shadow: 0 6px 24px rgba(0,0,0,.5); }
+  #bar small { display: block; font-size: 14px; font-weight: 400; color: #9fb0c3; }
+  #rep { display: none; min-height: 100vh; padding: 2.2vh 2.6vw; }
+  #rep h1 { margin: 0 0 .6vh; font-size: clamp(22px, 3.6vh, 40px); }
+  #rep h1 span { color: #58a6ff; }
+  #rep .meta { color: #9fb0c3; font-size: clamp(12px, 1.9vh, 18px); margin-bottom: 1.4vh; word-break: break-word; }
+  table { width: 100%; border-collapse: collapse; font-size: clamp(14px, 2.5vh, 26px); font-variant-numeric: tabular-nums; }
+  th { text-align: left; color: #9fb0c3; font-weight: 600; padding: .5vh 1vw; border-bottom: 2px solid #30363d; font-size: .8em; }
+  td { padding: .7vh 1vw; border-bottom: 1px solid #21262d; }
+  td.n, th.n { text-align: right; }
+  tr.ref td { color: #9fb0c3; } tr.hoy td { background: rgba(88,166,255,.14); font-weight: 700; }
+  .ok { color: #3fb950; } .mid { color: #f0a030; } .bad { color: #f85149; }
+  #verd { margin-top: 1.6vh; padding: 1.4vh 1.4vw; border-radius: 12px; background: #161b22; border: 1px solid #30363d; font-size: clamp(14px, 2.4vh, 24px); line-height: 1.45; }
+  #verd b { color: #58a6ff; }
+</style>
+</head>
+<body>
+<iframe id="frame" title="MONITO" hidden></iframe>
+<div id="bar">Preparando la prueba…<small>No toques la pantalla. Dura ~1 minuto y medio.</small></div>
+<div id="rep"></div>
+<script>
+// Prueba de rendimiento de MONITO: carga la pagina real en un marco con distintas partes apagadas y mide los cuadros por segundo de cada caso.
+// Al final deja un solo reporte en pantalla para sacarle una foto. No publica ni cambia nada.
+const Q = new URLSearchParams(location.search), FAST = Q.has("rapido");
+const WARM = FAST ? 1500 : 3500, MEAS = FAST ? 2500 : 6000;
+const BASE = "index.html?demo&era=5&";   // era 5: ciudad ya armada, representa una carga normal
+const TESTS = [
+  { id: "vacia", label: "Página vacía (límite de la TV)", q: null, ref: 1 },
+  { id: "nada", label: "MONITO con todo apagado", q: "off=todo&nocap", ref: 1 },
+  { id: "anillos", label: "Solo anillos de los monitores", q: "off=mundo,cintas&nocap" },
+  { id: "mundo", label: "Solo la civilización", q: "off=anillos,cintas&nocap" },
+  { id: "cintas", label: "Solo cintas de noticias y papers", q: "off=anillos,mundo&nocap" },
+  { id: "full", label: "Todo encendido, sin límite", q: "nocap" },
+  { id: "sincielo", label: "Todo, sin cielo vivo", q: "nocap&cielo=off" },
+  { id: "hoy", label: "Como corre hoy (modo normal)", q: "", hoy: 1 },
+];
+const $ = id => document.getElementById(id), sleep = ms => new Promise(r => setTimeout(r, ms));
+function measure(ms) {   // cuadros por segundo de esta pagina mientras el marco trabaja (comparten el mismo hilo)
+  return new Promise(res => {
+    const dts = []; let last = 0, t0 = 0;
+    requestAnimationFrame(function f(now) {
+      if (!t0) { t0 = now; last = now; requestAnimationFrame(f); return; }
+      dts.push(now - last); last = now;
+      if (now - t0 < ms) requestAnimationFrame(f); else {
+        const total = now - t0, s = dts.slice().sort((a, b) => a - b), n = dts.length;
+        res({ fps: n * 1000 / total, low1: 1000 / (s[Math.min(n - 1, Math.floor(n * .99))] || 1), slow: dts.filter(d => d > 40).length / n * 100, n });
+      }
+    });
+  });
+}
+async function run() {
+  const fr = $("frame"), out = [];
+  for (let i = 0; i < TESTS.length; i++) {
+    const t = TESTS[i];
+    $("bar").innerHTML = `Prueba ${i + 1} de ${TESTS.length}: ${t.label}<small>No toques la pantalla</small>`;
+    if (t.q == null) { fr.hidden = true; fr.src = "about:blank"; await sleep(800); }
+    else { fr.hidden = false; fr.src = BASE + t.q; await sleep(WARM); }   // el calentamiento deja que termine de cargar
+    out.push(Object.assign({}, t, await measure(MEAS)));
+  }
+  fr.hidden = true; fr.src = "about:blank"; $("bar").style.display = "none";
+  report(out);
+}
+const cls = f => f >= 52 ? "ok" : f >= 28 ? "mid" : "bad", f1 = x => x.toFixed(1);
+function report(r) {
+  const by = Object.fromEntries(r.map(x => [x.id, x])), ua = navigator.userAgent, ch = (ua.match(/Chrome\/(\d+)/) || [])[1], d = new Date();
+  const mem = performance.memory ? `${Math.round(performance.memory.usedJSHeapSize / 1048576)} MB de memoria JS` : "";
+  const rows = r.map(x => `<tr class="${x.hoy ? "hoy" : x.ref ? "ref" : ""}"><td>${x.label}</td><td class="n ${cls(x.fps)}">${f1(x.fps)}</td><td class="n ${cls(x.low1)}">${f1(x.low1)}</td><td class="n ${x.slow > 10 ? "bad" : x.slow > 3 ? "mid" : "ok"}">${f1(x.slow)} %</td></tr>`).join("");
+  const lim = by.vacia.fps, lines = [], dev = /Tizen|SMART-TV/i.test(ua) ? "La TV" : "Este equipo";
+  if (lim < 40) lines.push(`${dev} entrega solo <b>${f1(lim)} fps</b> aunque la página esté vacía: <b>el límite lo pone el equipo</b>, no MONITO. La meta realista es mantener ese ritmo parejo.`);
+  else lines.push(`${dev} da <b>${f1(lim)} fps</b> con la página vacía: hay margen para llegar a 60 si MONITO pesa menos.`);
+  const parts = [["los anillos", by.anillos], ["la civilización", by.mundo], ["las cintas", by.cintas]].map(([n, x]) => [n, by.nada.fps - x.fps]).sort((a, b) => b[1] - a[1]);
+  if (by.nada.fps - by.full.fps > 5) lines.push(`Lo que más pesa: <b>${parts[0][0]}</b> (${f1(parts[0][1])} fps menos), luego <b>${parts[1][0]}</b> (${f1(parts[1][1])}).`);
+  else lines.push("Ninguna parte pesa de forma notable: MONITO completo casi no baja los cuadros por segundo.");
+  if (by.sincielo.fps - by.full.fps > 4) lines.push(`El cielo vivo cuesta <b>${f1(by.sincielo.fps - by.full.fps)} fps</b>.`);
+  lines.push(by.hoy.fps >= 28 && by.hoy.slow < 10 ? `Funcionando como hoy: <b class="ok">bien</b> (${f1(by.hoy.fps)} fps, ${f1(by.hoy.slow)} % de cuadros lentos).` : `Funcionando como hoy: <b class="bad">con tirones</b> (${f1(by.hoy.fps)} fps, ${f1(by.hoy.slow)} % de cuadros lentos).`);
+  $("rep").style.display = "block";
+  $("rep").innerHTML = `<h1>MONITO · prueba de rendimiento <span>v26</span></h1>
+  <div class="meta">${d.toLocaleDateString("es-CL")} ${d.toLocaleTimeString("es-CL")} · ${ch ? "Chrome " + ch + " · " : ""}${/Tizen|SMART-TV/i.test(ua) ? "TV Samsung" : "computador"} · pantalla ${innerWidth}×${innerHeight} (×${devicePixelRatio}) · ${navigator.hardwareConcurrency || "?"} núcleos${navigator.deviceMemory ? " · " + navigator.deviceMemory + " GB" : ""}${mem ? " · " + mem : ""}</div>
+  <table><tr><th>Prueba</th><th class="n">Cuadros por segundo</th><th class="n">Peor 1 %</th><th class="n">Cuadros lentos</th></tr>${rows}</table>
+  <div id="verd">${lines.join("<br>")}</div>
+  <div class="meta" style="margin-top:1vh">Verde ≥ 52 fps · naranja ≥ 28 · rojo menos. «Cuadros lentos» = más de 40 ms. Para repetir: recarga esta página.</div>`;
+}
+addEventListener("load", () => setTimeout(run, 1000));
+</script>
+</body>
+</html>

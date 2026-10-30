@@ -61,8 +61,12 @@ const World = (function () {
   const hud = document.createElement("div"); hud.id = "hud"; hud.style.opacity = 0; document.body.appendChild(hud);
   const banner = document.createElement("div"); banner.id = "eraBanner"; document.body.appendChild(banner);
   const toasts = document.createElement("div"); toasts.id = "toasts"; document.body.appendChild(toasts);
-  let hudOpen = Q.has("hud");
-  hud.addEventListener("click", () => { hudOpen = !hudOpen; S.hudT = 0; renderHud(); });
+  const chip = document.createElement("button"); chip.id = "hudChip"; chip.title = "Ver época, población y crónica"; document.body.appendChild(chip);
+  let hudOpen = Q.has("hud"), hudTimer = 0;   // el cuadro central se esconde solo al minuto
+  const setHud = on => { hudOpen = on; hud.classList.toggle("open", on); clearTimeout(hudTimer); if (on) hudTimer = setTimeout(() => setHud(false), 60000); S.hudT = 0; renderHud(); };
+  if (hudOpen) { hud.classList.add("open"); hudTimer = setTimeout(() => setHud(false), 60000); }
+  chip.addEventListener("click", () => setHud(!hudOpen));
+  hud.addEventListener("click", () => setHud(false));
   function layout() {
     svg.setAttribute("width", W); svg.setAttribute("height", H);
     ground.setAttribute("y", floorY()); ground.setAttribute("width", W);
@@ -71,6 +75,7 @@ const World = (function () {
     rails.innerHTML = `<rect x="0" y="${H - 9}" width="${W}" height="2.5" fill="#444"/>` +
       `<line x1="0" y1="${H - 5}" x2="${W}" y2="${H - 5}" stroke="#5a4630" stroke-width="3" stroke-dasharray="3 9"/>`;
     SKY = measureSky();
+    chip.style.bottom = Math.max(4, H - SKY + 8) + "px";
     dark.setAttribute("y", SKY); dark.setAttribute("height", H - SKY); tint.setAttribute("y", SKY);
     tint.setAttribute("width", W); tint.setAttribute("height", H - SKY); water.setAttribute("width", W);
     const sb = skyBg.querySelector(".sb"), sl = skyBg.querySelector(".sl"), st = skyBg.querySelector(".stars");
@@ -95,7 +100,7 @@ const World = (function () {
     { name: "Era sedentaria",           dur: 150, y0: -10000, y1: 1400,   min: 9,  cap: 22, ground: "#6f9a4a" },
     { name: "Era colonial",             dur: 55, y0: 1400,   y1: 1760,   min: 13, cap: 30, ground: "#6a9446" },
     { name: "Revolución industrial",    dur: 55, y0: 1760,   y1: 1950,   min: 18, cap: 40, ground: "#6c7a58" },
-    { name: "Era moderna",              dur: 55, y0: 1950,   y1: 2030,   min: 24, cap: 52, ground: "#5e6a63" },
+    { name: "Era nuclear",              dur: 100, y0: 1945,  y1: 2030,   min: 24, cap: 52, ground: "#5e6a63" },
     { name: "Era espacial",            dur: 80, y0: 2030,   y1: 2150,   min: 30, cap: 70, ground: "#4f5a66" },
     { name: "Era galáctica",           dur: 500, y0: 2150,  y1: 2900,   min: 0,  cap: 80, ground: "#3d4655" },
   ];
@@ -288,6 +293,11 @@ const World = (function () {
     palace: { w: 76, noflip: true, draw: () => R(-26, -34, 52, 34, "#efe6d2") + Pth("M-22 -34A22 20 0 0 1 22 -34Z", "#2f7fc0") + Cir(0, -56, 2, "#d4a82a") + [-34, 34].map(x => R(x - 4, -78, 8, 78, "#e8dcc0") + Pth(`M${x - 5} -78Q${x} -92 ${x + 5} -78Z`, "#2f7fc0") + Cir(x, -93, 1.6, "#d4a82a")).join("") + Pth("M-7 0V-14A7 7 0 0 1 7 -14V0Z", "#3b2f2a") },
     yurt: { w: 42, noflip: true, draw: () => R(-16, -14, 32, 14, "#eee6d4") + Pth("M-19 -14Q0 -34 19 -14Z", "#f6f0e2") + `<path d="M-19 -14Q0 -34 19 -14" fill="none" stroke="#b5502e" stroke-width="1.6"/>` + R(-4, -11, 8, 11, "#6b4a2a") + Cir(0, -30, 1.4, "#b5502e") },
     taj: { w: 100, noflip: true, draw: () => R(-34, -34, 68, 34, "#f4f1ea") + Pth("M-22 -34A22 24 0 0 1 22 -34Z", "#f8f6f0") + Pth("M-3 -58L0 -72L3 -58Z", "#d4a82a") + [-46, 46].map(x => R(x - 4, -62, 8, 62, "#f1eee6") + Pth(`M${x - 5} -62Q${x} -74 ${x + 5} -62Z`, "#f8f6f0")).join("") + Pth("M-8 0V-16A8 8 0 0 1 8 -16V0Z", "#bfc7d4") + R(-40, -2, 80, 2, "#9fd3ff", 'opacity=".6"') },
+    nuclearplant: { w: 104, noflip: true, init: s => { s.sm = 0; },
+      draw: () => [-34, 12].map(x => `<g transform="translate(${x} 0)">${Pth("M-15 0Q-7 -34 -10 -64L10 -64Q7 -34 15 0Z", "#d4d8de")}${R(-10.5, -66, 21, 3, "#aab1bb")}</g>`).join("") + Pth("M38 0V-22A15 15 0 0 1 68 -22V0Z", "#b8bec6") + R(34, -4, 38, 4, "#8e959f") + R(-48, -6, 8, 6, "#8e959f") + Cir(53, -14, 4, "#fdd835"),
+      tick(s, h) { s.sm -= h; if (s.sm <= 0) { s.sm = .5; smoke(s.x - 34, floorY() - 68, 1); smoke(s.x + 12, floorY() - 68, 1); } } },
+    silo: { w: 44, noflip: true, draw: () => R(-20, -4, 40, 4, "#80868f") + Pth("M-13 -4L-8 -11L8 -11L13 -4Z", "#6c727b") + R(-5, -13, 10, 2, "#c0392b") + Cir(-16, -7, 1.6, "#e53935") + Cir(16, -7, 1.6, "#e53935") },
+    bunker: { w: 60, noflip: true, draw: () => Pth("M-28 0A28 24 0 0 1 28 0Z", "#9aa0a8") + R(-6, -14, 12, 14, "#3a3f46") + Cir(0, -22, 5, "#fdd835", 'stroke="#222" stroke-width="1"') + `<path d="M-2 -22h4M0 -24v4" stroke="#222" stroke-width="1"/>` + R(-30, -2, 60, 2, "#7d848d") },
     tflag: { w: 26, temp: true, noflip: true, init: s => { const tr = S.tribes[s.tribe]; s.col = hsl(tr.hue, 70, 48); s.ch = TRIBE_INFO[tr.kind].plural[0].toUpperCase(); },
       draw: s => `<line x1="0" y1="0" x2="0" y2="-46" stroke="#555" stroke-width="2.2"/><path class="fg" d="M0 -46L28 -41L0 -35Z" fill="${s.col}"/><text x="9" y="-38" style="fill:#fff;font-size:8px;font-weight:800;text-anchor:middle">${s.ch}</text>`,
       tick(s, h) { s.t += h; const w = 3 * Math.sin(s.t * 5); s.$(".fg").setAttribute("d", `M0 -46Q10 ${-46 + w} 28 ${-41 + w}Q10 ${-38 - w} 0 -35Z`); } },
@@ -341,6 +351,7 @@ const World = (function () {
     s.$ = sel => s._c[sel] || (s._c[sel] = s.el.querySelector(sel));
     if (def.init) def.init(s);
     s.el = el("g", {}, gStruct); s.el.innerHTML = def.draw(s);
+    if (BLD[kind]) { s.el.style.pointerEvents = "all"; s.el.style.cursor = "pointer"; s.el.addEventListener("click", e => { e.stopPropagation(); showBuilding(s, e.clientX, e.clientY); }); }   // los importantes dicen que son
     S.structs.push(s);
     if (!def.mobile) dust(s.x, 10);
     return s;
@@ -380,7 +391,8 @@ const World = (function () {
     (p, b) => ({ hut: S.medieval ? Math.min(3, 1 + (p / 8 | 0)) : Math.min(8, 2 + (p / 3 | 0)), field: Math.min(5, 1 + (p / 5 | 0)), sheep: Math.min(5, p / 4 | 0), campfire: 1, windmill: b ? 1 : 0 }),
     (p, b) => b ? { house: Math.min(8, 2 + (p / 4 | 0)), fort: 1, ship: 1, field: 2, hut: 1 } : { house: Math.min(8, 2 + (p / 4 | 0)), windmill: 1 + (p > 25 ? 1 : 0), ship: 1, field: 2 },
     (p, b) => ({ factory: Math.min(4, 1 + (p / 10 | 0)), brickhouse: Math.min(9, 2 + (p / 4 | 0)), train: 1, house: b ? 2 : 0 }),
-    (p, b) => ({ skyscraper: Math.min(10, 2 + (p / 5 | 0)), house: 2, car: Math.min(4, 1 + (p / 12 | 0)), plane: 1, factory: b ? 1 : 0 }),
+    (p, b) => S.digital ? { skyscraper: Math.min(10, 2 + (p / 5 | 0)), house: 2, car: Math.min(4, 1 + (p / 12 | 0)), plane: 1, factory: b ? 1 : 0, nuclearplant: 1 }
+      : { house: 3, brickhouse: Math.min(4, 1 + (p / 6 | 0)), skyscraper: Math.min(4, 1 + (p / 8 | 0)), car: Math.min(3, 1 + (p / 12 | 0)), plane: 1, factory: 1, nuclearplant: 1, bunker: 1, silo: p >= 6 ? 1 : 0, dish: 1 },
     (p, b) => ({ skyscraper: b ? 6 : 4, pad: 1, dome: Math.min(3, 1 + (p / 15 | 0)), dish: 1, car: 2, plane: 1 }),
     (p, b) => ({ tower: b ? 6 : 4, skyscraper: 3, dome: 2, starport: 1, dish: 1, hovercar: 4, pad: 1 }),
   ];
@@ -426,7 +438,10 @@ const World = (function () {
     const keys = shuffle(Object.keys(CULTURES));
     S.tribes.forEach((t, i) => { t.cult = forced && forced[i] && CULTURES[forced[i]] ? forced[i] : keys[i]; });
   }
-  const eraName = () => S.era === 3 && S.medieval ? "Antigüedad y Edad Media" : ERAS[S.era].name;
+  const eraName = () => S.era === 3 && S.medieval ? "Antigüedad y Edad Media" : S.era === 6 && S.digital ? "Era digital" : ERAS[S.era].name;
+  function startDigital() {   // la era nuclear da paso a la era digital
+    S.digital = true; showBanner("Era digital"); logEv(`Termina la era nuclear y comienza la era digital: computadores, redes y datos por todas partes`);
+  }
   function startMedieval() {   // la segunda mitad de la era sedentaria: grandes culturas del mundo
     S.medieval = true; assignCultures();
     showBanner("Antigüedad y Edad Media");
@@ -547,9 +562,39 @@ const World = (function () {
     "¿Y el medio de cultivo? ¿Ya lo autoclavaste?", "¿Cuánto crecieron tus Acidithiobacillus?", "¿Mapeaste las lecturas contra el genoma?", "¿Cuántos contigs tienes?", "¿Tu hipótesis sigue en pie?",
     "Tesis, tesis, tesis…", "¿Ya escribiste los métodos?", "¿Y la reproducibilidad, eh?", "¡Un párrafo más y descansas!", "¿Hoy toca bioinformática o bañera?",
   ];
+  const SKY_MSGS_MORE = [
+    // bioinformatica: del dato crudo al árbol
+    "¿Ya corriste FastQC en tus lecturas?", "¿Recortaste los adaptadores?", "¿Cuántas lecturas pasaron el filtro de calidad?", "¿SPAdes o MEGAHIT? Esa es la cuestión", "¿Tu ensamblaje tiene un buen N50?",
+    "¿Pasó CheckM? ¿Completitud y contaminación?", "¿Ya corriste GTDB-Tk?", "¿Anotaste con Prokka o con Bakta?", "¿Y el PGAP? ¿Ya terminó?", "¿Cómo va DRAM con tus MAGs?",
+    "¿Revisaste los resultados de DRAM2?", "¿Alineaste con MAFFT?", "¿Recortaste el alineamiento con trimAl?", "¿IQ-TREE ya eligió el modelo (ModelFinder)?", "¿Cuántos UFBoot llevas? ¿10 000?",
+    "¿Ya miraste el árbol en iTOL?", "¿Subiste las secuencias a NCBI?", "¿ANI sobre 95 %? ¿Es la misma especie?", "¿Y el pangenoma? ¿Core o accesorio?", "¿Mapeaste las lecturas con BWA o Bowtie2?",
+    "¿Revisaste la cobertura de tus MAGs?", "¿Hiciste el binning con MetaBAT?", "¿Qué dice BLAST de esa secuencia rara?", "¿Y la anotación funcional con KEGG?", "¿Cuántos genes de oxidación de hierro y azufre encontraste?",
+    "¿Buscaste el operón rus en tus genomas?", "¿Hay genes sox y tetH en tus Acidithiobacillia?", "¿Ya comparaste tu 16S contra SILVA?", "¿Cuántas secuencias 16S dereplicaste?", "¿Ya miraste el árbol en TreeViewer?",
+    "¿Tu script corre sin errores o solo en tu mente?", "¿Versionaste tu pipeline en git?", "¿Tu entorno de conda es reproducible?", "¿Tienes espacio en disco para los BAM?", "¿Cuántos núcleos está usando tu job?",
+    "¿Se cayó el job a las 3 AM? Revísalo", "¿Cómo va tu job en el cluster?", "¿Pediste suficientes horas de cómputo?", "¿Moviste tus datos fuera de /scratch?", "¿Documentaste los parámetros de cada herramienta?",
+    "¿Qué versión de la base de datos usaste?", "¿Guardaste las semillas de tus análisis aleatorios?", "¿Comprobaste el e-value antes de creerle a BLAST?", "¿Y si revisas los outliers de tu árbol?", "¿Tu dendrograma tiene una raíz razonable?",
+    "¿Exportaste el árbol en Newick?", "¿Comparaste con un genoma de referencia?", "¿Cuántos genes hipotéticos quedaron sin anotar?", "¿Probaste a anotar de nuevo con otra base de datos?", "¿Ya limpiaste los archivos temporales del cluster?",
+    // laboratorio húmedo
+    "¿Cómo están tus bacterias hoy?", "¿Ya pasaste tus cultivos a medio fresco?", "¿Revisaste el pH de tu medio?", "¿Cuánto Fe(II) queda en tu cultivo?", "¿Ya autoclavaste el medio 9K?",
+    "¿Tus Acidithiobacillus crecen o se hacen los dormidos?", "¿Extrajiste ADN? ¿Qué dice el NanoDrop?", "¿Cuál es tu 260/280?", "¿Corriste el gel? ¿Se ve la banda?", "¿Cómo salió tu PCR? ¿Control negativo limpio?",
+    "¿Calibraste el pHmetro?", "¿Rotulaste tus tubos?", "¿Pipeteaste con puntas nuevas?", "¿Y si repites el experimento por triplicado?", "¿Anotaste todo en tu cuaderno de laboratorio?",
+    "¿Cuántas réplicas biológicas tienes?", "¿Limpiaste el mesón antes de irte?", "¿Guardaste las muestras a −80 °C?", "¿Revisaste la fecha de tus reactivos?", "¿Hiciste el conteo de células?",
+    "¿La curva de crecimiento ya entró en fase exponencial?", "¿Preparaste tus alícuotas?", "¿Esterilizaste las puntas?", "¿La centrífuga está balanceada?", "¿Alguien apagó el autoclave?",
+    // tesis, paper y vida de laboratorio
+    "¿Ya hiciste el esquema de la tesis?", "¿Ya lo revisó quien guía tu tesis?", "¿Respondiste los comentarios del revisor 2?", "¿Tu paper ya tiene un título pegajoso?", "¿Y el abstract? Que sea corto",
+    "¿Tienes las figuras en alta resolución?", "¿Definiste todas las abreviaturas?", "¿La bibliografía sigue el formato de la revista?", "¿Cuántas veces escribiste «novedoso»? Borra algunas", "¿Y la carta de presentación?",
+    "¿Cuándo es la fecha límite? ¡Ahora!", "¿Ya agradeciste al financiamiento?", "¿Y el material suplementario?", "¿Revisaste la ortografía del manuscrito?", "¿Y las tablas? ¿Están en orden?",
+    "Antes de irte: ¿lanzaste los jobs?", "Los genomas no se ensamblan mirando monos", "Un cluster ocupado es un cluster feliz", "Quien no hace backup, llora", "El mejor momento para comentar el código fue ayer",
+    "Se acabaron las puntas azules… otra vez", "¿Quién se tomó mi café?", "Hoy toca bioinformática, mañana también", "¡Un figure al día mantiene al revisor lejos!", "Cada error de script es un aprendizaje (y un café)",
+    // datos curiosos
+    "Dato: la E. coli se divide cada ~20 minutos", "Dato: tu genoma tiene ~3.100 millones de pares de bases", "Dato: el gen 16S mide unos 1.500 pb", "Dato: los Acidithiobacillus viven felices a pH ~2",
+    "Dato: el primer genoma bacteriano completo fue el de Haemophilus influenzae (1995)", "Dato: pH 2 es unas 100.000 veces más ácido que el agua pura", "Dato: los ribosomas bacterianos son 70S",
+    "Dato: la PCR la inventó Kary Mullis", "Dato: la doble hélice del ADN se publicó en 1953", "Dato: CRISPR nació como defensa de las bacterias contra los virus", "Dato: los bacteriófagos son virus que infectan bacterias",
+    "Dato: en el desierto de Atacama viven bacterias extremófilas", "Dato: una bacteria puede intercambiar genes con otra por conjugación", "Dato: el ADN de una bacteria suele ser un cromosoma circular",
+  ];
   let skyDeck = [];
   function skyMessage(fixed) {
-    if (!skyDeck.length) skyDeck = shuffle(SKY_MSGS.slice());
+    if (!skyDeck.length) skyDeck = shuffle(SKY_MSGS.concat(SKY_MSGS_MORE));
     const txt = typeof fixed === "string" ? fixed : skyDeck.pop(), w = txt.length * 9.6 + 40, dir = chance(.5) ? 1 : -1, y0 = skyY(rnd(.1, .42)), dur = rnd(16, 22);
     fx("g", { x: dir > 0 ? -w / 2 - 10 : W + w / 2 + 10, y: y0, vx: dir * (W + w + 20) / dur, life: dur,
       html: `<rect x="${-w / 2}" y="-17" width="${w}" height="34" rx="17" style="fill:var(--card);stroke:var(--accent);stroke-width:1.6px" opacity=".94"/>` +
@@ -557,19 +602,21 @@ const World = (function () {
       tick: g => { g.y = y0 + Math.sin(g.t * 1.4) * 7; } });
   }
   const THOUGHTS = {
-    any: ["Hmm… ¿y si…?", "¡Qué buen día!", "Tengo sueño…", "Me pica la espalda", "¿Qué estarán pensando los demás?", "Qué linda tribu tenemos", "¿Habrá algo de comer?", "¿Y si descansamos un poco?", "Mañana será mejor", "¡Cómo pasa el tiempo!"],
+    any: ["Hmm… ¿y si…?", "¡Qué buen día!", "Tengo sueño…", "Me pica la espalda", "¿Qué estarán pensando los demás?", "Qué linda tribu tenemos", "¿Habrá algo de comer?", "¿Y si descansamos un poco?", "Mañana será mejor", "¡Cómo pasa el tiempo!", "¿Habrá terminado mi job?", "Me falta un párrafo del paper", "¿Y si repito el experimento?", "Tengo que hacer backup", "¿Quedará café en el lab?", "Mi tesis me espera"],
     0: ["Hambre… ¡uh!", "¿Qué es esa luz tan grande?", "Palo bueno, piedra mejor", "Esa cueva se ve cómoda", "Brrr, qué frío hace"],
     1: ["El fuego es mágico", "Mmm… huele a asado", "¡No toques, que quema!", "¿Qué habrá detrás de las estrellas?"],
     2: ["¿Dónde acampamos hoy?", "Sigamos a las bananas", "Ese lobo me mira raro", "Otra migración… qué cansancio"],
     3: ["¿Habrá buena cosecha?", "Quiero una casa más grande", "¿Por qué sale el sol?", "Hoy toca sembrar", "Qué alto es ese templo"],
     4: ["¡Tierra a la vista!", "¿Y si navego hacia el oeste?", "Dicen que el mundo es redondo", "Qué castillo tan alto"],
     5: ["El humo me da tos", "¿Llegará el tren a tiempo?", "Mi jornada es larguísima", "¡Cuánto ruido hacen las máquinas!"],
+    nuc: ["¿Y si alguien aprieta el botón?", "Ese hongo en el horizonte no me gusta", "¿Será seguro el búnker?", "Las pruebas atómicas dan miedo", "Qué grande es esa central"],
     6: ["Me llegó un mensaje", "¿Y si me tomo un café?", "Voy tarde a la oficina", "¿Quién ganó el partido?", "Se me acabó la batería"],
     7: ["¿Viviremos en otro planeta?", "Quiero ir a la Luna", "¿Habrá bananas en Marte?"],
     8: ["¿Estamos solos?", "Esa nave me da mala espina", "¿Será seguro el hiperespacio?"],
   };
   const KIND_THOUGHTS = { mono: ["¿Habrá bananas?", "Quiero trepar ese árbol", "¡Uh uh!"], jirafa: ["Las hojas ricas están arriba", "Qué lindo se ve todo desde acá", "¿Habrá acacias mañana?"], foca: ["¿Dónde está el pescado?", "Quiero un chapuzón", "Mmm… huele a mar"] };
-  const thoughtFor = g => g.m.celeb && chance(.4) ? `“${g.m.celeb.quote}”` : chance(.28) ? pick(KIND_THOUGHTS[g.m.kind] || KIND_THOUGHTS.mono) : pick(chance(.55) ? THOUGHTS.any.concat(THOUGHTS[Math.min(S.era, 8)] || []) : (THOUGHTS[Math.min(S.era, 8)] || THOUGHTS.any));
+  const thoughtFor = g => g.m.celeb && chance(.4) ? `“${g.m.celeb.quote}”` : chance(.28) ? pick(KIND_THOUGHTS[g.m.kind] || KIND_THOUGHTS.mono) : pick(chance(.55) ? THOUGHTS.any.concat(eraThoughts()) : (eraThoughts().length ? eraThoughts() : THOUGHTS.any));
+  const eraThoughts = () => (THOUGHTS[Math.min(S.era, 8)] || []).concat(S.era === 6 && !S.digital ? THOUGHTS.nuc : []);
   function say(text) { const g = pick(groundMons()); if (g && g.m.mode !== "sleep") { g.m.say = text; g.m.mode = "react"; g.m.t = 0; g.m.dur = 1.7; } }
   function adopt(m, x, y, id) {   // un mono se desborda del anillo hacia el mundo
     gMon.appendChild(m.parts.root);
@@ -691,7 +738,7 @@ const World = (function () {
     else if (e === 3) { r < .5 ? go(at(["field"], 28), "work", rnd(4, 9)) : r < .75 ? go(at(["hut", "campfire", "temple", "market", "pyramid", "totem"], 40), "sit") : go(null, "sit", rnd(1, 3)); }
     else {
       const ei = Math.min(e, 7) - 4;
-      const wk = [["field", "windmill", "fort", "ship", "market", "academia", "observatory"], ["factory", "train", "library", "university"], ["skyscraper", "car", "library", "laboratory", "hospital"], ["pad", "dish", "dome", "tower", "starport", "laboratory"]][ei];
+      const wk = [["field", "windmill", "fort", "ship", "market", "academia", "observatory"], ["factory", "train", "library", "university"], ["skyscraper", "car", "library", "laboratory", "hospital", "nuclearplant", "bunker"], ["pad", "dish", "dome", "tower", "starport", "laboratory"]][ei];   // (era 6: ver abajo)
       const hm = [["house", "hut", "market", "cathedral"], ["brickhouse", "house", "cathedral"], ["house", "skyscraper", "cathedral"], ["dome", "skyscraper", "dish", "tower", "orb"]][ei];
       r < .4 ? go(at(wk, 30), "work", rnd(3, 8)) : r < .7 ? go(at(hm, 36), "sit") : go(null, "sit", rnd(1, 3));
     }
@@ -707,7 +754,7 @@ const World = (function () {
   const DISEASES = ["Peste Gris", "Fiebre del Plátano", "Tos Simiesca", "Gripe Roja", "Mal del Sueño", "Viruela de los Árboles", "Fiebre Negra", "Sarampión Peludo", "Gripe de la Selva", "Mal de las Pulgas"];
   const cheerSome = (n, secs) => free().slice(0, n).forEach(g => { g.act = "cheer"; g.stay = secs; g.m.t = 0; });
   const releaseAll = list => list.forEach(g => { g.hold = false; g.stay = 0; });
-  const M = (era, id, text, run) => ({ id, era, text: typeof text === "function" ? text : () => text, run });
+  const M = (era, id, text, run, ph) => ({ id, era, text: typeof text === "function" ? text : () => text, run, ph });   // ph: fase de la era 6 ("n" nuclear, "d" digital)
   const MILESTONES = [
     // --- Edad de Piedra ---
     M(0, "herramientas", () => `${T()}: fabrican las primeras herramientas de piedra`),
@@ -808,28 +855,44 @@ const World = (function () {
     M(5, "higiene", `Descubren la higiene: ¡a lavarse las manos!`, () => { S.done.cuarentena = true; }),
     M(5, "deporte", `Nacen los deportes modernos`),
     // --- Moderna ---
-    M(6, "automovil", `Los automóviles llenan las calles`),
-    M(6, "aviacion", `Primer vuelo: el mono por fin tiene alas`),
-    M(6, "radio", `La radio y la televisión llegan a todos`),
-    M(6, "internet", `Nace internet: todos miran videos de bananas`),
-    M(6, "vacunas", `Inventan las vacunas`, () => { S.extra += 5; }),
-    M(6, "relatividad", `Descubren la relatividad: el tiempo no es absoluto`, () => say("E=mc²")),
-    M(6, "atomo", `Dividen el átomo`),
-    M(6, "antibioticos", `Descubren los antibióticos`),
-    M(6, "adn", `Descifran el ADN`),
-    M(6, "computadora", `Aparecen las computadoras`),
-    M(6, "television", `La televisión entra en cada casa`),
-    M(6, "cine", `Nace el cine`),
-    M(6, "rock", `Nace el rock and roll`, () => { S.music = 10; cheerSome(8, 8); }),
-    M(6, "derechos", `Declaran los derechos de todos los monos`),
-    M(6, "naciones", `Fundan la Asamblea de las Naciones Monas`),
-    M(6, "ecologia", `Nace el movimiento ecologista`),
-    M(6, "smartphone", `Todos tienen un teléfono inteligente (y no levantan la vista)`),
-    M(6, "ia", `Primeras inteligencias artificiales`),
-    M(6, "nuevaera", () => `Surgen nuevas espiritualidades: «${S.rel.name}»`, () => { setRels(() => newRel()); S.tribes.forEach(t => { t.rel2 = null; }); S.rel2 = null; S.done.reforma = false; }),
-    M(6, "cuantica", `La física cuántica desafía el sentido común`),
-    M(6, "laboratorio", `Enormes laboratorios de investigación`),
-    M(6, "carrera", `Comienza la carrera espacial`),
+    M(6, "automovil", `Los automóviles llenan las calles`, null, "n"),
+    M(6, "aviacion", `Primer vuelo: el mono por fin tiene alas`, null, "n"),
+    M(6, "radio", `La radio y la televisión llegan a todos`, null, "n"),
+    M(6, "relatividad", `Descubren la relatividad: el tiempo no es absoluto`, () => say("E=mc²"), "n"),
+    M(6, "atomo", `Dividen el átomo: nace la era nuclear`, null, "n"),
+    M(6, "fision", `Primera reacción nuclear en cadena controlada`, null, "n"),
+    M(6, "bomba", `Una bomba atómica ilumina el desierto: el mundo contiene el aliento`, () => nuclearTest(), "n"),
+    M(6, "guerra_fria", `Comienza la Guerra Fría: dos bloques y miles de misiles`, null, "n"),
+    M(6, "central", `Inauguran la primera central nuclear: energía para ciudades enteras`, null, "n"),
+    M(6, "bunkers", `Se construyen búnkeres antiatómicos`, null, "n"),
+    M(6, "misiles_crisis", `Crisis de los misiles: el mundo a un botón de distancia`, () => coldWar(), "n"),
+    M(6, "no_proliferacion", `Se firma el tratado de no proliferación nuclear`, null, "n"),
+    M(6, "medicina_nuclear", `Nace la medicina nuclear: diagnósticos y tratamientos con radiación`, null, "n"),
+    M(6, "fusion_sueno", `Sueñan con la fusión nuclear: el Sol en una botella`, null, "n"),
+    M(6, "antibioticos", `Descubren los antibióticos`, null, "n"),
+    M(6, "adn", `Descifran el ADN`, null, "n"),
+    M(6, "television", `La televisión entra en cada casa`, null, "n"),
+    M(6, "cine", `Nace el cine`, null, "n"),
+    M(6, "rock", `Nace el rock and roll`, () => { S.music = 10; cheerSome(8, 8); }, "n"),
+    M(6, "derechos", `Declaran los derechos de todos los monos`, null, "n"),
+    M(6, "naciones", `Fundan la Asamblea de las Naciones Monas`, null, "n"),
+    M(6, "ecologia", `Nace el movimiento ecologista`, null, "n"),
+    M(6, "cuantica", `La física cuántica desafía el sentido común`, null, "n"),
+    M(6, "laboratorio", `Enormes laboratorios de investigación`, null, "n"),
+    M(6, "carrera", `Comienza la carrera espacial`, null, "n"),
+    M(6, "computadora", `Aparecen las computadoras personales`, null, "d"),
+    M(6, "internet", `Nace internet: todos miran videos de bananas`, null, "d"),
+    M(6, "vacunas", `Inventan las vacunas modernas`, () => { S.extra += 5; }, "d"),
+    M(6, "genoma", `Secuencian el primer genoma completo`, null, "d"),
+    M(6, "crispr", `Nace CRISPR: editar genes con tijeras moleculares`, null, "d"),
+    M(6, "redes", `Nacen las redes sociales: todos opinan de todo`, null, "d"),
+    M(6, "nube", `Todo se guarda en la nube (que es el computador de otro)`, null, "d"),
+    M(6, "bigdata", `Datos masivos: los servidores ya no dan abasto`, null, "d"),
+    M(6, "solar", `Paneles solares y energías limpias`, null, "d"),
+    M(6, "smartphone", `Todos tienen un teléfono inteligente (y no levantan la vista)`, null, "d"),
+    M(6, "ia", `Primeras inteligencias artificiales`, null, "d"),
+    M(6, "teletrabajo", `Teletrabajo: reuniones en pijama`, null, "d"),
+    M(6, "nuevaera", () => `Surgen nuevas espiritualidades: «${S.rel.name}»`, () => { setRels(() => newRel()); S.tribes.forEach(t => { t.rel2 = null; }); S.rel2 = null; S.done.reforma = false; }, "d"),
     // --- Espacial ---
     M(7, "satelite", `Lanzan el primer satélite`),
     M(7, "telescopio", () => `El telescopio divisa ${S.dest.name}`, () => { S.destSeen = true; ensureDest(); }),
@@ -915,9 +978,12 @@ const World = (function () {
     // --- modernas ---
     { id: "guerramundial", min: 6, max: 6, w: () => .6 * S.traits.war * (free().length >= 8 ? 1 : 0), run: () => worldWar() },
     { id: "guerrafria", min: 6, max: 6, w: () => .4, run: () => coldWar() },
+    { id: "pruebanuclear", min: 6, max: 6, w: () => S.digital ? 0 : .6, run: () => nuclearTest() },
+    { id: "simulacro", min: 6, max: 6, w: () => S.digital || free().length < 4 ? 0 : .5, run: () => airRaid() },
+    { id: "accidentenuclear", min: 6, max: 6, w: () => S.digital || S.pandemic ? 0 : .3, run: () => radiation() },
   ];
   function nextMilestone() {
-    let c = MILESTONES.filter(m => m.era === S.era && !S.done[m.id]);
+    let c = MILESTONES.filter(m => m.era === S.era && !S.done[m.id] && (m.ph == null || S.era !== 6 || m.ph === (S.digital ? "d" : "n")));
     if (S.era === 7 && !S.destSeen && S.eraT > S.eraDur * .25) c = c.filter(m => m.id === "telescopio");   // sin esto no hay destino
     const m = wpick(c, () => 1); if (!m) return false;
     S.done[m.id] = true; S.stats.hitos++; if (m.run) m.run(); logEv(m.text()); return true;
@@ -1268,6 +1334,30 @@ const World = (function () {
     });
   }
   function worldWar() { startWar(`Guerra mundial: los bandos se enfrentan en trincheras`); bombers(3); logEv(`Los bombarderos cruzan el cielo`); }
+  function nuclearTest() {   // lejos del pueblo: un hongo de humo en el horizonte
+    const x = rnd(W * .12, W * .88), y0 = floorY();
+    fx("flash", { x, y: y0 - 10, r0: 10, r1: Math.max(W, H), life: 1.2, col: "#fff", op: .8 });
+    S.shake = 2;
+    fx("g", { x, y: y0, life: 9, tick: (g, h) => {
+      const u = out3(g.t / 4.5), hh = skyH() * .55 * u, rr = 8 + 34 * u;
+      g.e.querySelector(".st").setAttribute("y", -hh); g.e.querySelector(".st").setAttribute("height", hh);
+      for (const c of g.e.querySelectorAll(".cp")) { c.setAttribute("cy", -hh); c.setAttribute("rx", rr * (c.dataset.k || 1)); c.setAttribute("ry", rr * .55 * (c.dataset.k || 1)); }
+      g.e.setAttribute("opacity", clamp((9 - g.t) / 3, 0, 1).toFixed(2));
+    }, html: `<rect class="st" x="-6" width="12" height="0" fill="#7d6f62"/><ellipse class="cp" data-k="1" cx="0" rx="8" ry="4" fill="#a8927a"/><ellipse class="cp" data-k=".62" cx="0" rx="5" ry="3" fill="#d9c4a6"/>` });
+    groundMons().forEach(g => { if (chance(.5)) { g.m.say = "¿Y ese hongo?"; g.m.mode = "react"; g.m.t = 0; g.m.dur = 2; } });
+    logEv(pick([`Prueba nuclear en el desierto: un hongo de humo se alza en el horizonte`, `Se detona una bomba de prueba: el cielo se ilumina`]));
+  }
+  function airRaid() {
+    const b = anchor(["bunker"]) , gs = free().slice(0, 12); if (!gs.length) return;
+    gs.forEach(g => sendTo(g, (b == null ? W / 2 : b) + rnd(-26, 26), "sit", 0, 8));
+    logEv(`Suena la sirena: simulacro de ataque nuclear, todos al búnker`);
+    later(10, () => releaseAll(gs));
+  }
+  function radiation() {
+    const pl = alive("nuclearplant")[0];
+    pandemic({ name: "Radiación", lethal: .45, dur: 28, text: `Accidente en una central nuclear: se escapa radiación` });
+    if (pl) for (let i = 0; i < 12; i++) later(i * .4, () => fx("puff", { x: pl.x + rnd(-40, 50), y: floorY() - rnd(8, 60), vy: -12, r0: 3, r1: 12, life: 1.6, col: "#7fe36a", op: .5 }));
+  }
   function coldWar() {
     logEv(`Guerra fría: dos potencias acumulan misiles sin atreverse a dispararlos`);
     for (let i = 0; i < 3; i++) later(1 + i * 1.2, () => { const x = rnd(W * .15, W * .85); flyShip("missile", x, floorY() - 10, x + rnd(-50, 50), -40, 2.6, { s: 2 }); });
@@ -1430,9 +1520,35 @@ const World = (function () {
   }
 
   // --- planetas, cohetes y colonizacion ---
+  // edificios importantes: al tocarlos dicen que son y de que cultura (5 s)
+  const BLD = { castle: ["Castillo"], fort: ["Fortaleza"], cathedral: ["Catedral"], temple: ["Templo"], pyramid: ["Pirámide"], orb: ["Templo cósmico"], totem: ["Tótem"],
+    colosseum: ["Coliseo", "romana"], aqueduct: ["Acueducto", "romana"], villa: ["Villa romana", "romana"], obelisk: ["Obelisco", "egipcia"], sphinx: ["Esfinge", "egipcia"],
+    longhouse: ["Casa larga", "vikinga"], runestone: ["Piedra rúnica", "vikinga"], pagoda: ["Pagoda"], greatwall: ["Gran Muralla", "china"], pavilion: ["Pabellón", "china"],
+    torii: ["Puerta torii", "japonesa"], dojo: ["Dojo", "japonesa"], stepped: ["Pirámide escalonada", "azteca"], palace: ["Palacio con minaretes"], yurt: ["Yurta", "mongola"], taj: ["Mausoleo de mármol", "india"],
+    academia: ["Academia"], university: ["Universidad"], observatory: ["Observatorio"], library: ["Biblioteca"], hospital: ["Hospital"], laboratory: ["Laboratorio"], stadium: ["Estadio"], factory: ["Fábrica"],
+    skyscraper: ["Rascacielos"], pad: ["Plataforma de lanzamiento"], starport: ["Puerto estelar"], tower: ["Torre luminosa"], dome: ["Cúpula de cultivo"], windmill: ["Molino"], nuclearplant: ["Central nuclear"], silo: ["Silo de misiles"], bunker: ["Búnker antiatómico"], market: ["Mercado"], cave: ["Cueva"], campfire: ["Fogata"], tflag: ["Bandera del pueblo"] };
+  const bldPop = document.createElement("div"); bldPop.id = "bldPop"; bldPop.hidden = true; document.body.appendChild(bldPop);
+  let bldT = 0;
+  function cultureOf(s, key) {
+    if (key && CULTURES[key]) return `Cultura ${CULTURES[key].name}` + (!S.unified && S.tribes[s.tribe] ? ` · ${tn(s.tribe)}` : "");
+    if (S.unified) return `Cultura de ${S.nation}`;
+    const tr = S.tribes[s.tribe];
+    if (!tr) return "Cultura de los pueblos del mundo";
+    if (tr.cult && CULTURES[tr.cult] && S.era >= 3 && S.era <= 4) return `Cultura ${CULTURES[tr.cult].name} · ${tn(s.tribe)}`;
+    return `Cultura de ${tn(s.tribe)}`;
+  }
+  function showBuilding(s, x, y) {
+    const [name, key] = BLD[s.kind];
+    bldPop.innerHTML = `<b>${name}</b><br>${cultureOf(s, key)}`; bldPop.hidden = false;
+    bldPop.style.left = clamp(x - 100, 8, Math.max(8, W - 250)) + "px"; bldPop.style.top = clamp(y - 66, 8, Math.max(8, H - 90)) + "px";
+    clearTimeout(bldT); bldT = setTimeout(() => { bldPop.hidden = true; }, 5000);   // desaparece a los 5 s
+  }
   const planetPop = document.createElement("div"); planetPop.id = "planetPop"; planetPop.hidden = true; document.body.appendChild(planetPop);
-  planetPop.addEventListener("click", e => { e.stopPropagation(); if (e.target.classList && e.target.classList.contains("x")) planetPop.hidden = true; });
-  document.addEventListener("click", () => { planetPop.hidden = true; });
+  let planetT = 0;
+  const armPlanetHide = () => { clearTimeout(planetT); planetT = setTimeout(() => { planetPop.hidden = true; }, 15000); };   // se oculta solo tras 15 s sin tocarlo
+  for (const ev of ["pointermove", "touchstart", "wheel"]) planetPop.addEventListener(ev, () => { if (!planetPop.hidden) armPlanetHide(); }, { passive: true });
+  planetPop.addEventListener("click", e => { e.stopPropagation(); armPlanetHide(); if (e.target.classList && e.target.classList.contains("x")) planetPop.hidden = true; });
+  document.addEventListener("click", () => { planetPop.hidden = true; bldPop.hidden = true; });
   addEventListener("keydown", e => { if (e.key === "Escape") planetPop.hidden = true; });
   const REAL_INFO = {
     "Marte": { tipo: "Planeta rocoso (el 4.º del Sistema Solar)", datos: ["Diámetro: 6.779 km", "Gravedad: 0,38 g", "Temperatura media: −63 °C", "Atmósfera: muy fina, de CO₂", "Lunas: Fobos y Deimos", "Día: 24 h 37 min"],
@@ -1463,7 +1579,7 @@ const World = (function () {
     const i = p.info, col = p.col > 0 ? `${p.col} colono${p.col > 1 ? "s" : ""} de ${natName()}` : p.alien ? "territorio alienígena" : "ninguna todavía";
     planetPop.innerHTML = `<button class="x" aria-label="Cerrar">×</button><b>${p.name}</b><div class="sub">${i.tipo}</div>` +
       `<ul>${i.datos.map(x => `<li>${x}</li>`).join("")}<li>Descubierto: ${p.disc}</li><li>Colonias: ${col}</li></ul><p>${i.desc}</p>`;
-    planetPop.hidden = false;
+    planetPop.hidden = false; armPlanetHide();
     planetPop.style.left = clamp(p.x - 140, 8, W - 292) + "px"; planetPop.style.top = Math.min(Math.max(8, H - 260), p.y + p.r + 24) + "px";
   }
   let pid = 0;
@@ -1956,7 +2072,7 @@ const World = (function () {
     S.sea = 0; S.waterH = 0; water.setAttribute("height", 0); dark.setAttribute("opacity", 0);
     groundMons().forEach(g => { g.sick = 0; g.hold = false; g.stay = 0; g.m.parts.root.style.filter = ""; });
     S.cycle++;
-    S.medieval = false; S.era = o.era || 0; S.eraT = 0; S.eraDur = ERAS[S.era].dur * rnd(.75, 1.35); S.extra = o.extra || 0;
+    S.medieval = false; S.digital = false; S.era = o.era || 0; S.eraT = 0; S.eraDur = ERAS[S.era].dur * rnd(.75, 1.35); S.extra = o.extra || 0;
     S.done = {}; S.recent = {}; S.won = false; S.destSeen = false; S.dest = wpick(DESTS, d => d.w); S.goal = 4 + (Math.random() * 3 | 0);
     S.traits = { war: rnd(.25, 1.8), curious: rnd(.7, 1.5), luck: rnd(.6, 1.4) };
     S.branch = [0, 0, 0, 0, 0, 0, 0, 0, 0].map(() => chance(.5) ? 1 : 0);
@@ -1970,12 +2086,12 @@ const World = (function () {
 
   // ---------- poblacion, eras y reloj ----------
   function startWorld() {
-    S.started = true; gGround.style.opacity = 1; gStruct.style.opacity = 1; hud.style.opacity = 1;
+    S.started = true; gGround.style.opacity = 1; gStruct.style.opacity = 1; hud.style.opacity = 1; chip.style.opacity = 1;
     logEv(`${T()} llega al suelo: empieza su historia`);
     showBanner(ERAS[0].name);
   }
   function eraUp() {
-    S.era++; S.eraT = 0; S.eraDur = ERAS[S.era].dur * rnd(.75, 1.35); S.msT = 4; S.medieval = false;
+    S.era++; S.eraT = 0; S.eraDur = ERAS[S.era].dur * rnd(.75, 1.35); S.msT = 4; S.medieval = false; S.digital = false;
     ground.setAttribute("fill", ERAS[S.era].ground);
     showBanner(ERAS[S.era].name); logEv(`Comienza: ${ERAS[S.era].name}`);
     if (S.era === 3) logEv(`Nace ${S.city}, la primera aldea de ${T()}`);
@@ -2018,6 +2134,7 @@ const World = (function () {
     if (S.started) {
       S.eraT += h * S.boost;
       if (S.era === 3 && !S.medieval && S.eraT >= S.eraDur * .3) startMedieval();
+      if (S.era === 6 && !S.digital && S.eraT >= S.eraDur * .42) startDigital();
       const ground2 = groundMons().length;
       if (ground2 >= 2 && popTotal() < ERAS[S.era].cap) S.extra += h * (.12 + ground2 * .012) * S.traits.luck;
       if (S.era < 7 && S.eraT >= S.eraDur && popTotal() >= ERAS[S.era + 1].min) eraUp();
@@ -2076,7 +2193,8 @@ const World = (function () {
     if (!S.started || S.hudT > 0) return;
     S.hudT = .3;
     const e = ERAS[S.era], pop = popTotal(), st = S.stats;
-    let h = `<b>${eraName()}</b> · ${fmtYear(curYear())} ${hudOpen ? "▾" : "▸"}<br>${popLine()}` + (S.cycle > 1 ? ` · Ciclo ${S.cycle}` : "") + (S.tribes.some(t => t.cult) && !S.unified && S.era <= 4 ? `<br>Culturas: ${S.tribes.map(t => `${TRIBE_INFO[t.kind].plural} ${CULTURES[t.cult] ? CULTURES[t.cult].name : "—"}`).join(" · ")}` : "") +
+    chip.innerHTML = `<b>${eraName()}</b> · ${fmtYear(curYear())}` + (S.cycle > 1 ? ` · Ciclo ${S.cycle}` : "") + " ▸";
+    let h = `<b>${eraName()}</b> · ${fmtYear(curYear())}<br>${popLine()}` + (S.cycle > 1 ? ` · Ciclo ${S.cycle}` : "") + (S.tribes.some(t => t.cult) && !S.unified && S.era <= 4 ? `<br>Culturas: ${S.tribes.map(t => `${TRIBE_INFO[t.kind].plural} ${CULTURES[t.cult] ? CULTURES[t.cult].name : "—"}`).join(" · ")}` : "") +
       (S.saga ? `<br>Saga: ${S.saga.def.name}` : "") +
       (S.era === 7 && S.destSeen ? ` · ${S.dest.name}: ${S.colonists}${S.won ? " ✔" : "/" + S.goal}` : "");
     if (hudOpen) {
@@ -2086,7 +2204,6 @@ const World = (function () {
         `<div style="margin-top:4px;border-top:1px solid var(--border);padding-top:3px">Guerras ${st.guerras} · Plagas ${st.plagas} · Hambrunas ${st.hambrunas} · Terremotos ${st.terremotos} · Meteoritos ${st.meteoritos} · Fiestas ${st.festivales} · Cohetes ${st.cohetes} · Pandemias ${st.pandemias} · Incendios ${st.incendios} · Bajas ${st.devorados} · Cataclismos ${st.cataclismos} · Choques ${st.choques} · Hitos ${st.hitos}</div>`;
     }
     hud.innerHTML = h + (Q.has("debug") ? `<br>t=${S.t.toFixed(1)} fx=${S.fx.length} mon=${S.mon.length} st=${S.structs.length}` : "");
-    toasts.style.display = hudOpen ? "none" : "";
   }
 
   // ---------- almuerzo: a las 12:00 todos paran a comer ----------
@@ -2096,7 +2213,7 @@ const World = (function () {
     "¿Compartes tu postre?", "Hoy toca almorzar, mañana toca graficar", "Hidrátate y come algo de verdad", "Si no almuerzas, no hay paper", "¿Y si almuerzas lejos del computador?"];
   function startLunch() {
     S.lunch = true; S.lunchMsgT = rnd(90, 150);
-    showBanner("¡A almorzar!"); skyMessage("¡Es hora de almorzar!"); pushToast("12:00 · ¡A almorzar!");
+    showBanner("¡A almorzar!"); if (Q.has("lunch")) bigRun(BIG[0]); skyMessage("¡Es hora de almorzar!"); pushToast("12:00 · ¡A almorzar!");
     groundMons().forEach(g => { g.hold = false; g.act = "eat"; g.stay = rnd(20, 50); g.m.t = 0; g.m.dur = g.stay; g.m.food = pick(["banana", "berry", "leaf"]); });
     A.setLunch(true);
   }
@@ -2105,11 +2222,61 @@ const World = (function () {
     pushToast("Terminó el almuerzo: ¡de vuelta al trabajo!"); skyMessage("¡Se acabó el almuerzo! De vuelta al trabajo");
     groundMons().forEach(g => { g.stay = 0; });
   }
+  // ---------- mensajes de pantalla completa con un mono haciendo lo que dice el mensaje ----------
+  const big = document.createElement("div"); big.id = "bigMsg"; big.hidden = true; document.body.appendChild(big);
+  let bigRaf = 0, bigTimer = 0, bigSeries = [];
+  const BIG_SHOW = 8, BIG_TIMES = 5, BIG_GAP = 12;   // a la hora del evento: 5 apariciones de 8 s durante 1 minuto
+  function closeBig(all) {
+    big.hidden = true; cancelAnimationFrame(bigRaf); clearTimeout(bigTimer); big.innerHTML = "";
+    if (all === true) { bigSeries.forEach(clearTimeout); bigSeries = []; }   // al tocarlo se va y no vuelve
+  }
+  big.addEventListener("click", () => closeBig(true));
+  function bigRun(o) {
+    closeBig(true);
+    for (let i = 0; i < BIG_TIMES; i++) bigSeries.push(setTimeout(() => bigMsg(o), i * BIG_GAP * 1000));
+  }
+  function bigMsg(o) {
+    closeBig();
+    const NS = "http://www.w3.org/2000/svg", sp = pick(A.SPECIES_BY_KIND.mono);
+    const m = { sp, kind: "mono", pal: A.palette(sp), dir: 1, phase: 0, t: 0, dur: 6, mode: o.mode, mood: { low: 0, mid: 1, high: o.mode === "hop" ? 1 : 0 }, theta: 0, seed: 5,
+      hop: { u: 0 }, jump: { u: 0 }, acc: o.acc || null, celeb: null, lane: "cpu", food: o.food };
+    m.parts = A.build(m);
+    big.innerHTML = `<div class="bm-in ${o.tone || ""}"><svg class="bm-mono" viewBox="0 0 120 130"><g transform="translate(60 124) scale(5.2)"></g></svg><div><div class="bm-t"></div><div class="bm-s"></div></div></div>`;
+    big.querySelector(".bm-t").textContent = o.title; big.querySelector(".bm-s").textContent = o.sub;
+    big.querySelector("g").appendChild(m.parts.root);
+    big.hidden = false;
+    let last = performance.now();
+    const loop = now => {
+      const dt = Math.min(.05, (now - last) / 1000); last = now; m.t += dt; m.phase += dt * (o.mode === "hop" ? 10 : 8);
+      if (o.mode === "hop") m.hop.u = Math.abs(Math.sin(m.t * 5));
+      if (o.mode === "eat" && m.t > m.dur) m.t = 0;
+      A.draw(m); bigRaf = requestAnimationFrame(loop);
+    };
+    A.draw(m); bigRaf = requestAnimationFrame(loop);
+    bigTimer = setTimeout(() => closeBig(), BIG_SHOW * 1000);
+  }
+  const BIG = [   // at = minuto del dia; days = dias de la semana (0 = domingo) o null = todos
+    { id: "almuerzo", at: 12 * 60, days: null, title: "¡A almorzar!", sub: "Buen provecho · el paper puede esperar", mode: "eat", food: "banana", secs: 9 },
+    { id: "seminario", at: 9 * 60 + 20, days: [4], title: "¡Seminario FCV!", sub: "Es hora: ¡todos al seminario!", mode: "walk", acc: { name: "lentes redondos", a: "#333", d: "#111" }, secs: 14 },
+    { id: "tarde", at: 9 * 60 + 30, days: [4], title: "¿Qué hacen acá?", sub: "¿¿¿No deberían estar en el seminario???", mode: "hop", tone: "alert", secs: 16 },
+    { id: "cafe", at: 16 * 60, days: [1, 2, 3, 4, 5], title: "¡Hora del café!", sub: "Un cafecito y seguimos con los genomas", mode: "coffee", secs: 8 },
+    { id: "casa", at: 18 * 60, days: [1, 2, 3, 4, 5], title: "¿Lanzaste tus jobs?", sub: "Antes de irte: guarda, respalda y apaga el autoclave", mode: "stretch", secs: 10 },
+  ];
+  const firedBig = new Set();
+  function bigCheck(d) {
+    const m = d.getHours() * 60 + d.getMinutes();
+    for (const b of BIG) {
+      const key = d.toDateString() + b.id;
+      if (b.at === m && (!b.days || b.days.includes(d.getDay())) && !firedBig.has(key)) { firedBig.add(key); bigRun(b); }
+    }
+  }
+  if (Q.get("big")) setTimeout(() => { const b = BIG.find(x => x.id === Q.get("big")); if (b) bigRun(b); }, 1500);   // prueba: ?big=almuerzo|seminario|tarde|cafe|casa
   let lunchAt = 0;
   function lunchCheck(now) {   // una vez por segundo
     if (now - lunchAt < 1000) return;
     lunchAt = now;
-    const d = new Date(), m = d.getHours() * 60 + d.getMinutes(), on = Q.has("lunch") || (m >= LUNCH_FROM && m < LUNCH_FROM + LUNCH_LEN);
+    const d = new Date(); bigCheck(d);
+    const m = d.getHours() * 60 + d.getMinutes(), on = Q.has("lunch") || (m >= LUNCH_FROM && m < LUNCH_FROM + LUNCH_LEN);
     if (on && !S.lunch) startLunch(); else if (!on && S.lunch) endLunch();
   }
 
@@ -2137,10 +2304,11 @@ const World = (function () {
     if (S.era >= 1) setRels(() => newRel());
     if (S.era >= 4) { S.tribes.forEach(t => { t.rel2 = newRel(); }); S.rel2 = S.tribes[0].rel2; }
     if (S.era >= 7) { S.unified = true; }
+    if (S.era === 6) S.digital = Q.has("digital");   // ?era=6 = nuclear; ?era=6&digital
     if (S.era === 3 && Q.has("medieval")) { S.eraT = S.eraDur * .31; }
     if (S.era === 3 && Q.has("medieval") || S.era === 4) assignCultures((Q.get("cult") || "").split(",")), S.medieval = S.era === 3;
     ground.setAttribute("fill", ERAS[S.era].ground);
-    S.started = true; gGround.style.opacity = 1; gStruct.style.opacity = 1; hud.style.opacity = 1;
+    S.started = true; gGround.style.opacity = 1; gStruct.style.opacity = 1; hud.style.opacity = 1; chip.style.opacity = 1;
     for (let i = 0; i < 14; i++) {
       const tr = i % 3, m = A.make(TRIBE_KINDS[tr]), zz = zone(tr); gMon.appendChild(m.parts.root); m.mood = { low: 0, mid: 1, high: 0 }; m.theta = 0;
       S.mon.push({ m, tribe: tr, state: "ground", x: rnd(zz[0] + 30, zz[1] - 30), y: 0, rot: 0, vx: 0, vy: 0, vr: 0, dy: rnd(6, GROUND_H - 12), sp: rnd(.85, 1.2), act: "idle", stay: rnd(0, 3) });
@@ -2154,10 +2322,12 @@ const World = (function () {
     Object.assign(DO, { cataclismo: () => cataclysm({ surv: 4 }), pandemia: pandemic, incendio: fire, inundacion: () => flood(14, "Inundación"), tormenta: storm, aurora, estrellas: starShower,
       exploradores: explorers, comercio: trade, misioneros: missionaries, tratado: treaty, ayuda: aid, bodareal: royalWedding,
       gladiadores: gladiators, legion, horda: horde, medieval: startMedieval,
+      pruebanuclear: nuclearTest, simulacro: airRaid, accidentenuclear: radiation,
       asedio: siege, justas: joust, cruzada: crusade, invasores: raid, pestenegra: () => pandemic({ name: "Peste Negra", lethal: .75, dur: 40 }), dragon, naval: navalBattle, guerramundial: worldWar, guerrafria: coldWar,
       olimpiadas: olympics, peregrinacion: pilgrimage, milagro: miracle, cisma: schism, huelga: strike, crisis, langostas: locusts, sequia: drought, genio: genius, concierto: () => { S.music = 10; cheerSome(10, 8); } });
     if (START_ERA === 8) setTimeout(() => startSaga(Q.get("saga")), 600);
     DO.cielo = skyMessage;
+    DO.edificio = () => { const q = S.structs.filter(z => BLD[z.kind] && z.built > .9 && z.kind !== "tflag"); if (!q.length) return; const z = pick(q), b = z.el.getBoundingClientRect(); showBuilding(z, b.left + b.width / 2, b.top + b.height * .35); };
     DO.choque = () => { const gs = groundMons(); if (gs.length < 2) return; const a = gs[0], b = gs[1]; a.state = "fall"; a.x = b.x; a.y = -30; a.vx = 0; a.vy = 0; a.vr = 0; a.bounced = true; a.m.mode = "fall"; };
     const d = Q.get("do"); if (d && DO[d]) setTimeout(DO[d], 2500);
     if (Q.get("planet") != null) setTimeout(() => { const pl = S.planets[+Q.get("planet")]; if (pl) showPlanet(pl); }, 1500);

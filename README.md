@@ -81,6 +81,19 @@ crontab -e   # agregar:
   También se entienden `2026-11-09 Abraham 15:00`, `09/11/2026; Abraham`, `9 de noviembre: Abraham`, líneas con `#` (comentarios) y líneas sin fecha (se agregan como nota a la anterior). Si no hay año, se toma el que deje la fecha más cerca de hoy.
 - Para actualizarlo: editar `seminarios.txt` → rama → pull request → merge (el archivo es público, igual que el resto del repo).
 
+## Mensajes de pantalla completa y clima
+
+- A ciertas horas aparece, en una franja en la parte superior, un mensaje con un mono grande haciendo lo que dice. A la hora del evento sale 5 veces durante 1 minuto (8 s cada vez); si lo tocas se va y no vuelve: 12:00 «¡A almorzar!» (comiendo), jueves 9:20 «¡Seminario FCV!» (caminando), jueves 9:30 «¿Qué hacen acá? ¿No deberían estar en el seminario???» (saltando enojado), 16:00 café y 18:00 recordatorio de jobs/respaldo. Prueba: `?big=almuerzo|seminario|tarde|cafe|casa`.
+- El mono del clima cambia de ropa: capucha y paraguas con lluvia, gorro y abrigo con nieve o frío, bufanda y abrigo con fresco, gafas o sombrero de paja con sol y calor.
+- La época y el año quedan en una pastilla bajo los monitores, fuera de la civilización; al tocarla se abre un cuadro al centro (población, crónica, estadísticas) que se esconde solo al minuto o al tocarlo otra vez.
+- Cabecera: MONITO, las noticias y el botón de color en una sola línea. Reloj y tiempo tienen el mismo ancho que cada monitor, y la leyenda queda bajo akaza.
+
+## Era nuclear y era digital
+
+La antigua «era moderna» ahora tiene dos fases: **Era nuclear** (centrales, silos, búnkeres, pruebas atómicas con hongo en el horizonte, simulacros con sirena, accidentes con radiación, Guerra Fría, crisis de misiles) y luego **Era digital** (computadores, internet, genomas, CRISPR, redes, nube, IA), antes de la era espacial.
+
+Además, el cielo muestra ~130 mensajes aleatorios más sobre bioinformática (ensamblaje, anotación, filogenia, clusters), laboratorio húmedo, tesis/papers y datos curiosos.
+
 ## Planetas y más sucesos
 
 - Al tocar un planeta del cielo se abre un cuadro con su información: datos reales para Marte, la Luna, Europa y Titán, y datos inventados (tipo, diámetro, gravedad, temperatura, atmósfera, distancia, colonos) para los demás.

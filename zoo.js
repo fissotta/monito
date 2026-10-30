@@ -17,7 +17,8 @@ const Zoo = (function () {
   const OFF = (new URLSearchParams(location.search).get("off") || "").split(",");   // ?off=anillos,mundo,cintas,todo: apaga partes para ver cuales pesan
   const isOff = n => OFF.includes(n) || OFF.includes("todo");
   let MIN_DT = 0;   // limite de cuadros: 0 = libre (60 fps); 31 = ~30 fps. En la TV se decide midiendo (ver "probe")
-  const probe = { t0: 0, n: 0, done: !LOW, fps: 0, skip: 2000 };   // en la TV se mide cuantos cuadros por segundo da sin limite; si no llega a ~48 se limita a 30 (mas parejo)
+  const NOCAP = /[?&]nocap\b/.test(location.search);   // ?nocap: sin limite de cuadros (lo usa test.html para medir)
+  const probe = { t0: 0, n: 0, done: !LOW || NOCAP, fps: 0, skip: 2000 };   // en la TV se mide cuantos cuadros por segundo da sin limite; si no llega a ~48 se limita a 30 (mas parejo)
   const GIRAFFE_K = 1.5;                // las jirafas se dibujan 1,5 veces mas grandes (globos y zzz suben con ellas)
   const kOf = m => (m.sp && m.sp.kind === "jirafa" ? GIRAFFE_K : 1);
 
@@ -788,7 +789,7 @@ const Zoo = (function () {
     setCelebHandler: fn => { onCeleb = fn; },
     setFestive: names => { FEST = names || []; },
     low: LOW, off: isOff, minDt: () => MIN_DT,
-    reprobe: () => { if (LOW) { probe.done = false; probe.t0 = 0; probe.s = 0; probe.skip = 500; MIN_DT = 0; } },   // vuelve a medir sin limite unos segundos (la primera medicion cae justo cuando la pagina carga)
+    reprobe: () => { if (LOW && !NOCAP) { probe.done = false; probe.t0 = 0; probe.s = 0; probe.skip = 500; MIN_DT = 0; } },   // vuelve a medir sin limite unos segundos (la primera medicion cae justo cuando la pagina carga)
     probe: () => (probe.done ? (LOW ? probe.fps : 0) : -1),
     setLunch: on => { LUNCH = on; if (on) for (const id in zoos) for (const m of zoos[id].ms) if (m.mode !== "cross" && m.ctx) enter(m, "eat", m.ctx); },
     setReleaseHandler: fn => { onRelease = fn; },

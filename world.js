@@ -7,7 +7,7 @@
  * Pruebas: ?turbo=20 acelera el tiempo; ?era=N empieza en esa era; ?do=guerra|cohete|meteorito|ovni|... */
 const World = (function () {
   "use strict";
-  const A = Zoo.api;
+  const A = Zoo.api, LOW = !!A.low, FX_MAX = LOW ? 110 : 240;   // FX_MAX = tope de particulas decorativas
   const NS = "http://www.w3.org/2000/svg";
   const Q = new URLSearchParams(location.search);
   const TURBO = Math.min(60, Math.max(1, parseFloat(Q.get("turbo")) || 1));
@@ -100,7 +100,7 @@ const World = (function () {
     skyBg.style.display = SKY > 0 ? "" : "none";
     sb.setAttribute("x", 0); sb.setAttribute("y", SKY); sb.setAttribute("width", W); sb.setAttribute("height", H - SKY);
     sl.setAttribute("x1", 0); sl.setAttribute("x2", W); sl.setAttribute("y1", SKY); sl.setAttribute("y2", SKY);
-    st.innerHTML = SKY > 0 ? Array.from({ length: 70 }, () => `<circle cx="${(Math.random() * W).toFixed(0)}" cy="${(SKY + 6 + Math.random() * Math.max(10, skyH() - 40)).toFixed(0)}" r="${(.5 + Math.random() * 1.1).toFixed(1)}" fill="#fff" style="animation:tw ${(2 + Math.random() * 3).toFixed(1)}s ease-in-out ${(Math.random() * 3).toFixed(1)}s infinite"/>`).join("") : "";
+    st.innerHTML = SKY > 0 ? Array.from({ length: 70 }, (_, i) => `<circle cx="${(Math.random() * W).toFixed(0)}" cy="${(SKY + 6 + Math.random() * Math.max(10, skyH() - 40)).toFixed(0)}" r="${(.5 + Math.random() * 1.1).toFixed(1)}" fill="#fff"${i % 5 === 0 ? ` style="animation:tw ${(2 + Math.random() * 3).toFixed(1)}s ease-in-out ${(Math.random() * 3).toFixed(1)}s infinite"` : ""}/>`).join("") : "";
     placePlanets();
   }
   function measureSky() {   // la pantalla se reparte: informacion arriba, civilizacion abajo
@@ -504,9 +504,11 @@ const World = (function () {
 
 
   // ---------- efectos ----------
+  const COSM = { puff: 1, spark: 1, conf: 1, flake: 1, drop: 1 };
   function fx(type, o) {
     const f = Object.assign({ type, life: 1, t: 0, x: 0, y: 0, vx: 0, vy: 0, g: 0, col: "#fff" }, o);
     f.life0 = f.life;
+    if (COSM[type] && S.fx.length >= FX_MAX) return f;   // demasiadas particulas a la vez: esta se omite
     if (type === "puff") f.e = el("circle", { r: f.r0 || 3, fill: f.col }, gFx);
     else if (type === "spark") f.e = el("circle", { r: f.r || 1.8, fill: f.col }, gFx);
     else if (type === "conf") f.e = el("rect", { width: 5, height: 3, fill: f.col }, gFx);
@@ -637,7 +639,7 @@ const World = (function () {
     puffs.push([-w / 2 + 30, 10, 26], [w / 2 - 30, 10, 26]);
     const shapes = dy => `<rect x="${-w / 2 + 22}" y="${-8 + dy}" width="${w - 44}" height="44" rx="22"/>` + puffs.map(([x, y, r]) => `<circle cx="${x.toFixed(1)}" cy="${y + dy}" r="${r.toFixed(1)}"/>`).join("");
     fx("g", { x: atX != null ? atX : dir > 0 ? -w / 2 - 10 : W + w / 2 + 10, y: y0, vx: dir * (W + w + 20) / dur, life: dur,
-      html: `<g style="fill:#9db2d3" opacity=".35">${shapes(7)}</g><g style="fill:var(--cloud);filter:drop-shadow(0 3px 5px rgba(0,0,0,.12))" opacity=".97">${shapes(0)}</g>` +
+      html: `<g style="fill:#9db2d3" opacity=".35">${shapes(7)}</g><g style="fill:var(--cloud)" opacity=".97">${shapes(0)}</g>` +
         `<text text-anchor="middle" y="19" style="fill:var(--text);font-size:15px;font-weight:700">${txt}</text>`,
       tick: g => { g.y = y0 + Math.sin(g.t * .8) * 6; } });
   }
@@ -675,7 +677,7 @@ const World = (function () {
     if (night !== AMB.theme) { AMB.theme = night; drawCelestial(night); }
     celest.setAttribute("transform", `translate(${(W * .88).toFixed(0)} ${skyY(.2).toFixed(0)}) scale(${FEST.season === "verano" ? 1.3 : 1})`); celest.style.display = space ? "none" : "";
     // nubes que cruzan despacio (mas lejos = mas chicas, lentas y claras)
-    const base = FEST.season === "invierno" ? 8 : FEST.season === "verano" ? 3 : 6, want = space ? 0 : night ? Math.max(2, base - 2) : base;
+    const base = (FEST.season === "invierno" ? 8 : FEST.season === "verano" ? 3 : 6) - (LOW ? 2 : 0), want = space ? 0 : night ? Math.max(2, base - 2) : base;
     if (!AMB.init) { AMB.init = true; for (let i = 0; i < want; i++) spawnCloud(rnd(-60, W)); }
     AMB.cloudT -= h; if (AMB.clouds.length < want && AMB.cloudT <= 0) { AMB.cloudT = rnd(6, 14); spawnCloud(); }
     for (const c of AMB.clouds) { c.x += c.vx * h; c.e.setAttribute("transform", `translate(${c.x.toFixed(1)} ${skyY(c.f).toFixed(1)}) scale(${c.s.toFixed(2)})`); c.e.setAttribute("opacity", (c.op * (night ? .75 : 1)).toFixed(2)); }
@@ -743,7 +745,7 @@ const World = (function () {
   ];
   const seasonOf = d => { const v = (d.getMonth() + 1) * 100 + d.getDate(); return v >= 1221 || v < 320 ? "verano" : v < 621 ? "otoño" : v < 922 ? "invierno" : "primavera"; };
   const PAL = ["#ff4d6d", "#ffb347", "#8fd0ff", "#c79bff", "#fff27a", "#7ed957", "#ff8fb3"];
-  const FEST = { sig: "", active: [], season: "verano", kinds: [], fl: [], items: [], tm: {}, chk: 0, rainT: 120, fwT: 5 };
+  const FEST = { fk: new Set(), sig: "", active: [], season: "verano", kinds: [], fl: [], items: [], tm: {}, chk: 0, rainT: 120, fwT: 5 };
   const RATE = { heart: 3, balloon: 5, kite: 9, lantern: 4, bat: 5, ghost: 7, bacterium: 5, helix: 8, pi: 6, clover: 5, leaf: 2.5, petal: 2.5, star: 5, ship: 14, confetti: 7, snow: .8, bird: 14 };
   const CAP = { heart: 3, balloon: 3, kite: 3, lantern: 3, bat: 2, ghost: 3, bacterium: 3, helix: 2, pi: 2, clover: 3, leaf: 4, petal: 4, star: 3, ship: 1 };   // maximo de cada cosa flotando a la vez
   function activeFiestas(d) {
@@ -811,6 +813,7 @@ const World = (function () {
     FEST.items.forEach(it => { it.e.setAttribute("opacity", 1); });
     // cosas del cielo + gorros
     FEST.kinds = []; FEST.active.forEach(a => (a.f.f || []).forEach(k => { if (!FEST.kinds.includes(k)) FEST.kinds.push(k); }));
+    FEST.fk = new Set(FEST.kinds);   // lo de las fiestas (las hojas y petalos de la estacion se quedan)
     if (FEST.season === "otoño") FEST.kinds.push("leaf"); if (FEST.season === "primavera") FEST.kinds.push("petal");
     FEST.tm = {}; FEST.kinds.forEach(k => { FEST.tm[k] = rnd(0, RATE[k] || 5); });
     const hats = []; FEST.active.forEach(a => (a.f.hats || []).forEach(h => { if (!hats.includes(h)) hats.push(h); }));
@@ -842,10 +845,10 @@ const World = (function () {
       const d = todayD(), act = activeFiestas(d), season = seasonOf(d), sig = act.map(a => a.f.id).join(",") + "|" + season;
       if (sig !== FEST.sig) { FEST.sig = sig; FEST.active = act.map(a => Object.assign({ main: a.main, dist: a.dist }, { f: a.f })); FEST.season = season; festRebuild(); }
     }
-    const calm = S.era < 7 && !S.saga;
+    const calm = S.era < 7 && !S.saga, skyFest = !S.started || Q.has("fiesta");   // el cielo festivo solo antes de que empiece la civilizacion
     gDeco.style.display = S.era >= 7 ? "none" : "";
     for (const it of FEST.items) it.e.setAttribute("transform", `translate(${(it.fx * W).toFixed(1)} ${(floorY() + it.dy).toFixed(1)})`);
-    if (calm) for (const k of FEST.kinds) { FEST.tm[k] -= h; if (FEST.tm[k] <= 0) { FEST.tm[k] = (RATE[k] || 5) * rnd(.7, 1.3); festSpawn(k); } }
+    if (calm) for (const k of FEST.kinds) { if (FEST.fk.has(k) && !skyFest) continue; FEST.tm[k] -= h; if (FEST.tm[k] <= 0) { FEST.tm[k] = (RATE[k] || 5) * rnd(.7, 1.3); festSpawn(k); } }
     for (const o of FEST.fl) {
       o.t += h; o.x += o.vx * h;
       if (o.f != null) o.y = skyY(o.f) + Math.sin(o.t * (o.kind === "bat" ? 5 : 1.2) + o.ph) * (o.kind === "bat" ? 14 : 8);
@@ -854,10 +857,10 @@ const World = (function () {
       const rot = o.kind === "kite" ? Math.sin(o.t * 1.3 + o.ph) * 10 : o.kind === "bat" || o.kind === "ghost" || o.kind === "ship" ? 0 : o.rot, flap = o.kind === "bat" ? ` scale(1 ${(.6 + .5 * Math.abs(Math.sin(o.t * 12))).toFixed(2)})` : "";
       o.e.setAttribute("transform", `translate(${o.x.toFixed(1)} ${o.y.toFixed(1)}) rotate(${rot.toFixed(0)}) scale(${o.s.toFixed(2)})` + flap);
     }
-    FEST.fl = FEST.fl.filter(o => { const gone = !calm || (o.rise ? o.y < SKY - 20 : o.fall ? o.y > floorY() + 8 : (o.x < -80 || o.x > W + 80)); if (gone) o.e.remove(); return !gone; });
+    FEST.fl = FEST.fl.filter(o => { const gone = !calm || (FEST.fk.has(o.kind) && !skyFest) || (o.rise ? o.y < SKY - 20 : o.fall ? o.y > floorY() + 8 : (o.x < -80 || o.x > W + 80)); if (gone) o.e.remove(); return !gone; });
     // fuegos artificiales (Año Nuevo y Fiestas Patrias: el dia principal y el anterior)
     FEST.fwT -= h;
-    if (FEST.fwT <= 0) { FEST.fwT = rnd(4, 9); if (calm && FEST.active.some(a => a.f.fw && Math.abs(a.dist) <= 1)) fireworks(rnd(W * .1, W * .9), skyY(rnd(.15, .5))); }
+    if (FEST.fwT <= 0) { FEST.fwT = rnd(4, 9); if (calm && skyFest && FEST.active.some(a => a.f.fw && Math.abs(a.dist) <= 1)) fireworks(rnd(W * .1, W * .9), skyY(rnd(.15, .5))); }
     // invierno: de vez en cuando llovizna
     FEST.rainT -= h; if (FEST.rainT <= 0) { FEST.rainT = rnd(200, 400); if (FEST.season === "invierno" && calm && !S.rain && chance(.4)) S.rain = rnd(8, 14); }
   }
@@ -2616,6 +2619,7 @@ const World = (function () {
   function frame(now) {
     requestAnimationFrame(frame);
     lunchCheck(now);
+    if (LOW && now - last < 31) return;   // TV: ~30 cuadros por segundo (la simulacion usa el tiempo real, no se ralentiza)
     const real = Math.min(.05, Math.max(0, (now - last) / 1000)); last = now;
     if (document.hidden) return;
     for (const k in rectOf) delete rectOf[k];

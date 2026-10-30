@@ -129,6 +129,10 @@ A la derecha de la leyenda de colores hay 12 botones para intervenir en la civil
 - **Para bien:** 🍎 Comida del cielo (llueven frutas y panes y llega más gente), 👽 Aliens (una nave baja un rayo y deja un regalo de tecnología: se desbloquean hitos nuevos), 🌠 Deseos (lluvia de estrellas, +población) y 🎉 Fiesta.
 - No funcionan durante un cataclismo o una saga, ni antes de que empiece la civilización. Prueba: `?power=regalo&pstep=5` (ejecuta el poder y adelanta 5 s de animación).
 
+## Rendimiento en la TV
+
+En la TV (navegador Tizen) la página se dibuja a ~30 cuadros por segundo, con menos nubes y un tope de partículas (`?lento` lo prueba en un PC). Lo festivo del cielo solo aparece antes de que empiece la civilización; después quedan las decoraciones del suelo y los gorros de los animales.
+
 ## Popups
 
 Clic en la fecha/hora abre el calendario; clic en «Próximo seminario» abre la lista completa de seminarios. Las ventanas se cierran con ×, tocando fuera o solas: el calendario a los 10 s, el tiempo y la lista de seminarios a los 30 s, el resumen de época a 1 min, planetas 15 s y edificios 5 s.

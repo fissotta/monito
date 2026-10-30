@@ -591,6 +591,23 @@ const World = (function () {
     "Dato: la PCR la inventó Kary Mullis", "Dato: la doble hélice del ADN se publicó en 1953", "Dato: CRISPR nació como defensa de las bacterias contra los virus", "Dato: los bacteriófagos son virus que infectan bacterias",
     "Dato: en el desierto de Atacama viven bacterias extremófilas", "Dato: una bacteria puede intercambiar genes con otra por conjugación", "Dato: el ADN de una bacteria suele ser un cromosoma circular",
   ];
+  SKY_MSGS_MORE.push(   // "a trabajar" y cosas de los temas del laboratorio (acidófilos, hierro/azufre, elementos móviles, genómica, IA)
+    "Dejen de mirar animalitos: ¡a trabajar!", "¿Y si en vez de mirar monos abres el script?", "Cierra YouTube y abre RStudio", "Esa tesis no se escribe sola", "Los revisores no esperan",
+    "¿Qué haces mirando esto? ¡Al trabajo!", "Menos nubes, más análisis", "El paper de tu vida empieza con un párrafo", "Los datos no se analizan solos… todavía", "¿Y el commit de hoy?",
+    "¿Ya tienes listo el póster para el SCB?", "El SCB se acerca: ¿y tu resumen?", "SOMICH a la vista: ¿ya tienes tu presentación?", "¿Revisaste el programa del SOMICH?", "¿Preparaste tu seminario?",
+    "¿Leíste algún paper de la cinta de abajo hoy?", "Hay papers nuevos en el feed: ¡a leer!", "¿Qué dice el último preprint de bioRxiv?", "Lee un abstract: es solo un minuto",
+    "¿Tu Acidithiobacillus ya oxidó el hierro?", "¿A. caldus ya creció a 45 °C?", "¿Probaste A. thiooxidans con azufre elemental?", "¿Comparaste A. ferrooxidans con A. ferrivorans?", "¿Qué vive hoy en el volcán Copahue?",
+    "¿Tu muestra viene de una mina de cobre?", "¿Cuánto cobre soltó tu cultivo?", "¿Revisaste el pH de la pila de lixiviación?", "¿Ya biolixiviaste hoy?", "El hierro es vida (si eres un acidófilo)",
+    "¿Cuántos elementos móviles hay en tu genoma?", "¿Revisaste las secuencias de inserción (IS)?", "¿Y si ese plásmido viene de otro Acidithiobacillia?", "¿Ya miraste los sistemas CRISPR-Cas de tus cepas?", "¿Hay sistemas de restricción-modificación en tu genoma?",
+    "¿Qué regulador Fur tiene tu cepa?", "¿Cómo regula el hierro tu bacteria?", "¿Hay clústeres Fe-S en tu anotación?", "¿Está completo el operón rus?", "¿Anotaste los genes de fijación de carbono?",
+    "¿Cuántos Acidithiobacillia hay en GTDB?", "¿Ya ubicaste tus MAGs en el árbol de Acidithiobacillia?", "¿Tu árbol tiene soporte suficiente?", "¿Y el pangenoma? ¿Core, shell o cloud?", "¿Qué genes son únicos de tu cepa?",
+    "¿Probaste un modelo de lenguaje de proteínas con los genes hipotéticos?", "¿Y si le preguntas a AlphaFold por esa proteína rara?", "¿Tus datos están limpios antes de entrenar el modelo?", "Aprendizaje automático: ¿tienes suficientes datos?", "La IA ayuda, pero alguien debe validar los resultados",
+    "¿Snakemake o Nextflow? Elige uno y trabaja", "¿Tu pipeline corre sin que tú lo mires?", "¿Tu script tiene un README?", "¿Probaste con menos hilos? A veces rinde más", "Un -j más no arregla un script malo",
+    "La reproducibilidad empieza hoy", "¿Las figuras se leen en blanco y negro?", "Cada gráfico necesita su leyenda", "¿Revisaste los ejes de tu gráfico?", "¿Tu cluster te extraña?",
+    "Dato: A. ferrooxidans obtiene energía oxidando hierro (Fe II)", "Dato: A. thiooxidans vive de oxidar compuestos de azufre", "Dato: con biolixiviación se extrae cobre de minerales pobres", "Dato: los acidófilos mantienen su interior cerca de pH neutro",
+    "Dato: los transposones son fragmentos de ADN que saltan de un lugar a otro", "Dato: las bacterias tienen sistemas inmunes como CRISPR y restricción-modificación", "Dato: un pangenoma reúne todos los genes de un grupo de cepas", "Dato: GTDB reordenó la taxonomía de miles de bacterias",
+    "Dato: IQ-TREE puede elegir solo el mejor modelo evolutivo", "Dato: AlphaFold predice estructuras de proteínas con inteligencia artificial", "Dato: el hierro y el azufre son comida para muchos acidófilos", "Dato: un MAG es un genoma reconstruido a partir de un metagenoma",
+  );
   let skyDeck = [];
   function skyMessage(fixed, atX) {
     if (!skyDeck.length) skyDeck = shuffle(SKY_MSGS.concat(SKY_MSGS_MORE));

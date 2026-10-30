@@ -109,7 +109,7 @@ Al tocar un paper de la cinta se abre una ventana con tema, título, autores, re
 
 ## Cielo vivo
 
-El cielo ya no es plano: de día hay sol, nubes que pasan despacio (más lejos = más chicas y lentas), bandadas de pájaros en V y mariposas cerca del suelo; de noche hay luna, estrellas que titilan, estrellas fugaces ocasionales y luciérnagas. Se apagan en la era espacial y durante las sagas. Prueba: `?do=pajaros`.
+El cielo ya no es plano: de día hay sol, nubes que pasan despacio (más lejos = más chicas y lentas), bandadas de pájaros en V y mariposas cerca del suelo; de noche hay luna, estrellas que titilan, estrellas fugaces ocasionales y luciérnagas. Se apagan en la era espacial y durante las sagas. En la TV el cielo es más sobrio (sin mariposas, luciérnagas ni estrellas fugaces); `?cielo=min` lo prueba en un PC y `?cielo=off` lo apaga. Prueba: `?do=pajaros`.
 
 ## Fiestas y estaciones
 

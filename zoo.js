@@ -13,6 +13,8 @@ const Zoo = (function () {
   const ACC_PER_CARD = 3;               // cuantos monos por equipo llevan accesorio
   let CAP = 9;                          // monos por equipo antes de que los nuevos se desborden y caigan
   const SCALE = 1.25;                   // tamaño general de los monos
+  const LOW = /Tizen|SMART-TV|SmartTV|Web0S/i.test(navigator.userAgent) || /[?&]lento\b/.test(location.search);   // TV: se dibuja a ~30 cuadros por segundo
+  const MIN_DT = LOW ? 31 : 0;
   const GIRAFFE_K = 1.5;                // las jirafas se dibujan 1,5 veces mas grandes (globos y zzz suben con ellas)
   const kOf = m => (m.sp && m.sp.kind === "jirafa" ? GIRAFFE_K : 1);
 
@@ -743,6 +745,7 @@ const Zoo = (function () {
   const clear = n => { while (n.firstChild) n.removeChild(n.firstChild); };   // replaceChildren no existe en navegadores viejos
   function frame(now) {
     raf = requestAnimationFrame(frame);
+    if (MIN_DT && now - last < MIN_DT) return;
     const dt = Math.min(.05, Math.max(0, (now - last) / 1000)); last = now;
     if (document.hidden) return;
     const data = getData();
@@ -774,6 +777,7 @@ const Zoo = (function () {
     kindOf, CELEBS, SPECIES_BY_KIND,
     setCelebHandler: fn => { onCeleb = fn; },
     setFestive: names => { FEST = names || []; },
+    low: LOW,
     setLunch: on => { LUNCH = on; if (on) for (const id in zoos) for (const m of zoos[id].ms) if (m.mode !== "cross" && m.ctx) enter(m, "eat", m.ctx); },
     setReleaseHandler: fn => { onRelease = fn; },
     setCap: n => { CAP = n; },

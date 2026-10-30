@@ -273,8 +273,8 @@ svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
 if (/[?&]ua\b/.test(location.search)) addEventListener("load", () => { const d = document.createElement("div"); d.style.cssText = "position:fixed;left:8px;right:8px;top:40px;z-index:99;background:#fff;color:#000;border:2px solid #c00;padding:10px;font:16px monospace;word-break:break-all"; d.textContent = navigator.userAgent + " | " + innerWidth + "x" + innerHeight + " @" + devicePixelRatio; document.body.appendChild(d); setTimeout(() => d.remove(), 60000); });
 </script>
 <script src="qrcode.min.js?v=1"></script>
-<script src="zoo.js?v=20261031g"></script>
-<script src="world.js?v=20261031g"></script>
+<script src="zoo.js?v=20261031h"></script>
+<script src="world.js?v=20261031h"></script>
 <script>
 // ====== Configuración ======
 const REPO = "fissotta/monito"; // "usuario/monito"  (vacío = modo demo)
@@ -295,7 +295,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
 const demo = !REPO || new URLSearchParams(location.search).has("demo");
-const BUILD = "20261031g";   // subir junto con los ?v= de los <script> en cada publicacion
+const BUILD = "20261031h";   // subir junto con los ?v= de los <script> en cada publicacion
 const state = { data: {}, next: 0, timer: null, stale: 300 };
 // si se publica una version nueva, la pagina (p. ej. en la TV) se recarga sola; revisa cada 10 min
 setInterval(async () => {

@@ -103,3 +103,17 @@ crontab -e   # agregar:
 - **En la era espacial se funden en un solo pueblo.**
 - **Antigüedad y Edad Media** (la segunda parte de la era sedentaria, ahora más larga): cada pueblo adopta una cultura del mundo —romana, egipcia, vikinga, china, japonesa, azteca, árabe, mongola, europea o india— con sus construcciones grandes y altas (coliseo, acueducto, obeliscos, esfinge, pagodas, gran muralla, torii, pirámides escalonadas, palacios con minaretes, yurtas, mausoleo…) y sus sucesos (gladiadores, legiones, hordas a caballo).
 - Pruebas nuevas: `?celebs` (todos famosos), `?hola` (un toque), `?sofi` (cinco toques), `?era=3&medieval&cult=romana,china,vikinga`, `?do=exploradores|comercio|misioneros|tratado|ayuda|bodareal|gladiadores|legion|horda|cielo`.
+
+## Pantalla dividida: información arriba, civilización abajo
+
+- **Mitad de arriba (información):** una cinta de **noticias** arriba de todo (mundo y Chile), el reloj con el **próximo seminario y su cuenta regresiva** (días, horas y minutos), el cuadro del **tiempo** (temperatura actual, mínima y máxima, y un monito vestido según el clima) y las tarjetas de los equipos.
+- **Mitad de abajo (civilización):** su propio cielo con planetas y lunas, el suelo, las construcciones y los animales. En la noche (tema oscuro) el cielo tiene estrellas. Si la pantalla es angosta (celular) no se divide y todo queda como antes.
+- **Noticias:** el script `collector/news.py` baja titulares de BBC Mundo, DW Español, France 24, Noticias ONU, El País, Euronews, La Tercera, Cooperativa y Radio U. de Chile, y los publica en la rama `news` del repo (`news.json`). La página los lee cada 15 min; al pasar el cursor por encima la cinta se detiene y al tocar un titular se abre la noticia. Para que se actualicen solas hay que instalar `news.py` con una tarea programada cada 20 min en un equipo con internet (junto a `collector.py` y su `~/.config/monito.env`):
+  ```bash
+  cd ~/monito && python3 news.py          # prueba: publica una vez
+  crontab -e                               # agregar:
+  */20 * * * * cd $HOME/monito && /usr/bin/python3 news.py
+  ```
+- **El tiempo:** usa Open-Meteo (gratis, sin clave) para Santiago (cambiar `WX_PLACE` en `index.html` si el laboratorio está en otra ciudad). Al tocar el cuadro se abre el pronóstico de 7 días con la probabilidad de lluvia y un mapa de **Windy**, con un enlace para abrirlo completo.
+- **Almuerzo:** a las **12:00** (hora del computador) aparece «¡A almorzar!» y todos los animales, los de los anillos y los del suelo, paran a comer; durante esa hora cruzan mensajes al azar sobre el almuerzo. A las 13:00 vuelven al trabajo. Se ajusta con `LUNCH_FROM` y `LUNCH_LEN` en `world.js`.
+- Pruebas: `?lunch` fuerza la hora de almuerzo, `?wx` abre el tiempo, `?theme=dark` fuerza el tema oscuro.

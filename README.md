@@ -97,7 +97,7 @@ Segunda cinta bajo los monitores, con papers nuevos de los temas del laboratorio
 
 - Temas: los del laboratorio más bioinformática, GTDB y filogenia, metagenómica, métodos nuevos e IA en ciencia (genómica). Los trabajos de R. Quatrini se **excluyen** a propósito.
 - `papers.py` consulta PubMed y Europe PMC **una vez al día** (~07:00, dentro del cron de `news.py`; las noticias, cada 20 min). La página relee `papers.json` cada 3 horas. Para forzar una consulta: `python3 news.py --papers`.
-- La pastilla de época queda bajo el tiempo; la cinta de papers parte desde el borde izquierdo de akaza.
+- La pastilla de época queda bajo el tiempo; la cinta de papers va de lado a lado de la página, entre la información y la civilización.
 
 ## Papers: ventana con abstract y QR
 

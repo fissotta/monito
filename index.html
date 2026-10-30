@@ -89,8 +89,7 @@ h1 { font-size: 20px; margin: 0; letter-spacing: .12em; }
 .news[hidden] { display: none; }
 .news-tag { flex: none; padding: 0 12px; height: 100%; display: flex; align-items: center; font-weight: 800; color: var(--accent); border-right: 1px solid var(--border); }
 .news-view { flex: 1; overflow: hidden; height: 100%; display: flex; align-items: center; }
-.news-track { display: inline-flex; white-space: nowrap; animation: newsroll 400s linear infinite; will-change: transform; }
-.news-track:hover { animation-play-state: paused; }
+.news-track { display: inline-flex; white-space: nowrap; will-change: transform; }
 .news-track a { color: var(--text); text-decoration: none; margin-right: 40px; }
 .news-track a:hover { text-decoration: underline; }
 .news-track a b { color: var(--accent); margin-right: 7px; }
@@ -188,6 +187,10 @@ button { -webkit-tap-highlight-color: transparent; }
 button:hover { border-color: var(--accent); }
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .status { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.ver { color: var(--muted); opacity: .65; font-size: 11px; margin-left: 4px; background: none; border: 0; padding: 2px 4px; min-height: 0; cursor: pointer; }
+#verPop { position: fixed; z-index: 50; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(460px, 94vw); padding: 12px 16px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,.35); font-size: 14px; line-height: 1.6; }
+#verPop[hidden] { display: none; }
+#verPop h3 { margin: 0 0 6px; font-size: 16px; } #verPop .k { color: var(--muted); }
 main {
   display: grid; gap: 10px; padding: 0; flex: 1; min-width: 0;
   grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
@@ -244,7 +247,7 @@ svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
   <h1>MONITO</h1>
   <div id="news" class="news" hidden><span class="news-tag" id="newsTag">Noticias</span><div class="news-view"><div class="news-track" id="newsTrack"></div></div></div>
   <div class="controls">
-    <span class="status" id="status" aria-live="polite">—</span>
+    <span class="status" id="status" aria-live="polite">—</span><button class="ver" id="ver" type="button" title="Más datos de la versión"></button>
     <button id="btnTheme" title="Cambiar color: automático (por hora), día o noche"></button>
   </div>
 </header>
@@ -264,6 +267,7 @@ svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
   </div>
   <div class="eraRow"><div id="papers" class="news" hidden><span class="news-tag" id="papersTag">Papers</span><div class="news-view"><div class="news-track" id="papersTrack"></div></div></div></div>
 </div>
+<div id="verPop" role="dialog" aria-label="Versión" hidden></div>
 <div id="papPop" role="dialog" aria-label="Paper" hidden></div>
 <div id="semPop" role="dialog" aria-label="Seminarios" hidden></div>
 <div id="wxPop" role="dialog" aria-label="El tiempo" hidden></div>
@@ -273,8 +277,8 @@ svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
 if (/[?&]ua\b/.test(location.search)) addEventListener("load", () => { const d = document.createElement("div"); d.style.cssText = "position:fixed;left:8px;right:8px;top:40px;z-index:99;background:#fff;color:#000;border:2px solid #c00;padding:10px;font:16px monospace;word-break:break-all"; d.textContent = navigator.userAgent + " | " + innerWidth + "x" + innerHeight + " @" + devicePixelRatio; document.body.appendChild(d); setTimeout(() => d.remove(), 60000); });
 </script>
 <script src="qrcode.min.js?v=1"></script>
-<script src="zoo.js?v=20261031h"></script>
-<script src="world.js?v=20261031h"></script>
+<script src="zoo.js?v=20261031l"></script>
+<script src="world.js?v=20261031l"></script>
 <script>
 // ====== Configuración ======
 const REPO = "fissotta/monito"; // "usuario/monito"  (vacío = modo demo)
@@ -295,7 +299,9 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
 const demo = !REPO || new URLSearchParams(location.search).has("demo");
-const BUILD = "20261031h";   // subir junto con los ?v= de los <script> en cada publicacion
+const BUILD = "20261031l";   // subir junto con los ?v= de los <script> en cada publicacion
+const PR = 25;   // numero del pull request de esta version (lo que se ve en gris junto al estado; subirlo en cada publicacion)
+$("ver").textContent = "v" + PR;
 const state = { data: {}, next: 0, timer: null, stale: 300 };
 // si se publica una version nueva, la pagina (p. ej. en la TV) se recarga sola; revisa cada 10 min
 setInterval(async () => {
@@ -562,7 +568,7 @@ $("clock").onclick = e => {
 // ventanas emergentes: si no se cierran a mano, se esconden solas tras 30 s sin tocarlas
 const popTimers = {};
 function armPop(el, ms = 30000) { clearTimeout(popTimers[el.id]); popTimers[el.id] = setTimeout(() => { el.hidden = true; }, ms); }
-for (const id of ["semPop", "wxPop"]) for (const ev of ["pointermove", "touchstart", "wheel"]) $(id).addEventListener(ev, () => { if (!$(id).hidden) armPop($(id)); }, { passive: true });
+for (const id of ["semPop", "wxPop", "verPop"]) for (const ev of ["pointermove", "touchstart", "wheel"]) $(id).addEventListener(ev, () => { if (!$(id).hidden) armPop($(id)); }, { passive: true });
 function showSems() {   // lista completa de seminarios
   const today = dkey(new Date()), ks = Object.keys(SEMS).sort(), nx = ks.find(k => k >= today && SEMS[k].some(e => !e.none));
   const rows = ks.map(k => SEMS[k].map(e => `<tr class="${k < today ? "past" : ""}${k === nx && !e.none ? " nx" : ""}"><td>${fmtDay(k).replace(" De "," de ")}</td><td>${e.none ? `<span class="muted">${esc(e.who || "No hay seminario")}</span>` : `<b>${esc(e.who || "por confirmar")}</b>${e.hora ? " · " + e.hora : ""}${e.extra ? `<br><span class="muted">${esc(e.extra)}</span>` : ""}`}</td></tr>`).join("")).join("");
@@ -640,25 +646,70 @@ document.addEventListener("click", () => { $("papPop").hidden = true; });
 document.addEventListener("keydown", e => { if (e.key === "Escape") $("papPop").hidden = true; });
 for (const ev of ["pointermove", "touchstart", "wheel"]) $("papPop").addEventListener(ev, () => { if (!$("papPop").hidden) armPop($("papPop")); }, { passive: true });
 if (new URLSearchParams(location.search).has("paper")) setTimeout(() => showPaper(0), 3500);   // prueba: abre el primer paper
+$("ver").addEventListener("click", e => {
+  e.stopPropagation();
+  const ua = navigator.userAgent, ch = (ua.match(/Chrome\/(\d+)/) || [])[1], tv = /Tizen|SMART-TV|SmartTV|Web0S/i.test(ua);
+  $("verPop").innerHTML = `<h3>Versión v${PR}</h3><div><span class="k">Pull request:</span> #${PR}</div><div><span class="k">Código de publicación:</span> ${BUILD}</div>` +
+    `<div><span class="k">Navegador:</span> ${tv ? "TV" : "computador"}${ch ? " · Chrome " + ch : ""}</div><div><span class="k">Pantalla:</span> ${innerWidth}×${innerHeight} (×${devicePixelRatio})</div>` +
+    `<div><span class="k">Modo liviano:</span> ${Zoo.api.low ? "sí" : "no"}</div>` +
+    `<div><span class="k">Cuadros por segundo:</span> ${Zoo.api.low ? (Zoo.api.probe() < 0 ? "midiendo…" : "medidos " + Zoo.api.probe() + " → " + (Zoo.api.minDt() ? "limitado a 30" : "sin límite")) : "sin límite"}</div>`;
+  $("verPop").hidden = false; armPop($("verPop"));
+});
+if (/[?&]verclick\b/.test(location.search)) setTimeout(() => $("ver").click(), 9000);   // prueba: abre el cuadro de la version
+$("verPop").addEventListener("click", e => { e.stopPropagation(); $("verPop").hidden = true; });
+document.addEventListener("click", () => { $("verPop").hidden = true; });
+
+// cinta de texto sin duplicar la lista: solo hay en pantalla las noticias/papers que caben (mas un poco de reserva) y, a medida que salen por la
+// izquierda, pasan al final. Se muestran todas, pero el navegador mantiene ~15 elementos en vez de cientos.
+function Marquee(view, track, speed, html) {
+  const m = { items: [], i: 0, x: 0, paused: false, firstW: null };
+  const add = () => { track.insertAdjacentHTML("beforeend", html(m.items[m.i], m.i)); m.i = (m.i + 1) % m.items.length; };
+  const fill = () => { let g = 0; while (m.items.length && track.scrollWidth + m.x < view.clientWidth + 500 && g++ < m.items.length + 3) add(); };
+  m.set = items => { track.innerHTML = ""; m.items = items; m.i = 0; m.x = 0; m.firstW = null; track.style.transform = ""; fill(); };
+  m.step = dt => {   // por cuadro: solo se escribe el desplazamiento; la estructura cambia cuando una noticia sale por la izquierda
+    if (m.paused || !m.items.length) return;
+    m.x -= speed * dt;
+    let f = track.firstElementChild, moved = false;
+    while (f && track.children.length > 1) {
+      if (m.firstW == null) { const n = f.nextElementSibling; m.firstW = n.offsetLeft - f.offsetLeft; }
+      if (-m.x < m.firstW) break;
+      m.x += m.firstW; f.remove(); f = track.firstElementChild; m.firstW = null; moved = true;
+    }
+    if (moved) fill();
+    track.style.transform = `translate3d(${m.x.toFixed(1)}px,0,0)`;
+  };
+  view.addEventListener("pointerenter", () => { m.paused = true; });
+  view.addEventListener("pointerleave", () => { m.paused = false; });
+  return m;
+}
+const marquees = [];
+(function marqueeLoop() {
+  let last = performance.now();
+  requestAnimationFrame(function f(now) {
+    requestAnimationFrame(f);
+    const dt = (now - last) / 1000;
+    if (Zoo.api.minDt() && dt * 1000 < Zoo.api.minDt()) return;   // si la TV no llega a 60 fps: ~30 cuadros por segundo
+    last = now; if (document.hidden) return;
+    for (const m of marquees) m.step(Math.min(.1, dt));
+  });
+})();
+const newsM = Marquee($("newsTrack").parentNode, $("newsTrack"), 70, i => `<a href="${esc(i.u)}" target="_blank" rel="noopener"><b>${esc(i.s)}</b>${esc(i.t)}</a>`);
+const papersM = Marquee($("papersTrack").parentNode, $("papersTrack"), 60, (i, n) => `<a href="${esc(i.u)}" data-i="${n}" title="${esc(i.t)}"><b>${esc(i.k)}</b>${i.q ? '<span class="st">★</span>' : ""}${esc(i.t)}<i>${esc(i.a ? i.a + " · " : "")}${esc(i.s)}${i.p ? " (preprint)" : ""}</i></a>`);
+marquees.push(newsM, papersM);
 async function loadPapers() {   // papers nuevos de los temas del laboratorio (PubMed y preprints)
   if (!REPO) return;
   const d = await fetchFeed("papers", "papers.json"); if (!d) return;
   PAPERS = d.items;
-  const html = d.items.map((i, n) => `<a href="${esc(i.u)}" data-i="${n}" title="${esc(i.t)}"><b>${esc(i.k)}</b>${i.q ? '<span class="st">★</span>' : ""}${esc(i.t)}<i>${esc(i.a ? i.a + " · " : "")}${esc(i.s)}${i.p ? " (preprint)" : ""}</i></a>`).join(""), tr = $("papersTrack");
-  tr.innerHTML = html + html;
-  $("papers").hidden = false;
-  tr.style.animationDuration = Math.max(90, tr.scrollWidth / 2 / 60) + "s";   // ~60 px/s
+  $("papers").hidden = false; papersM.set(d.items);
   const t = new Date(d.updated * 1000); $("papersTag").title = `Actualizados a las ${pad(t.getHours())}:${pad(t.getMinutes())} · PubMed y Europe PMC`;
 }
 function renderNews(d) {
-  const html = d.items.map(i => `<a href="${esc(i.u)}" target="_blank" rel="noopener"><b>${esc(i.s)}</b>${esc(i.t)}</a>`).join(""), tr = $("newsTrack");
-  tr.innerHTML = html + html;   // dos copias para que el desplazamiento no tenga saltos
-  $("news").hidden = false;
-  tr.style.animationDuration = Math.max(60, tr.scrollWidth / 2 / 70) + "s";   // ~70 px/s
+  $("news").hidden = false; newsM.set(d.items);
   const t = new Date(d.updated * 1000); $("newsTag").title = `Actualizadas a las ${pad(t.getHours())}:${pad(t.getMinutes())}`;
 }
 loadNews(); setInterval(loadNews, 15 * 60e3);
 loadPapers(); setInterval(loadPapers, 3 * 60 * 60e3);
+if (/[?&]mtest\b/.test(location.search)) setTimeout(() => { const n0 = $("papersTrack").children.length; for (let i = 0; i < 800; i++) papersM.step(.5); document.title = `antes=${n0} despues=${$("papersTrack").children.length} i=${papersM.i} total=${papersM.items.length}`; }, 6000);   // prueba: gira la cinta de papers 400 s de golpe
 
 // ---------- el tiempo (Open-Meteo, sin clave) con un monito segun el clima; al tocarlo, la semana y un mapa de Windy ----------
 const WX_PLACE = { name: "Santiago", lat: -33.4489, lon: -70.6693 };   // cambiar si el laboratorio esta en otra ciudad

@@ -10,6 +10,8 @@ const World = (function () {
   const A = Zoo.api, LOW = !!A.low, FX_MAX = LOW ? 110 : 240;   // FX_MAX = tope de particulas decorativas
   const NS = "http://www.w3.org/2000/svg";
   const Q = new URLSearchParams(location.search);
+  const SKYOFF = Q.get("cielo") === "off";   // ?cielo=off: sin cielo vivo
+  const SKYMIN = LOW || Q.get("cielo") === "min";   // TV (o ?cielo=min): solo sol/luna, nubes y pajaros; nada volando a la altura de la civilizacion
   const TURBO = Math.min(60, Math.max(1, parseFloat(Q.get("turbo")) || 1));
   const START_ERA = Math.min(8, Math.max(0, parseInt(Q.get("era"), 10) || 0));
   const SPAWN_S = 10, K = 1.1, GROUND_H = 34, MAX_SPRITES = 34;
@@ -675,15 +677,26 @@ const World = (function () {
   function ambient(h) {
     const night = isNight(), space = S.era >= 7, calm = !S.saga;
     if (night !== AMB.theme) { AMB.theme = night; drawCelestial(night); }
-    celest.setAttribute("transform", `translate(${(W * .88).toFixed(0)} ${skyY(.2).toFixed(0)}) scale(${FEST.season === "verano" ? 1.3 : 1})`); celest.style.display = space ? "none" : "";
-    // nubes que cruzan despacio (mas lejos = mas chicas, lentas y claras)
-    const base = (FEST.season === "invierno" ? 8 : FEST.season === "verano" ? 3 : 6) - (LOW ? 2 : 0), want = space ? 0 : night ? Math.max(2, base - 2) : base;
+    celest.setAttribute("transform", `translate(${(W * .88).toFixed(0)} ${skyY(.2).toFixed(0)}) scale(${FEST.season === "verano" ? 1.3 : 1})`); celest.style.display = space || SKYOFF ? "none" : "";
+    const base = (FEST.season === "invierno" ? 8 : FEST.season === "verano" ? 3 : 6) - (LOW ? 2 : 0), want = space || SKYOFF ? 0 : night ? Math.max(2, base - 2) : base;
     if (!AMB.init) { AMB.init = true; for (let i = 0; i < want; i++) spawnCloud(rnd(-60, W)); }
+    // desde que empieza la civilizacion el fondo es una imagen fija: nada se mueve (solo pasan las nubes con mensajes)
+    if (S.started && !SKYOFF) {
+      if (AMB.flocks.length || AMB.flies.length || AMB.bf.length) { [].concat(AMB.flocks, AMB.flies, AMB.bf).forEach(o => o.e.remove()); AMB.flocks = []; AMB.flies = []; AMB.bf = []; }
+      const sig = W + "," + SKY + "," + night + "," + FEST.season + "," + space;
+      if (AMB.sig !== sig) {   // solo se vuelve a colocar si cambia la pantalla, el dia/noche o la estacion
+        AMB.sig = sig;
+        for (const c of AMB.clouds) { c.e.setAttribute("transform", `translate(${c.x.toFixed(1)} ${skyY(c.f).toFixed(1)}) scale(${c.s.toFixed(2)})`); c.e.setAttribute("opacity", (c.op * (night ? .75 : 1)).toFixed(2)); }
+        AMB.clouds = AMB.clouds.filter(c => { if (space || c.x > W + c.w * c.s) { c.e.remove(); return false; } return true; });
+      }
+      festive(h); return;
+    }
+    // nubes que cruzan despacio (mas lejos = mas chicas, lentas y claras)
     AMB.cloudT -= h; if (AMB.clouds.length < want && AMB.cloudT <= 0) { AMB.cloudT = rnd(6, 14); spawnCloud(); }
     for (const c of AMB.clouds) { c.x += c.vx * h; c.e.setAttribute("transform", `translate(${c.x.toFixed(1)} ${skyY(c.f).toFixed(1)}) scale(${c.s.toFixed(2)})`); c.e.setAttribute("opacity", (c.op * (night ? .75 : 1)).toFixed(2)); }
     AMB.clouds = AMB.clouds.filter(c => { if (space || c.x > W + c.w * c.s) { c.e.remove(); return false; } return true; });
     // pajaros de dia
-    AMB.birdT -= h; if (AMB.birdT <= 0) { AMB.birdT = rnd(40, 90); if (!night && !space && calm) spawnFlock(); }
+    AMB.birdT -= h; if (AMB.birdT <= 0) { AMB.birdT = rnd(40, 90); if (!night && !space && calm && !SKYOFF) spawnFlock(); }
     for (const f of AMB.flocks) {
       f.t += h; f.x += f.vx * h; const y = skyY(f.f) + Math.sin(f.t * .6) * 6;
       f.e.setAttribute("transform", `translate(${f.x.toFixed(1)} ${y.toFixed(1)})`);
@@ -691,7 +704,7 @@ const World = (function () {
     }
     AMB.flocks = AMB.flocks.filter(f => { if (f.x < -120 || f.x > W + 120) { f.e.remove(); return false; } return true; });
     // luciernagas de noche y mariposas de dia, cerca del suelo
-    const lowOk = !space && calm;
+    const lowOk = !space && calm && !SKYMIN && !SKYOFF;   // mariposas y luciernagas vuelan junto a los animales: no en la TV
     const wantFl = night && lowOk ? 6 : 0, wantBf = !night && lowOk ? (FEST.season === "primavera" ? 3 : 2) : 0;
     while (AMB.flies.length < wantFl) { const e = el("g", {}, gAmb); e.innerHTML = `<circle r="5" fill="#d8ff6a" opacity=".22"/><circle r="1.7" fill="#eaffa0"/>`; AMB.flies.push({ e, x: rnd(0, W), oy: rnd(10, 95), vx: rnd(-8, 8), ph: rnd(0, 6.28), t: 0 }); }
     while (AMB.bf.length < wantBf) { const e = el("g", {}, gAmb), col = pick(["#ff8fb3", "#ffb347", "#8fd0ff", "#c79bff", "#fff27a"]); e.innerHTML = `<ellipse class="w1" cx="-2.5" cy="0" rx="3" ry="4" fill="${col}"/><ellipse class="w2" cx="2.5" cy="0" rx="3" ry="4" fill="${col}"/><rect x="-.5" y="-3" width="1" height="6" fill="#444"/>`; AMB.bf.push({ e, x: rnd(0, W), oy: rnd(18, 80), vx: rnd(-14, 14), ph: rnd(0, 6.28), t: 0 }); }
@@ -701,7 +714,7 @@ const World = (function () {
     if (!wantBf && AMB.bf.length) { AMB.bf.forEach(q => q.e.remove()); AMB.bf = []; }
     festive(h);
     // estrella fugaz
-    AMB.starT -= h; if (AMB.starT <= 0) { AMB.starT = rnd(18, 45); if (night && !space) fx("g", { x: rnd(W * .25, W * .95), y: skyY(rnd(.05, .35)), vx: -rnd(260, 360), vy: rnd(80, 130), life: .9, html: `<line x1="0" y1="0" x2="38" y2="-13" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".9"/>` }); }
+    AMB.starT -= h; if (AMB.starT <= 0) { AMB.starT = rnd(18, 45); if (night && !space && !SKYMIN && !SKYOFF) fx("g", { x: rnd(W * .25, W * .95), y: skyY(rnd(.05, .35)), vx: -rnd(260, 360), vy: rnd(80, 130), life: .9, html: `<line x1="0" y1="0" x2="38" y2="-13" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".9"/>` }); }
   }
   // ---------- fiestas y estaciones: decoraciones en el suelo, gorros en los animales y cosas en el cielo ----------
   const gDeco = el("g", { "pointer-events": "none" }, svg); svg.insertBefore(gDeco, gMon);   // sobre las construcciones, bajo los animales
@@ -2135,8 +2148,8 @@ const World = (function () {
   function renderCrits() {
     for (const c of S.crits) {
       const b = c.dying ? 1 - c.dying : 1, f = c.noflip ? 1 : (c.dir < 0 ? -1 : 1);
-      c.el.setAttribute("transform", `translate(${c.x.toFixed(1)} ${(floorY() + 6).toFixed(1)}) scale(${f * (c.sc || 1)} ${c.sc || 1})`);
-      c.el.style.opacity = ((c.alpha == null ? 1 : c.alpha) * Math.max(0, b)).toFixed(2);
+      setT(c.el, `translate(${c.x.toFixed(1)} ${(floorY() + 6).toFixed(1)}) scale(${f * (c.sc || 1)} ${c.sc || 1})`);
+      setO(c.el, ((c.alpha == null ? 1 : c.alpha) * Math.max(0, b)).toFixed(2));
     }
   }
   CRITS.xeno = {
@@ -2511,14 +2524,16 @@ const World = (function () {
     for (const s of S.structs) {
       const def = KINDS[s.kind], b = s.dying ? 1 - out3(s.dying) : out3(s.built);
       const sx = (s.flip && !def.noflip ? -1 : 1);
-      s.el.setAttribute("transform", `translate(${(s.x + sh).toFixed(1)} ${(floorY() + (s.dy || 0) + 4).toFixed(1)}) scale(${sx} ${Math.max(.001, b).toFixed(3)})`);
+      setT(s.el, `translate(${(s.x + sh).toFixed(1)} ${(floorY() + (s.dy || 0) + 4).toFixed(1)}) scale(${sx} ${Math.max(.001, b).toFixed(3)})`);
     }
   }
+  const setT = (e, v) => { if (e._t !== v) { e._t = v; e.setAttribute("transform", v); } };   // solo se escribe en el DOM si el valor cambio
+  const setO = (e, v) => { if (e._o !== v) { e._o = v; e.style.opacity = v; } };
   function renderMons() {
     for (const g of S.mon) {
       A.draw(g.m);
-      g.m.parts.root.setAttribute("transform", `translate(${g.x.toFixed(1)} ${(g.state === "ground" ? floorY() + g.dy : g.y).toFixed(1)}) scale(${K}) rotate(${g.rot.toFixed(1)} 0 -9)`);
-      g.m.parts.root.style.opacity = g.dead > 0 ? clamp(g.dead, 0, 1).toFixed(2) : 1;
+      setT(g.m.parts.root, `translate(${g.x.toFixed(1)} ${(g.state === "ground" ? floorY() + g.dy : g.y).toFixed(1)}) scale(${K}) rotate(${g.rot.toFixed(1)} 0 -9)`);
+      setO(g.m.parts.root, g.dead > 0 ? clamp(g.dead, 0, 1).toFixed(2) : "1");
     }
   }
   const popLine = () => S.unified ? `Población ${popTotal()} · ${S.nation}` : S.tribes.map(t => { const w = TRIBE_INFO[t.kind].plural; return `${w[0].toUpperCase() + w.slice(1)} ${popOf(t.i)}`; }).join(" · ");
@@ -2619,7 +2634,7 @@ const World = (function () {
   function frame(now) {
     requestAnimationFrame(frame);
     lunchCheck(now);
-    if (LOW && now - last < 31) return;   // TV: ~30 cuadros por segundo (la simulacion usa el tiempo real, no se ralentiza)
+    if (A.minDt() && now - last < A.minDt()) return;   // si la TV no llega a 60 fps se limita a ~30 (la simulacion usa el tiempo real, no se ralentiza)
     const real = Math.min(.05, Math.max(0, (now - last) / 1000)); last = now;
     if (document.hidden) return;
     for (const k in rectOf) delete rectOf[k];

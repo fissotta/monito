@@ -14,7 +14,8 @@ const Zoo = (function () {
   let CAP = 9;                          // monos por equipo antes de que los nuevos se desborden y caigan
   const SCALE = 1.25;                   // tamaño general de los monos
   const LOW = /Tizen|SMART-TV|SmartTV|Web0S/i.test(navigator.userAgent) || /[?&]lento\b/.test(location.search);   // TV: se dibuja a ~30 cuadros por segundo
-  const MIN_DT = LOW ? 31 : 0;
+  let MIN_DT = 0;   // limite de cuadros: 0 = libre (60 fps); 31 = ~30 fps. En la TV se decide midiendo (ver "probe")
+  const probe = { t0: 0, n: 0, done: !LOW, fps: 0 };   // en la TV se mide cuantos cuadros por segundo da sin limite; si no llega a ~48 se limita a 30 (mas parejo)
   const GIRAFFE_K = 1.5;                // las jirafas se dibujan 1,5 veces mas grandes (globos y zzz suben con ellas)
   const kOf = m => (m.sp && m.sp.kind === "jirafa" ? GIRAFFE_K : 1);
 
@@ -484,33 +485,35 @@ const Zoo = (function () {
     }
     return out;
   }
-  const limbT = (x, y, a) => `translate(${x} ${y}) rotate(${a.toFixed(1)})`;
+  const limbT = (x, y, a) => `translate(${x} ${y}) rotate(${a.toFixed(LOW ? 0 : 1)})`;   // en la TV los angulos se redondean al grado: menos cambios
+  const sT = (e, v) => { if (e._t !== v) { e._t = v; e.setAttribute("transform", v); } };   // solo se escribe si el valor cambio
+  const sD = (e, show) => { const v = show ? "" : "none"; if (e._d !== v) { e._d = v; e.style.display = v; } };
   function draw(m) {
     const p = m.parts, P = pose(m), sp = m.sp;
     const pop = m.pop === undefined || m.pop >= 1 ? 1 : popEase(m.pop);   // aparece con rebote
-    p.mirror.setAttribute("transform", `scale(${m.dir * (sp.size || 1) * kOf(m) * SCALE * pop} ${(sp.size || 1) * kOf(m) * SCALE * pop})`);
-    p.bob.setAttribute("transform", `translate(0 ${P.bob.toFixed(2)}) rotate(${P.lean.toFixed(1)})` +
+    sT(p.mirror, `scale(${m.dir * (sp.size || 1) * kOf(m) * SCALE * pop} ${(sp.size || 1) * kOf(m) * SCALE * pop})`);
+    sT(p.bob, `translate(0 ${P.bob.toFixed(LOW ? 1 : 2)}) rotate(${P.lean.toFixed(LOW ? 0 : 1)})` +
       (P.flip ? ` rotate(${P.flip.toFixed(0)} 0 -8)` : ""));
     const bp = m.bp || BODY_PLANS.mono;
-    p.tail.setAttribute("transform", limbT(bp.tail[0], bp.tail[1], P.tail));
-    p.backLeg.setAttribute("transform", limbT(-1.2, bp.hipY, P.legs[1]));
-    p.frontLeg.setAttribute("transform", limbT(1.2, bp.hipY, P.legs[0]));
-    p.backArm.setAttribute("transform", limbT(-1, bp.shY, P.arms[1]));
-    p.frontArm.setAttribute("transform", limbT(1.2, bp.shY, P.arms[0]));
-    p.head.setAttribute("transform", `translate(${bp.head[0]} ${(bp.head[1] + P.headDy).toFixed(2)}) rotate(${P.tilt.toFixed(1)})`);
-    p.food.setAttribute("transform", `translate(${bp.food[0]} ${bp.food[1]}) scale(${P.food.toFixed(2)})`);
-    p.eyeOpen.style.display = P.shut ? "none" : "";
-    p.eyeShut.style.display = P.shut ? "" : "none";
-    p.yawn.style.display = P.yawn ? "" : "none";
-    p.cup.setAttribute("transform", `translate(${bp.cup[0]} ${bp.cup[1]})`);
-    p.cup.style.display = P.cup ? "" : "none";
+    sT(p.tail, limbT(bp.tail[0], bp.tail[1], P.tail));
+    sT(p.backLeg, limbT(-1.2, bp.hipY, P.legs[1]));
+    sT(p.frontLeg, limbT(1.2, bp.hipY, P.legs[0]));
+    sT(p.backArm, limbT(-1, bp.shY, P.arms[1]));
+    sT(p.frontArm, limbT(1.2, bp.shY, P.arms[0]));
+    sT(p.head, `translate(${bp.head[0]} ${(bp.head[1] + P.headDy).toFixed(LOW ? 1 : 2)}) rotate(${P.tilt.toFixed(LOW ? 0 : 1)})`);
+    sT(p.food, `translate(${bp.food[0]} ${bp.food[1]}) scale(${P.food.toFixed(2)})`);
+    sD(p.eyeOpen, !P.shut);
+    sD(p.eyeShut, P.shut);
+    sD(p.yawn, P.yawn);
+    sT(p.cup, `translate(${bp.cup[0]} ${bp.cup[1]})`);
+    sD(p.cup, P.cup);
     if (P.cup) p.steam.forEach((e, i) => {
       e.setAttribute("opacity", (.35 + .35 * Math.sin(m.t * 5 + i * 2)).toFixed(2));
       e.setAttribute("transform", `translate(0 ${(-((m.t * 2 + i * .5) % 1) * 1.5).toFixed(2)})`);
     });
     // zzz y globo se contra-rotan para quedar derechos aunque el mono este en la parte baja del anillo
     const th = (m.theta || 0) * Math.PI / 180, so = Math.sin(th), co = Math.cos(th), counter = `rotate(${(-(m.theta || 0)).toFixed(1)})`;
-    p.zzz.style.display = P.zzz ? "" : "none";
+    sD(p.zzz, P.zzz);
     if (P.zzz) {
       p.zzz.setAttribute("transform", counter);
       const sx = m.dir * bp.zz * kOf(m) * co + 4 * so, sy = m.dir * bp.zz * kOf(m) * so - 4 * co;   // cabeza del mono tumbado, en pantalla
@@ -523,7 +526,7 @@ const Zoo = (function () {
     }
     // globo de dialogo: lo que dice al tocarlo (react) o lo que piensa mientras camina (think); puede tener varias lineas
     const reacting = m.mode === "react" && m.say, thinking = !reacting && m.thinkT > 0 && m.think, txt = reacting ? m.say : thinking ? m.think : null;
-    p.bubble.style.display = txt ? "" : "none";
+    sD(p.bubble, txt);
     if (txt) {
       const u = reacting ? m.t / m.dur : 1 - m.thinkT / m.thinkDur, bd = ((m.bp && m.bp.bub) || 27) * kOf(m);
       if (p.bubbleKey !== txt) {
@@ -539,7 +542,7 @@ const Zoo = (function () {
       p.bubble.setAttribute("transform", `${counter} translate(${(so * bd).toFixed(1)} ${(-co * bd).toFixed(1)})`);
       p.bubble.setAttribute("opacity", clamp(Math.min(u * 10, (1 - u) * 5), 0, 1).toFixed(2));
     }
-    p.food.style.display = P.food > 0 ? "" : "none";
+    sD(p.food, P.food > 0);
     if (P.food > 0) for (const f in p.foodShape) p.foodShape[f].style.display = f === m.food ? "" : "none";
   }
   function place(m, theta, r) {
@@ -745,6 +748,10 @@ const Zoo = (function () {
   const clear = n => { while (n.firstChild) n.removeChild(n.firstChild); };   // replaceChildren no existe en navegadores viejos
   function frame(now) {
     raf = requestAnimationFrame(frame);
+    if (!probe.done) {   // medicion inicial: se ignoran los primeros 2 s (la pagina esta cargando) y se miran 4 s
+      if (!probe.t0) probe.t0 = now;
+      if (now - probe.t0 >= 2000) { if (!probe.s) { probe.s = now; probe.n = 0; } probe.n++; if (now - probe.s >= 4000) { probe.fps = Math.round(probe.n * 1000 / (now - probe.s)); MIN_DT = probe.fps < 48 ? 31 : 0; probe.done = true; } }
+    }
     if (MIN_DT && now - last < MIN_DT) return;
     const dt = Math.min(.05, Math.max(0, (now - last) / 1000)); last = now;
     if (document.hidden) return;
@@ -777,7 +784,7 @@ const Zoo = (function () {
     kindOf, CELEBS, SPECIES_BY_KIND,
     setCelebHandler: fn => { onCeleb = fn; },
     setFestive: names => { FEST = names || []; },
-    low: LOW,
+    low: LOW, minDt: () => MIN_DT, probe: () => (probe.done ? (LOW ? probe.fps : 0) : -1),
     setLunch: on => { LUNCH = on; if (on) for (const id in zoos) for (const m of zoos[id].ms) if (m.mode !== "cross" && m.ctx) enter(m, "eat", m.ctx); },
     setReleaseHandler: fn => { onRelease = fn; },
     setCap: n => { CAP = n; },

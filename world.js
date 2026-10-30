@@ -993,8 +993,8 @@ const World = (function () {
   }
   function placePlanets() {   // arriba a la derecha primero, luego hacia la izquierda
     S.planets.forEach((p, i) => {
-      p.x = i === 0 ? W - 88 : 250 + (i - 1) * 105; p.y = i === 0 ? 96 : 30;   // los demas, en la franja libre del encabezado (entre el titulo y el estado)
-      if (i && p.x > W * .6) p.x = 250 + ((i * 97) % Math.max(60, W * .35));
+      p.x = i === 0 ? W - 88 : 340 + (i - 1) * 105; p.y = i === 0 ? 96 : 30;   // los demas, en la franja libre del encabezado (entre el titulo y el estado)
+      if (i && p.x > W * .6) p.x = 340 + ((i * 97) % Math.max(60, W * .25));
       p.g.setAttribute("transform", `translate(${p.x} ${p.y})`);
     });
   }

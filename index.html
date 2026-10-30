@@ -8,11 +8,11 @@
 <style>
 :root {
   --bg: #f4f6f9; --card: #ffffff; --text: #1b2430; --muted: #6b7686; --track: #e3e8ef; --border: #dde3ec;
-  --ok: #16a34a; --warn: #f59e0b; --bad: #dc2626; --off: #9aa4b2; --accent: #2563eb;
+  --ok: #16a34a; --warn: #f59e0b; --bad: #dc2626; --off: #9aa4b2; --accent: #2563eb; --we: #c2410c;
 }
 :root[data-theme="dark"] {
   --bg: #0d1117; --card: #161b22; --text: #e6edf3; --muted: #8b96a5; --track: #262d38; --border: #2a313c;
-  --ok: #3fb950; --warn: #f0a030; --bad: #f85149; --off: #6b7686; --accent: #58a6ff;
+  --ok: #3fb950; --warn: #f0a030; --bad: #f85149; --off: #6b7686; --accent: #58a6ff; --we: #fb923c;
 }
 * { box-sizing: border-box; }
 body {
@@ -25,6 +25,23 @@ header {
   padding: 14px 16px; max-width: 1200px; margin: 0 auto;
 }
 h1 { font-size: 20px; margin: 0; letter-spacing: .12em; }
+.brand { position: relative; display: flex; align-items: center; gap: 14px; }
+.clock { display: flex; flex-direction: column; align-items: center; line-height: 1.15; padding: 3px 10px; min-height: 0; font-variant-numeric: tabular-nums; }
+.clock b { font-size: 17px; }
+.clock span { font-size: 11px; color: var(--muted); }
+.cal { position: absolute; left: 0; top: calc(100% + 8px); z-index: 40; width: 266px; padding: 10px; background: var(--card);
+  border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.25); }
+.cal[hidden] { display: none; }
+.cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; font-weight: 700; text-transform: capitalize; }
+.cal-head button { padding: 2px 10px; min-height: 28px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; }
+.cal-grid .dw { color: var(--muted); font-size: 11px; padding: 2px 0; }
+.cal-grid .d { padding: 5px 0; border-radius: 8px; }
+.cal-grid .we { color: var(--we); }
+.cal-grid .o { opacity: .35; }
+.cal-grid .today { background: var(--accent); color: #fff; font-weight: 700; }
+.cal-foot { margin-top: 8px; text-align: center; }
+.cal-foot button { padding: 2px 12px; min-height: 28px; font-size: 12px; }
 .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 button {
   font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--border);
@@ -77,7 +94,11 @@ footer { max-width: 1200px; margin: 0 auto; padding: 0 16px 24px; color: var(--m
 </head>
 <body>
 <header>
-  <h1>MONITO</h1>
+  <div class="brand">
+    <button id="clock" class="clock" aria-haspopup="dialog" aria-expanded="false" title="Ver el calendario"><b id="clockTime">--:--</b><span id="clockDate">--/--</span></button>
+    <h1>MONITO</h1>
+    <div id="cal" class="cal" role="dialog" aria-label="Calendario" hidden></div>
+  </div>
   <div class="controls">
     <span class="status" id="status" aria-live="polite">—</span>
     <button id="btnTheme" title="Cambiar color: automático (por hora), día o noche"></button>
@@ -243,6 +264,43 @@ setInterval(tick, 1000);
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden && state.next && Date.now() > state.next) refresh();
 });
+
+// ---------- reloj y calendario ----------
+const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+const DIAS = ["L", "M", "M", "J", "V", "S", "D"];   // la semana empieza el lunes
+let calView = null;
+function tickClock() {
+  const d = new Date(), t = pad(d.getHours()) + ":" + pad(d.getMinutes()), f = pad(d.getDate()) + "/" + pad(d.getMonth() + 1);
+  if ($("clockTime").textContent !== t) $("clockTime").textContent = t;
+  if ($("clockDate").textContent !== f) { $("clockDate").textContent = f; if (calView) renderCal(); }
+}
+function renderCal() {
+  const now = new Date(), y = calView.y, m = calView.m, lead = (new Date(y, m, 1).getDay() + 6) % 7;   // casillas vacias antes del dia 1
+  let h = `<div class="cal-head"><button id="calPrev" aria-label="Mes anterior">‹</button><span>${MESES[m]} ${y}</span><button id="calNext" aria-label="Mes siguiente">›</button></div><div class="cal-grid">`;
+  DIAS.forEach((d, i) => { h += `<div class="dw${i >= 5 ? " we" : ""}">${d}</div>`; });
+  for (let i = 0; i < 42; i++) {   // 6 semanas fijas; los dias de otros meses van atenuados
+    const d = new Date(y, m, 1 - lead + i), we = i % 7 >= 5;
+    const today = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+    h += `<div class="d${we ? " we" : ""}${d.getMonth() !== m ? " o" : ""}${today ? " today" : ""}"${today ? ' aria-current="date"' : ""}>${d.getDate()}</div>`;
+  }
+  $("cal").innerHTML = h + `</div><div class="cal-foot"><button id="calToday">Hoy</button></div>`;
+}
+function toggleCal(open) {
+  const now = new Date(), show = open == null ? $("cal").hidden : open;
+  if (show) { calView = { y: now.getFullYear(), m: now.getMonth() }; renderCal(); } else calView = null;
+  $("cal").hidden = !show; $("clock").setAttribute("aria-expanded", String(show));
+}
+$("clock").onclick = e => { e.stopPropagation(); toggleCal(); };
+$("cal").addEventListener("click", e => {
+  e.stopPropagation();
+  const id = e.target.id, now = new Date();
+  if (id === "calPrev" || id === "calNext") { const d = new Date(calView.y, calView.m + (id === "calNext" ? 1 : -1), 1); calView = { y: d.getFullYear(), m: d.getMonth() }; renderCal(); }
+  else if (id === "calToday") { calView = { y: now.getFullYear(), m: now.getMonth() }; renderCal(); }
+});
+document.addEventListener("click", () => { if (!$("cal").hidden) toggleCal(false); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("cal").hidden) { toggleCal(false); $("clock").focus(); } });
+tickClock(); setInterval(tickClock, 1000);
+if (new URLSearchParams(location.search).has("cal")) toggleCal(true);
 
 // ---------- monos ----------
 Zoo.init(MACHINES.map(m => m.id), () => state.data);

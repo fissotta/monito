@@ -671,9 +671,9 @@ const World = (function () {
   function ambient(h) {
     const night = isNight(), space = S.era >= 7, calm = !S.saga;
     if (night !== AMB.theme) { AMB.theme = night; drawCelestial(night); }
-    celest.setAttribute("transform", `translate(${(W * .88).toFixed(0)} ${skyY(.2).toFixed(0)})`); celest.style.display = space ? "none" : "";
+    celest.setAttribute("transform", `translate(${(W * .88).toFixed(0)} ${skyY(.2).toFixed(0)}) scale(${FEST.season === "verano" ? 1.3 : 1})`); celest.style.display = space ? "none" : "";
     // nubes que cruzan despacio (mas lejos = mas chicas, lentas y claras)
-    const want = space ? 0 : night ? 4 : 6;
+    const base = FEST.season === "invierno" ? 8 : FEST.season === "verano" ? 3 : 6, want = space ? 0 : night ? Math.max(2, base - 2) : base;
     if (!AMB.init) { AMB.init = true; for (let i = 0; i < want; i++) spawnCloud(rnd(-60, W)); }
     AMB.cloudT -= h; if (AMB.clouds.length < want && AMB.cloudT <= 0) { AMB.cloudT = rnd(6, 14); spawnCloud(); }
     for (const c of AMB.clouds) { c.x += c.vx * h; c.e.setAttribute("transform", `translate(${c.x.toFixed(1)} ${skyY(c.f).toFixed(1)}) scale(${c.s.toFixed(2)})`); c.e.setAttribute("opacity", (c.op * (night ? .75 : 1)).toFixed(2)); }
@@ -688,15 +688,175 @@ const World = (function () {
     AMB.flocks = AMB.flocks.filter(f => { if (f.x < -120 || f.x > W + 120) { f.e.remove(); return false; } return true; });
     // luciernagas de noche y mariposas de dia, cerca del suelo
     const lowOk = !space && calm;
-    const wantFl = night && lowOk ? 14 : 0, wantBf = !night && lowOk ? 4 : 0;
+    const wantFl = night && lowOk ? 14 : 0, wantBf = !night && lowOk ? (FEST.season === "primavera" ? 8 : 4) : 0;
     while (AMB.flies.length < wantFl) { const e = el("g", {}, gAmb); e.innerHTML = `<circle r="5" fill="#d8ff6a" opacity=".22"/><circle r="1.7" fill="#eaffa0"/>`; AMB.flies.push({ e, x: rnd(0, W), oy: rnd(10, 95), vx: rnd(-8, 8), ph: rnd(0, 6.28), t: 0 }); }
     while (AMB.bf.length < wantBf) { const e = el("g", {}, gAmb), col = pick(["#ff8fb3", "#ffb347", "#8fd0ff", "#c79bff", "#fff27a"]); e.innerHTML = `<ellipse class="w1" cx="-2.5" cy="0" rx="3" ry="4" fill="${col}"/><ellipse class="w2" cx="2.5" cy="0" rx="3" ry="4" fill="${col}"/><rect x="-.5" y="-3" width="1" height="6" fill="#444"/>`; AMB.bf.push({ e, x: rnd(0, W), oy: rnd(18, 80), vx: rnd(-14, 14), ph: rnd(0, 6.28), t: 0 }); }
     for (const q of AMB.flies) { q.t += h; q.vx += rnd(-1, 1) * h * 20; q.vx = clamp(q.vx, -14, 14); q.x = (q.x + q.vx * h + W) % W; q.e.setAttribute("transform", `translate(${q.x.toFixed(1)} ${(floorY() - q.oy + Math.sin(q.t * 1.1 + q.ph) * 8).toFixed(1)})`); q.e.setAttribute("opacity", (.3 + .7 * (.5 + .5 * Math.sin(q.t * 2.2 + q.ph))).toFixed(2)); }
     for (const q of AMB.bf) { q.t += h; q.vx = Math.sin(q.t * .6 + q.ph) * 20; q.x = (q.x + q.vx * h + W) % W; const fl = Math.abs(Math.sin(q.t * 11 + q.ph)); q.e.setAttribute("transform", `translate(${q.x.toFixed(1)} ${(floorY() - q.oy + Math.sin(q.t * 1.5 + q.ph) * 14).toFixed(1)})`); q.e.querySelector(".w1").setAttribute("rx", (3 * fl + .6).toFixed(1)); q.e.querySelector(".w2").setAttribute("rx", (3 * fl + .6).toFixed(1)); }
     if (!wantFl && AMB.flies.length) { AMB.flies.forEach(q => q.e.remove()); AMB.flies = []; }
     if (!wantBf && AMB.bf.length) { AMB.bf.forEach(q => q.e.remove()); AMB.bf = []; }
+    festive(h);
     // estrella fugaz
     AMB.starT -= h; if (AMB.starT <= 0) { AMB.starT = rnd(18, 45); if (night && !space) fx("g", { x: rnd(W * .25, W * .95), y: skyY(rnd(.05, .35)), vx: -rnd(260, 360), vy: rnd(80, 130), life: .9, html: `<line x1="0" y1="0" x2="38" y2="-13" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".9"/>` }); }
+  }
+  // ---------- fiestas y estaciones: decoraciones en el suelo, gorros en los animales y cosas en el cielo ----------
+  const gDeco = el("g", { "pointer-events": "none" }, svg); svg.insertBefore(gDeco, gMon);   // sobre las construcciones, bajo los animales
+  const D = (y, m, d) => new Date(y, m - 1, d), addD = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+  const nthSun = (y, m, n) => { const f = D(y, m, 1); return addD(f, (7 - f.getDay()) % 7 + 7 * (n - 1)); };
+  function easterOf(y) {
+    const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3),
+      h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+    return D(y, Math.floor((h + l - 7 * m + 114) / 31), ((h + l - 7 * m + 114) % 31) + 1);
+  }
+  const CNY = { 2026: [2, 17], 2027: [2, 6], 2028: [1, 26], 2029: [2, 13], 2030: [2, 3], 2031: [1, 23] };   // año nuevo chino
+  const IND = { 2024: 20, 2025: 20, 2028: 20, 2029: 20, 2032: 20 };   // dia de los pueblos indigenas (20 o 21 de junio)
+  const todayD = () => { const m = (Q.get("fecha") || "").match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? new Date(+m[1], m[2] - 1, +m[3], 12) : new Date(); };
+  // at(y) = [dia principal, dias antes, dias despues]; g = cosas en el suelo, f = cosas en el cielo, hats = gorros de los animales
+  const FIESTAS = [
+    { id: "anonuevo", n: "Año Nuevo", at: y => [D(y, 1, 1), 4, 1], g: ["gift"], f: ["star", "confetti"], fw: 1, hats: ["sombrero de fiesta"] },
+    { id: "valentin", n: "San Valentín", at: y => [D(y, 2, 14), 7, 0], g: ["flower"], f: ["heart"], hats: ["corazones"], pal: ["#ff4d6d", "#ff8fb3", "#e53935"] },
+    { id: "chino", n: "Año Nuevo chino", at: y => CNY[y] ? [D(y, CNY[y][0], CNY[y][1]), 7, 3] : null, f: ["lantern"], hats: ["sombrero de fiesta"] },
+    { id: "mujerciencia", n: "Día de la Mujer y la Niña en la Ciencia", at: y => [D(y, 2, 11), 0, 0], f: ["balloon"], hats: ["flor", "lentes redondos"], pal: ["#c79bff", "#8e44ad", "#ff8fb3"] },
+    { id: "darwin", n: "Día de Darwin", at: y => [D(y, 2, 12), 0, 0], f: ["bird", "leaf"], hats: ["lentes redondos"] },
+    { id: "mujer", n: "Día de la Mujer", at: y => [D(y, 3, 8), 0, 0], g: ["flower"], f: ["balloon"], hats: ["flor"], pal: ["#c79bff", "#ff8fb3", "#fff27a"] },
+    { id: "pi", n: "Día de Pi", at: y => [D(y, 3, 14), 0, 0], f: ["pi"], hats: ["lentes redondos"] },
+    { id: "patricio", n: "San Patricio", at: y => [D(y, 3, 17), 0, 0], g: ["clover"], f: ["clover"], hats: ["duende"] },
+    { id: "pascua", n: "Pascua", at: y => [easterOf(y), 7, 1], g: ["egg"], f: ["petal"], hats: ["orejas de conejo"] },
+    { id: "inocentes", n: "Día de los Inocentes", at: y => [D(y, 4, 1), 0, 0], f: ["confetti"], hats: ["sombrero de fiesta"] },
+    { id: "trabajo", n: "Día del Trabajo", at: y => [D(y, 5, 1), 0, 0], f: ["balloon"], hats: ["gorra"], pal: ["#e53935", "#ffb347"] },
+    { id: "tierra", n: "Día de la Tierra", at: y => [D(y, 4, 22), 0, 0], g: ["flower"], f: ["leaf", "petal"], hats: ["flor"], pal: ["#7ed957", "#fff27a", "#ff8fb3"] },
+    { id: "adn", n: "Día del ADN", at: y => [D(y, 4, 25), 0, 0], f: ["helix"], hats: ["lentes redondos"] },
+    { id: "starwars", n: "Día de Star Wars", at: y => [D(y, 5, 4), 0, 0], f: ["ship"], hats: [] },
+    { id: "madre", n: "Día de la Madre", at: y => [nthSun(y, 5, 2), 3, 0], g: ["flower"], f: ["balloon", "heart"], hats: ["flor"], pal: ["#ff8fb3", "#ff4d6d", "#fff27a"] },
+    { id: "glorias", n: "Glorias Navales", at: y => [D(y, 5, 21), 0, 0], g: ["flag"], hats: [] },
+    { id: "indigenas", n: "Día de los Pueblos Indígenas", at: y => [D(y, 6, IND[y] || 21), 0, 0], f: ["star"], hats: ["flor"] },
+    { id: "padre", n: "Día del Padre", at: y => [nthSun(y, 6, 3), 3, 0], f: ["balloon"], hats: ["sombrero de copa"], pal: ["#3b82f6", "#1e3a8a", "#7ed957"] },
+    { id: "microbioma", n: "Día del Microbioma", at: y => [D(y, 6, 27), 0, 0], f: ["bacterium"], hats: ["lentes redondos"] },
+    { id: "nino", n: "Día del Niño", at: y => [nthSun(y, 8, 2), 3, 0], g: ["gift"], f: ["balloon", "confetti"], hats: ["sombrero de fiesta"] },
+    { id: "patrias", n: "Fiestas Patrias", at: y => [D(y, 9, 18), 7, 2], g: ["flag", "fonda"], f: ["kite"], fw: 1, hats: ["chupalla"] },
+    { id: "profesor", n: "Día del Profesor", at: y => [D(y, 10, 16), 0, 0], f: ["star"], hats: ["lentes redondos"] },
+    { id: "halloween", n: "Halloween", at: y => [D(y, 10, 31), 7, 0], g: ["pumpkin"], f: ["bat", "ghost"], hats: ["sombrero de bruja"] },
+    { id: "navidad", n: "Navidad", at: y => [D(y, 12, 25), 7, 1], g: ["tree", "gift"], f: ["snow", "star"], hats: ["gorro de santa"] },
+    { id: "pasteur", n: "Cumpleaños de Pasteur", at: y => [D(y, 12, 27), 0, 0], f: ["bacterium"], hats: ["lentes redondos"] },
+  ];
+  const seasonOf = d => { const v = (d.getMonth() + 1) * 100 + d.getDate(); return v >= 1221 || v < 320 ? "verano" : v < 621 ? "otoño" : v < 922 ? "invierno" : "primavera"; };
+  const PAL = ["#ff4d6d", "#ffb347", "#8fd0ff", "#c79bff", "#fff27a", "#7ed957", "#ff8fb3"];
+  const FEST = { sig: "", active: [], season: "verano", kinds: [], fl: [], items: [], tm: {}, chk: 0, rainT: 120, fwT: 5 };
+  const RATE = { heart: 3, balloon: 5, kite: 9, lantern: 4, bat: 5, ghost: 7, bacterium: 5, helix: 8, pi: 6, clover: 5, leaf: 2.5, petal: 2.5, star: 5, ship: 14, confetti: 4, snow: .35, bird: 9 };
+  function activeFiestas(d) {
+    const force = (Q.get("fiesta") || "").split(",").filter(Boolean);
+    if (force.length) return FIESTAS.filter(f => force.includes(f.id)).map(f => ({ f, main: d, dist: 0 }));
+    const out = [], t0 = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    for (const f of FIESTAS) for (let y = d.getFullYear() - 1; y <= d.getFullYear() + 1; y++) {
+      const r = f.at(y); if (!r) continue;
+      const main = new Date(r[0].getFullYear(), r[0].getMonth(), r[0].getDate());
+      if (t0 >= addD(main, -r[1]) && t0 <= addD(main, r[2])) { out.push({ f, main, dist: Math.round((t0 - main) / 864e5) }); break; }
+    }
+    return out;
+  }
+  // dibujos (el suelo en y = 0; en el cielo, centrados)
+  function decoSvg(kind, col) {
+    const c = col || pick(PAL);
+    switch (kind) {
+      case "pumpkin": return `<ellipse cy="-6" rx="9" ry="7" fill="#f58a1f"/><path d="M-3.5 -12Q-7 -6 -3.5 0M3.5 -12Q7 -6 3.5 0" stroke="#c76a10" fill="none"/><rect x="-1.2" y="-16" width="2.4" height="4.5" fill="#4b6b2a"/><path d="M-5 -8l2.3 -3 2.3 3zM.4 -8l2.3 -3 2.3 3z" fill="#ffd84a"/><path d="M-4.5 -3.2Q0 0 4.5 -3.2" stroke="#ffd84a" stroke-width="1.4" fill="none"/>`;
+      case "tree": {
+        const lights = Array.from({ length: 9 }, (_, i) => { const y = -12 - i * 4.2, x = Math.sin(i * 2.1) * (12 - i * 1.1); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.6" fill="${["#ff5252", "#ffd84a", "#4fc3f7", "#fff"][i % 4]}"><animate attributeName="opacity" values=".2;1;.2" dur="${(1 + (i % 3) * .5).toFixed(1)}s" begin="${(i * .23).toFixed(2)}s" repeatCount="indefinite"/></circle>`; }).join("");
+        return `<g transform="scale(.8)"><rect x="-2.5" y="-6" width="5" height="6" fill="#6b4a2a"/><path d="M-16 -6L0 -27L16 -6Z" fill="#1f7a3a"/><path d="M-13 -19L0 -38L13 -19Z" fill="#238c42"/><path d="M-10 -31L0 -48L10 -31Z" fill="#27a04c"/><path d="M0 -55l1.7 3.5 3.8.5-2.8 2.7.7 3.8L0 -45.8l-3.4 1.7.7-3.8-2.8-2.7 3.8-.5z" fill="#ffd84a"/>${lights}</g>`;
+      }
+      case "gift": return `<rect x="-6" y="-9" width="12" height="9" fill="${c}"/><rect x="-1" y="-9" width="2" height="9" fill="#fff" opacity=".85"/><rect x="-6" y="-5" width="12" height="2" fill="#fff" opacity=".85"/><path d="M0 -9Q-5 -15 -1 -12ZM0 -9Q5 -15 1 -12Z" fill="#fff" stroke="#999" stroke-width=".4"/>`;
+      case "egg": return `<ellipse cy="-4.6" rx="3.6" ry="4.8" fill="${c}"/><path d="M-3.5 -5Q-1.7 -7 0 -5T3.5 -5" stroke="#fff" stroke-width="1" fill="none" opacity=".85"/><circle cx="-1" cy="-2.2" r=".8" fill="#fff" opacity=".8"/>`;
+      case "flag": return `<rect x="-.8" y="-36" width="1.6" height="36" fill="#8a8a8a"/><g><rect x=".8" y="-36" width="24" height="7.5" fill="#fff"/><rect x=".8" y="-28.5" width="24" height="7.5" fill="#d52b1e"/><rect x=".8" y="-36" width="9.5" height="7.5" fill="#0039a6"/><path d="M5.5 -34.7l.8 1.7 1.8.2-1.3 1.2.4 1.8-1.7-.9-1.7.9.4-1.8-1.3-1.2 1.8-.2z" fill="#fff"/><animateTransform attributeName="transform" type="skewY" values="0;7;0" dur="1.7s" repeatCount="indefinite"/></g>`;
+      case "fonda": {
+        const tri = Array.from({ length: 9 }, (_, i) => { const x = -19 + i * 4.75, y = -19 + Math.sin(i / 8 * Math.PI) * 4; return `<path d="M${x.toFixed(1)} ${y.toFixed(1)}l4 0 -2 6z" fill="${["#d52b1e", "#fff", "#0039a6"][i % 3]}" stroke="#999" stroke-width=".3"/>`; }).join("");
+        return `<rect x="-19" y="-24" width="2.6" height="24" fill="#8a5a2b"/><rect x="16.4" y="-24" width="2.6" height="24" fill="#8a5a2b"/><path d="M-24 -23L0 -37L24 -23Z" fill="#c9a35a"/><path d="M-19 -19Q0 -13 19 -19" stroke="#666" stroke-width=".7" fill="none"/>${tri}<rect x="-8" y="-8" width="16" height="3" fill="#8a5a2b"/><rect x="-7" y="-5" width="2" height="5" fill="#8a5a2b"/><rect x="5" y="-5" width="2" height="5" fill="#8a5a2b"/>`;
+      }
+      case "flower": return `<path d="M0 0V-9" stroke="#3f8f3a" stroke-width="1.3"/>${[0, 72, 144, 216, 288].map(a => `<circle cx="${(Math.cos(a * Math.PI / 180) * 3).toFixed(1)}" cy="${(-10 + Math.sin(a * Math.PI / 180) * 3).toFixed(1)}" r="2.2" fill="${c}"/>`).join("")}<circle cy="-10" r="1.5" fill="#ffd84a"/>`;
+      case "clover": return `<path d="M0 0V-7" stroke="#2e7d32" stroke-width="1.1"/>${[[-2.4, -9], [2.4, -9], [0, -11.5], [0, -7.5]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.2" fill="#2fa84f"/>`).join("")}`;
+      // cielo
+      case "heart": return `<path d="M0 7C-12 -2 -7 -11 0 -4C7 -11 12 -2 0 7Z" fill="${c}"/>`;
+      case "balloon": return `<ellipse rx="7.5" ry="9.5" fill="${c}"/><ellipse cx="-2.5" cy="-3.5" rx="1.8" ry="2.8" fill="#fff" opacity=".45"/><path d="M0 9.5Q-3 16 0 23" stroke="#777" stroke-width=".8" fill="none"/>`;
+      case "kite": return `<path d="M0 -13L9 0L0 15L-9 0Z" fill="${["#d52b1e", "#0039a6", "#fff", "#ffb347"][Math.floor(Math.random() * 4)]}" stroke="#555" stroke-width=".6"/><path d="M0 -13V15M-9 0H9" stroke="#666" stroke-width=".7"/><path d="M0 15Q-5 21 0 27T0 39T0 51" stroke="#d52b1e" stroke-width="1.6" fill="none"/>`;
+      case "lantern": return `<path d="M0 -12V-9" stroke="#8a5a2b"/><rect x="-7" y="-9" width="14" height="16" rx="6" fill="#d52b1e"/><rect x="-3" y="-9" width="6" height="16" rx="3" fill="#f0483a"/><rect x="-4" y="-10" width="8" height="2" fill="#f4c430"/><path d="M0 7v7" stroke="#f4c430" stroke-width="1.2"/>`;
+      case "bat": return `<path d="M-11 -1Q-7 -8 -3 -3Q0 -6 3 -3Q7 -8 11 -1Q7 -2 4 3Q0 0 -4 3Q-7 -2 -11 -1Z" fill="#241a2e"/>`;
+      case "ghost": return `<path d="M-8 9V-2A8 9 0 0 1 8 -2V9L5 7L2 9L-1 7L-4 9L-6 7Z" fill="#fff" opacity=".88"/><circle cx="-3" cy="-1" r="1.4" fill="#333"/><circle cx="3" cy="-1" r="1.4" fill="#333"/><ellipse cy="4" rx="1.6" ry="2.2" fill="#333"/>`;
+      case "bacterium": return `<rect x="-10" y="-4.5" width="20" height="9" rx="4.5" fill="${["#7ed957", "#4fc3f7", "#ff8fb3"][Math.floor(Math.random() * 3)]}" opacity=".92"/><circle cx="-4" cy="0" r="1.3" fill="#fff" opacity=".6"/><circle cx="3" cy="-1" r="1" fill="#fff" opacity=".6"/><path d="M10 0Q15 -4 19 0T27 0" stroke="#666" stroke-width="1" fill="none"/>`;
+      case "helix": {
+        let a = "", b = "", r = "";
+        for (let y = -22; y <= 22; y += 2) { const x = 7 * Math.sin(y / 4); a += (y === -22 ? "M" : "L") + x.toFixed(1) + " " + y; b += (y === -22 ? "M" : "L") + (-x).toFixed(1) + " " + y; if ((y + 22) % 6 === 0) r += `M${x.toFixed(1)} ${y}L${(-x).toFixed(1)} ${y}`; }
+        return `<path d="${r}" stroke="#bbb" stroke-width="1" fill="none"/><path d="${a}" stroke="#4fc3f7" stroke-width="2" fill="none"/><path d="${b}" stroke="#ff8fb3" stroke-width="2" fill="none"/>`;
+      }
+      case "pi": return `<text y="8" font-size="26" style="fill:#7a5af0;font-weight:800">π</text>`;
+      case "leaf": { const lc = pick(["#e8751a", "#d4a017", "#b5361f", "#c98b2a"]); return `<path d="M0 -7Q8 -3 0 8Q-8 -3 0 -7Z" fill="${lc}"/><path d="M0 -7V9" stroke="#6b3a10" stroke-width=".7"/>`; }
+      case "petal": return `<ellipse rx="3" ry="5" fill="${pick(["#ffb6c8", "#fff", "#ffd1e0"])}" opacity=".9"/>`;
+      case "star": return `<path d="M0 -9l2.6 5.6 6 .8-4.4 4.2 1.1 6L0 4.6l-5.3 3 1.1-6-4.4-4.2 6-.8z" fill="#ffd84a"/>`;
+      case "ship": return `<path d="M-16 0L10 -3.5L16 0L10 3.5Z" fill="#9aa4b2"/><path d="M-5 -10L3 0L-5 10Z" fill="#6b7686"/><path d="M-16 0H-34" stroke="#ff4d6d" stroke-width="2" opacity=".6"/>`;
+    }
+    return "";
+  }
+  function festRebuild() {
+    gDeco.innerHTML = ""; FEST.items = [];
+    const gk = []; FEST.active.forEach(a => (a.f.g || []).forEach(k => { if (!gk.includes(k)) gk.push(k); }));
+    if (FEST.season === "primavera" && !gk.includes("flower")) gk.push("flower");
+    const N = { pumpkin: 9, tree: 4, gift: 6, egg: 14, flag: 7, fonda: 3, flower: 12, clover: 9 };
+    for (const k of gk) {
+      const pal = (FEST.active.find(a => (a.f.g || []).includes(k)) || {}).f; const colors = (pal && pal.pal) || PAL;
+      for (let i = 0; i < (N[k] || 6); i++) {
+        const e = el("g", {}, gDeco); e.innerHTML = decoSvg(k, pick(colors));
+        FEST.items.push({ e, fx: (i + rnd(.1, .9)) / (N[k] || 6), dy: rnd(3, GROUND_H - 9) });
+      }
+    }
+    FEST.items.forEach(it => { it.e.setAttribute("opacity", 1); });
+    // cosas del cielo + gorros
+    FEST.kinds = []; FEST.active.forEach(a => (a.f.f || []).forEach(k => { if (!FEST.kinds.includes(k)) FEST.kinds.push(k); }));
+    if (FEST.season === "otoño") FEST.kinds.push("leaf"); if (FEST.season === "primavera") FEST.kinds.push("petal");
+    FEST.tm = {}; FEST.kinds.forEach(k => { FEST.tm[k] = rnd(0, RATE[k] || 5); });
+    const hats = []; FEST.active.forEach(a => (a.f.hats || []).forEach(h => { if (!hats.includes(h)) hats.push(h); }));
+    A.setFestive(hats);
+  }
+  function festSpawn(kind) {
+    if (kind === "confetti") { for (let i = 0; i < 10; i++) fx("conf", { x: rnd(0, W), y: SKY, vy: rnd(40, 70), life: 7, col: pick(PAL) }); return; }
+    if (kind === "snow") { for (let i = 0; i < 2; i++) fx("flake", { x: rnd(0, W), y: SKY - 10, vy: rnd(28, 52), life: 12 }); return; }
+    if (kind === "bird") { spawnFlock(); return; }
+    if (FEST.fl.length > 30) return;
+    const e = el("g", {}, gAmb), pal = (FEST.active.find(a => (a.f.f || []).includes(kind)) || {}).f, col = pick((pal && pal.pal) || PAL);
+    e.innerHTML = decoSvg(kind, col);
+    const o = { e, kind, t: 0, ph: rnd(0, 6.28), x: rnd(0, W), y: 0, vx: 0, vy: 0, rot: 0, rs: 0, s: 1, f: null };
+    const side = chance(.5);
+    switch (kind) {
+      case "bat": o.x = side ? -30 : W + 30; o.vx = (side ? 1 : -1) * rnd(50, 80); o.f = rnd(.12, .6); break;
+      case "ghost": o.x = side ? -30 : W + 30; o.vx = (side ? 1 : -1) * rnd(12, 22); o.f = rnd(.2, .6); break;
+      case "kite": o.x = side ? -30 : W + 30; o.vx = (side ? 1 : -1) * rnd(12, 24); o.f = rnd(.1, .45); o.s = rnd(.9, 1.4); break;
+      case "ship": o.x = -40; o.vx = rnd(110, 150); o.f = rnd(.12, .5); break;
+      case "leaf": case "petal": o.y = SKY - 10; o.vy = rnd(26, 44); o.vx = rnd(-6, 6); o.rs = rnd(-90, 90); o.fall = 1; break;
+      default: o.y = floorY() - rnd(0, 30); o.vy = -rnd(12, 24); o.rs = rnd(-20, 20); o.rise = 1;
+    }
+    FEST.fl.push(o);
+  }
+  function festive(h) {
+    FEST.chk -= h;
+    if (FEST.chk <= 0) {
+      FEST.chk = 2;
+      const d = todayD(), act = activeFiestas(d), season = seasonOf(d), sig = act.map(a => a.f.id).join(",") + "|" + season;
+      if (sig !== FEST.sig) { FEST.sig = sig; FEST.active = act.map(a => Object.assign({ main: a.main, dist: a.dist }, { f: a.f })); FEST.season = season; festRebuild(); }
+    }
+    const calm = S.era < 7 && !S.saga;
+    gDeco.style.display = S.era >= 7 ? "none" : "";
+    for (const it of FEST.items) it.e.setAttribute("transform", `translate(${(it.fx * W).toFixed(1)} ${(floorY() + it.dy).toFixed(1)})`);
+    if (calm) for (const k of FEST.kinds) { FEST.tm[k] -= h; if (FEST.tm[k] <= 0) { FEST.tm[k] = (RATE[k] || 5) * rnd(.7, 1.3); festSpawn(k); } }
+    for (const o of FEST.fl) {
+      o.t += h; o.x += o.vx * h;
+      if (o.f != null) o.y = skyY(o.f) + Math.sin(o.t * (o.kind === "bat" ? 5 : 1.2) + o.ph) * (o.kind === "bat" ? 14 : 8);
+      else { o.y += o.vy * h; o.x += Math.sin(o.t * 1.3 + o.ph) * 10 * h; }
+      o.rot += o.rs * h;
+      const rot = o.kind === "kite" ? Math.sin(o.t * 1.3 + o.ph) * 10 : o.kind === "bat" || o.kind === "ghost" || o.kind === "ship" ? 0 : o.rot, flap = o.kind === "bat" ? ` scale(1 ${(.6 + .5 * Math.abs(Math.sin(o.t * 12))).toFixed(2)})` : "";
+      o.e.setAttribute("transform", `translate(${o.x.toFixed(1)} ${o.y.toFixed(1)}) rotate(${rot.toFixed(0)}) scale(${o.s.toFixed(2)})` + flap);
+    }
+    FEST.fl = FEST.fl.filter(o => { const gone = !calm || (o.rise ? o.y < SKY - 20 : o.fall ? o.y > floorY() + 8 : (o.x < -80 || o.x > W + 80)); if (gone) o.e.remove(); return !gone; });
+    // fuegos artificiales (Año Nuevo y Fiestas Patrias: el dia principal y el anterior)
+    FEST.fwT -= h;
+    if (FEST.fwT <= 0) { FEST.fwT = rnd(4, 9); if (calm && FEST.active.some(a => a.f.fw && Math.abs(a.dist) <= 1)) fireworks(rnd(W * .1, W * .9), skyY(rnd(.15, .5))); }
+    // invierno: de vez en cuando llovizna
+    FEST.rainT -= h; if (FEST.rainT <= 0) { FEST.rainT = rnd(200, 400); if (FEST.season === "invierno" && calm && !S.rain && chance(.4)) S.rain = rnd(8, 14); }
   }
   const THOUGHTS = {
     any: ["Hmm… ¿y si…?", "¡Qué buen día!", "Tengo sueño…", "Me pica la espalda", "¿Qué estarán pensando los demás?", "Qué linda tribu tenemos", "¿Habrá algo de comer?", "¿Y si descansamos un poco?", "Mañana será mejor", "¡Cómo pasa el tiempo!", "¿Habrá terminado mi job?", "Me falta un párrafo del paper", "¿Y si repito el experimento?", "Tengo que hacer backup", "¿Quedará café en el lab?", "Mi tesis me espera"],
@@ -2438,6 +2598,7 @@ const World = (function () {
 
   const WARP = parseFloat(Q.get("warp")) || 0;   // ?warp=300 adelanta la simulacion 300 s (para pruebas)
   if (WARP) setTimeout(() => { for (let t = 0; t < WARP; t += .05) step(.05); }, 3500);
+  festive(0);   // fiestas de hoy: los gorros deben estar listos antes de crear los animales
   layout(); testSetup(); requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
   return { _S: S, _ERAS: ERAS };
 })();

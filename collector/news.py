@@ -9,6 +9,7 @@ Solo libreria estandar. Uso:  news.py            # baja y publica
 """
 import email.utils
 import json
+import os
 import random
 import sys
 import time
@@ -109,6 +110,26 @@ def publish(cfg, data):
         gh(cfg, "POST", "/git/refs", {"ref": "refs/heads/" + BRANCH, "sha": commit["sha"]})
 
 
+STAMP = os.path.expanduser("~/.cache/monito-papers.ts")   # cuando se publicaron papers por ultima vez (el equipo puede estar apagado a las 7)
+
+
+def papers_due(force):
+    if force:
+        return True
+    if time.localtime().tm_hour < 7:
+        return False
+    try:
+        last = float(open(STAMP).read())
+    except (OSError, ValueError):
+        last = 0
+    return time.time() - last > 20 * 3600
+
+
+def stamp_papers():
+    os.makedirs(os.path.dirname(STAMP), exist_ok=True)
+    open(STAMP, "w").write(str(time.time()))
+
+
 def main():
     data = build()
     if not data["items"]:
@@ -123,11 +144,10 @@ def main():
             sys.exit("falta %s" % k)
     time.sleep(random.uniform(0, 8))
     publish(cfg, data)
-    try:   # el feed de papers viaja en el mismo cron, pero se consulta una vez al dia (en el primer cron despues de las 07:00)
+    try:   # el feed de papers viaja en el mismo cron, pero se consulta una vez al dia: la primera vez que corra despues de las 07:00 y hayan pasado >20 h
         import papers
-        lt = time.localtime()
-        if lt.tm_hour == 7 and lt.tm_min < 20 or "--papers" in sys.argv:
-            papers.run(cfg)
+        if papers_due("--papers" in sys.argv) and papers.run(cfg):
+            stamp_papers()
     except Exception as e:   # noqa: BLE001 - que un fallo de papers no tumbe las noticias
         print("papers: %s" % e, file=sys.stderr)
 

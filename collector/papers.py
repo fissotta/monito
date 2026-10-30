@@ -174,13 +174,14 @@ def run(cfg=None, dry=False):
     data = build()
     if not data["items"]:
         print("no se pudo bajar ningun paper", file=sys.stderr)
-        return
+        return False
     if dry:
         for i in data["items"][:25]:
             print(time.strftime("%Y-%m-%d", time.localtime(i["ts"])), "[%s]" % i["k"], i["a"], "|", i["s"], "|", i["t"][:90])
         print("total:", len(data["items"]))
-        return
+        return False
     publish(cfg, data)
+    return True
 
 
 if __name__ == "__main__":

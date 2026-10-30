@@ -62,6 +62,8 @@ h1 { font-size: 20px; margin: 0; letter-spacing: .12em; }
 #papPop .pp-txt { flex: 1; min-width: 0; }
 #papPop .pp-tag { display: inline-block; font-size: 11px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: .05em; }
 #papPop h3 { margin: 2px 0 6px; font-size: 18px; line-height: 1.25; }
+#papPop h3 a { color: inherit; text-decoration: none; }
+#papPop h3 a:hover { color: var(--accent); text-decoration: underline; }
 #papPop .pp-meta { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
 #papPop .pp-ab { line-height: 1.5; max-height: 46vh; overflow: auto; margin: 0; }
 #papPop .pp-qr { flex: none; width: 168px; text-align: center; font-size: 12px; color: var(--muted); }
@@ -207,6 +209,7 @@ svg { display: block; width: 100%; max-width: 360px; margin: 0 auto; }
   .side { width: auto; grid-column: 1; grid-row: 1 / span 2; }
   #grid { display: contents; }
   .legendbar { grid-column: 2 / span 3; margin-top: -4px; }
+  .eraRow { grid-column: 1 / -1; margin-top: 0; }   /* la cinta de papers va de lado a lado */
 }
 @media (min-width: 901px) { .ringwrap { max-width: min(360px, 27vh); } }   /* informacion arriba, civilizacion abajo: los anillos se achican segun el alto */
 .ringwrap .zoo { position: absolute; left: 0; right: 0; top: 0; bottom: 0; height: 100%; pointer-events: none; overflow: visible; }
@@ -244,8 +247,8 @@ svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
   <span class="sw" style="background:var(--warn)"></span>50–80 %
   <span class="sw" style="background:var(--bad)"></span>≥ 80 %.
   Anillo exterior: hilos (arco fino = CPU total). Anillo interior: RAM.
-  <div class="eraRow"><div id="papers" class="news" hidden><span class="news-tag" id="papersTag">Papers</span><div class="news-view"><div class="news-track" id="papersTrack"></div></div></div></div>
 </div>
+  <div class="eraRow"><div id="papers" class="news" hidden><span class="news-tag" id="papersTag">Papers</span><div class="news-view"><div class="news-track" id="papersTrack"></div></div></div></div>
 </div>
 <div id="papPop" role="dialog" aria-label="Paper" hidden></div>
 <div id="semPop" role="dialog" aria-label="Seminarios" hidden></div>
@@ -256,8 +259,8 @@ svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
 if (/[?&]ua\b/.test(location.search)) addEventListener("load", () => { const d = document.createElement("div"); d.style.cssText = "position:fixed;left:8px;right:8px;top:40px;z-index:99;background:#fff;color:#000;border:2px solid #c00;padding:10px;font:16px monospace;word-break:break-all"; d.textContent = navigator.userAgent + " | " + innerWidth + "x" + innerHeight + " @" + devicePixelRatio; document.body.appendChild(d); setTimeout(() => d.remove(), 60000); });
 </script>
 <script src="qrcode.min.js?v=1"></script>
-<script src="zoo.js?v=20261030v"></script>
-<script src="world.js?v=20261030v"></script>
+<script src="zoo.js?v=20261030z"></script>
+<script src="world.js?v=20261030z"></script>
 <script>
 // ====== Configuración ======
 const REPO = "fissotta/monito"; // "usuario/monito"  (vacío = modo demo)
@@ -278,7 +281,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
 const demo = !REPO || new URLSearchParams(location.search).has("demo");
-const BUILD = "20261030v";   // subir junto con los ?v= de los <script> en cada publicacion
+const BUILD = "20261030z";   // subir junto con los ?v= de los <script> en cada publicacion
 const state = { data: {}, next: 0, timer: null, stale: 300 };
 // si se publica una version nueva, la pagina (p. ej. en la TV) se recarga sola; revisa cada 10 min
 setInterval(async () => {
@@ -612,7 +615,7 @@ function showPaper(i) {   // ventana con revista, fecha, abstract y un QR para a
   const dt = new Date(p.ts * 1000), fecha = `${dt.getDate()} ${MESES[dt.getMonth()].slice(0, 3)} ${dt.getFullYear()}`;
   let qr = "";
   try { const q = qrcode(0, "M"); q.addData(p.u); q.make(); qr = q.createSvgTag({ cellSize: 4, margin: 0, scalable: true }); } catch { /* sin QR: no se muestra */ }
-  $("papPop").innerHTML = `<button class="x" aria-label="Cerrar">×</button><div class="pp-body"><div class="pp-txt"><span class="pp-tag">${esc(p.k)}${p.p ? " · preprint" : ""}</span><h3>${esc(p.t)}</h3>` +
+  $("papPop").innerHTML = `<button class="x" aria-label="Cerrar">×</button><div class="pp-body"><div class="pp-txt"><span class="pp-tag">${esc(p.k)}${p.p ? " · preprint" : ""}</span><h3><a href="${esc(p.u)}" target="_blank" rel="noopener" title="Abrir el paper">${esc(p.t)}</a></h3>` +
     `<div class="pp-meta">${esc(p.a ? p.a + " · " : "")}<b>${esc(p.s)}</b> · ${fecha}</div><p class="pp-ab">${p.ab ? esc(p.ab) : '<span style="color:var(--muted)">Sin abstract disponible: escanea el QR para ver el paper.</span>'}</p></div>` +
     `<div class="pp-qr"><div class="qr">${qr}</div><div style="margin-top:6px">Escanea con el celular para abrirlo</div></div></div>`;
   $("papPop").hidden = false; armPop($("papPop"));

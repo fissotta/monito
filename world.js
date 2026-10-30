@@ -61,7 +61,7 @@ const World = (function () {
   const hud = document.createElement("div"); hud.id = "hud"; hud.style.opacity = 0; document.body.appendChild(hud);
   const banner = document.createElement("div"); banner.id = "eraBanner"; document.body.appendChild(banner);
   const toasts = document.createElement("div"); toasts.id = "toasts"; document.body.appendChild(toasts);
-  const chip = document.createElement("button"); chip.id = "hudChip"; chip.title = "Ver época, población y crónica"; document.body.appendChild(chip);
+  const chip = document.createElement("button"); chip.id = "hudChip"; chip.title = "Ver época, población y crónica"; (document.getElementById("eraSlot") || document.body).appendChild(chip);
   let hudOpen = Q.has("hud"), hudTimer = 0;   // el cuadro central se esconde solo al minuto
   const setHud = on => { hudOpen = on; hud.classList.toggle("open", on); clearTimeout(hudTimer); if (on) hudTimer = setTimeout(() => setHud(false), 60000); S.hudT = 0; renderHud(); };
   if (hudOpen) { hud.classList.add("open"); hudTimer = setTimeout(() => setHud(false), 60000); }
@@ -75,7 +75,6 @@ const World = (function () {
     rails.innerHTML = `<rect x="0" y="${H - 9}" width="${W}" height="2.5" fill="#444"/>` +
       `<line x1="0" y1="${H - 5}" x2="${W}" y2="${H - 5}" stroke="#5a4630" stroke-width="3" stroke-dasharray="3 9"/>`;
     SKY = measureSky();
-    chip.style.bottom = Math.max(4, H - SKY + 8) + "px";
     dark.setAttribute("y", SKY); dark.setAttribute("height", H - SKY); tint.setAttribute("y", SKY);
     tint.setAttribute("width", W); tint.setAttribute("height", H - SKY); water.setAttribute("width", W);
     const sb = skyBg.querySelector(".sb"), sl = skyBg.querySelector(".sl"), st = skyBg.querySelector(".stars");

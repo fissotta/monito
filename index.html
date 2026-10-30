@@ -66,9 +66,13 @@ h1 { font-size: 20px; margin: 0; letter-spacing: .12em; }
 .news-track a { color: var(--text); text-decoration: none; margin-right: 40px; }
 .news-track a:hover { text-decoration: underline; }
 .news-track a b { color: var(--accent); margin-right: 7px; }
+.news-track a i { color: var(--muted); font-style: normal; margin-left: 6px; }
+.news-track a .st { color: #d4a017; margin-right: 5px; }
+.eraRow { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.eraRow .news { height: 30px; }
 @keyframes newsroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @media (max-width: 900px) {
-  .news { order: 3; flex: 1 1 100%; }
+  header .news { order: 3; flex: 1 1 100%; }
   .layout { flex-direction: column; align-items: stretch; gap: 12px; }
   .side { position: static; width: 100%; }
   .clock { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 4px 14px; }
@@ -102,7 +106,7 @@ button {
   border-radius: 8px; padding: 7px 12px; cursor: pointer; min-height: 36px;
 }
 body { padding-bottom: 150px; }
-#hudChip { position: fixed; right: 10px; bottom: 150px; z-index: 45; padding: 5px 12px; background: var(--card); border: 1px solid var(--border);
+#hudChip { flex: none; padding: 5px 12px; min-height: 30px; background: var(--card); border: 1px solid var(--border);
   border-radius: 999px; font-size: 13px; cursor: pointer; transition: opacity 1.6s; box-shadow: 0 2px 10px rgba(0,0,0,.12); opacity: 0; white-space: nowrap; }
 #hudChip:hover { border-color: var(--accent); }
 #hud { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 47; display: none; width: min(540px, calc(100vw - 24px)); max-height: 80vh; overflow: auto;
@@ -200,13 +204,14 @@ svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
   <span class="sw" style="background:var(--warn)"></span>50–80 %
   <span class="sw" style="background:var(--bad)"></span>≥ 80 %.
   Anillo exterior: hilos (arco fino = CPU total). Anillo interior: RAM.
+  <div class="eraRow"><span id="eraSlot"></span><div id="papers" class="news" hidden><span class="news-tag" id="papersTag">Papers</span><div class="news-view"><div class="news-track" id="papersTrack"></div></div></div></div>
 </div>
 </div>
 <div id="wxPop" role="dialog" aria-label="El tiempo" hidden></div>
 
 
-<script src="zoo.js?v=20261030h"></script>
-<script src="world.js?v=20261030h"></script>
+<script src="zoo.js?v=20261030i"></script>
+<script src="world.js?v=20261030i"></script>
 <script>
 // ====== Configuración ======
 const REPO = "fissotta/monito"; // "usuario/monito"  (vacío = modo demo)
@@ -227,7 +232,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
 const demo = !REPO || new URLSearchParams(location.search).has("demo");
-const BUILD = "20261030h";   // subir junto con los ?v= de los <script> en cada publicacion
+const BUILD = "20261030i";   // subir junto con los ?v= de los <script> en cada publicacion
 const state = { data: {}, next: 0, timer: null, stale: 300 };
 // si se publica una version nueva, la pagina (p. ej. en la TV) se recarga sola; revisa cada 10 min
 setInterval(async () => {
@@ -488,12 +493,24 @@ function renderNext() {
 
 // ---------- noticias del mundo y de Chile (las baja un servidor cada 20 min y las publica en la rama "news") ----------
 const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+async function fetchFeed(branch, file) {   // API de GitHub (1 llamada) y, si no hay cupo, raw
+  let d = null;
+  try { const r = await fetch(`https://api.github.com/repos/${REPO}/contents/${file}?ref=${branch}`, { headers: { Accept: "application/vnd.github.raw+json" } }); if (r.ok) d = await r.json(); } catch { /* sin cupo: se prueba raw */ }
+  if (!d) try { const r = await fetch(`https://raw.githubusercontent.com/${REPO}/${branch}/${file}?t=${Date.now()}`, { cache: "no-store" }); if (r.ok) d = await r.json(); } catch { /* sin datos */ }
+  return d && d.items && d.items.length ? d : null;
+}
 async function loadNews() {
   if (!REPO) return;
-  let d = null;
-  try { const r = await fetch(`https://api.github.com/repos/${REPO}/contents/news.json?ref=news`, { headers: { Accept: "application/vnd.github.raw+json" } }); if (r.ok) d = await r.json(); } catch { /* sin cupo: se prueba raw */ }
-  if (!d) try { const r = await fetch(`https://raw.githubusercontent.com/${REPO}/news/news.json?t=${Date.now()}`, { cache: "no-store" }); if (r.ok) d = await r.json(); } catch { /* sin noticias */ }
-  if (d && d.items && d.items.length) renderNews(d);
+  const d = await fetchFeed("news", "news.json"); if (d) renderNews(d);
+}
+async function loadPapers() {   // papers nuevos de los temas del laboratorio (PubMed y preprints)
+  if (!REPO) return;
+  const d = await fetchFeed("papers", "papers.json"); if (!d) return;
+  const html = d.items.map(i => `<a href="${esc(i.u)}" target="_blank" rel="noopener" title="${esc(i.t)}"><b>${esc(i.k)}</b>${i.q ? '<span class="st">★</span>' : ""}${esc(i.t)}<i>${esc(i.a ? i.a + " · " : "")}${esc(i.s)}${i.p ? " (preprint)" : ""}</i></a>`).join(""), tr = $("papersTrack");
+  tr.innerHTML = html + html;
+  $("papers").hidden = false;
+  tr.style.animationDuration = Math.max(90, tr.scrollWidth / 2 / 60) + "s";   // ~60 px/s
+  const t = new Date(d.updated * 1000); $("papersTag").title = `Actualizados a las ${pad(t.getHours())}:${pad(t.getMinutes())} · PubMed y Europe PMC`;
 }
 function renderNews(d) {
   const html = d.items.map(i => `<a href="${esc(i.u)}" target="_blank" rel="noopener"><b>${esc(i.s)}</b>${esc(i.t)}</a>`).join(""), tr = $("newsTrack");
@@ -503,6 +520,7 @@ function renderNews(d) {
   const t = new Date(d.updated * 1000); $("newsTag").title = `Actualizadas a las ${pad(t.getHours())}:${pad(t.getMinutes())}`;
 }
 loadNews(); setInterval(loadNews, 15 * 60e3);
+loadPapers(); setInterval(loadPapers, 60 * 60e3);
 
 // ---------- el tiempo (Open-Meteo, sin clave) con un monito segun el clima; al tocarlo, la semana y un mapa de Windy ----------
 const WX_PLACE = { name: "Santiago", lat: -33.4489, lon: -70.6693 };   // cambiar si el laboratorio esta en otra ciudad

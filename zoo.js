@@ -13,6 +13,8 @@ const Zoo = (function () {
   const ACC_PER_CARD = 3;               // cuantos monos por equipo llevan accesorio
   let CAP = 9;                          // monos por equipo antes de que los nuevos se desborden y caigan
   const SCALE = 1.25;                   // tamaño general de los monos
+  const GIRAFFE_K = 1.5;                // las jirafas se dibujan 1,5 veces mas grandes (globos y zzz suben con ellas)
+  const kOf = m => (m.sp && m.sp.kind === "jirafa" ? GIRAFFE_K : 1);
 
   const rnd = (a, b) => a + Math.random() * (b - a);
   const pick = a => a[Math.floor(Math.random() * a.length)];
@@ -452,7 +454,7 @@ const Zoo = (function () {
   function draw(m) {
     const p = m.parts, P = pose(m), sp = m.sp;
     const pop = m.pop === undefined || m.pop >= 1 ? 1 : popEase(m.pop);   // aparece con rebote
-    p.mirror.setAttribute("transform", `scale(${m.dir * (sp.size || 1) * SCALE * pop} ${(sp.size || 1) * SCALE * pop})`);
+    p.mirror.setAttribute("transform", `scale(${m.dir * (sp.size || 1) * kOf(m) * SCALE * pop} ${(sp.size || 1) * kOf(m) * SCALE * pop})`);
     p.bob.setAttribute("transform", `translate(0 ${P.bob.toFixed(2)}) rotate(${P.lean.toFixed(1)})` +
       (P.flip ? ` rotate(${P.flip.toFixed(0)} 0 -8)` : ""));
     const bp = m.bp || BODY_PLANS.mono;
@@ -477,7 +479,7 @@ const Zoo = (function () {
     p.zzz.style.display = P.zzz ? "" : "none";
     if (P.zzz) {
       p.zzz.setAttribute("transform", counter);
-      const sx = m.dir * bp.zz * co + 4 * so, sy = m.dir * bp.zz * so - 4 * co;   // cabeza del mono tumbado, en pantalla
+      const sx = m.dir * bp.zz * kOf(m) * co + 4 * so, sy = m.dir * bp.zz * kOf(m) * so - 4 * co;   // cabeza del mono tumbado, en pantalla
       p.zs.forEach((z, i) => {
         const u = (m.t * .45 + i / 3) % 1;
         z.setAttribute("transform", `translate(${(sx + Math.sin(u * 7) * 2.5 + u * 3).toFixed(2)} ${(sy - 6 - u * 16).toFixed(2)})`);
@@ -489,7 +491,7 @@ const Zoo = (function () {
     const reacting = m.mode === "react" && m.say, thinking = !reacting && m.thinkT > 0 && m.think, txt = reacting ? m.say : thinking ? m.think : null;
     p.bubble.style.display = txt ? "" : "none";
     if (txt) {
-      const u = reacting ? m.t / m.dur : 1 - m.thinkT / m.thinkDur, bd = (m.bp && m.bp.bub) || 27;
+      const u = reacting ? m.t / m.dur : 1 - m.thinkT / m.thinkDur, bd = ((m.bp && m.bp.bub) || 27) * kOf(m);
       if (p.bubbleKey !== txt) {
         p.bubbleKey = txt;
         const lines = wrapLines(txt, 26), n = lines.length, w = Math.max(14, Math.max(...lines.map(l => l.length)) * 4.6 + 8);

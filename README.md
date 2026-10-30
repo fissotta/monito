@@ -87,3 +87,19 @@ crontab -e   # agregar:
 - Sucesos medievales y de guerra: asedios con catapultas, torneos de justas, cruzadas, invasores y piratas por mar, Peste Negra, un dragón, feria medieval, revueltas campesinas, batalla naval y la Guerra de los Cien Años; y en la época moderna, guerra mundial con bombarderos y guerra fría. Aparecen castillos.
 - Si un mono cae encima de otro, los dos quedan inconscientes unos segundos y el aplastado reclama al despertar.
 - Más pruebas: `?do=asedio|justas|cruzada|invasores|pestenegra|dragon|naval|guerramundial|guerrafria|choque`, `?planet=N` abre el cuadro del planeta N, `?cal` abre el calendario.
+
+## Pantalla de laboratorio (TV)
+
+- El reloj (hora, fecha y día de la semana) está a la izquierda de las tarjetas y en grande, para verlo de lejos; al tocarlo se abre el calendario de seminarios. En pantallas angostas pasa a una franja sobre las tarjetas.
+- **Mensajes en el cielo:** de vez en cuando cruza una cinta con un recordatorio para el laboratorio («¡Dejen de ver monos y vayan a trabajar!», «¿Cómo están tus bacterias?», «¿Ya ensamblaste ese genoma?», «Tesis, tesis, tesis…»). La lista está en `SKY_MSGS` (`world.js`).
+- **Mensajes para Sofi:** tocar 4 veces seguidas a un animal hace que empiece a molestarla con su escrito («Sofi, ¿cómo va tu escrito?», «¿Y si avanzas en el paper, mejor?»…). Lista en `SOFI` (`zoo.js`).
+- Los animales del suelo **piensan en voz alta** (globos punteados) según la época y la especie.
+
+## Un animal por equipo, famosos y pueblos
+
+- **akaza = monos, ymir = jirafas, inozuke = focas** (anillos y suelo). El mapa está en `MACHINES` (`index.html`).
+- **Famosos disfrazados de animal:** aparecen de vez en cuando (científicos, actores, músicos y escritores: Einstein, Curie, Darwin, Newton, Chaplin, Freddie Mercury, Frida Kahlo, Neruda, Mistral, Violeta Parra…). Al tocarlos dicen «¡Hola, soy …!» y una frase conocida; el nombre sale al dejar el cursor encima. Lista en `CELEBS` (`zoo.js`).
+- **Cada animal forma su propio pueblo** en su zona de la pantalla, con bandera, casas, religión y cultura propias. Entre ellos hay exploradores, caravanas de comercio, misioneros, tratados de paz, bodas reales, ayuda en las pandemias, y también guerras (con conquistas o treguas). Las relaciones se acumulan: pueblos enemistados pelean más.
+- **En la era espacial se funden en un solo pueblo.**
+- **Antigüedad y Edad Media** (la segunda parte de la era sedentaria, ahora más larga): cada pueblo adopta una cultura del mundo —romana, egipcia, vikinga, china, japonesa, azteca, árabe, mongola, europea o india— con sus construcciones grandes y altas (coliseo, acueducto, obeliscos, esfinge, pagodas, gran muralla, torii, pirámides escalonadas, palacios con minaretes, yurtas, mausoleo…) y sus sucesos (gladiadores, legiones, hordas a caballo).
+- Pruebas nuevas: `?celebs` (todos famosos), `?hola` (un toque), `?sofi` (cinco toques), `?era=3&medieval&cult=romana,china,vikinga`, `?do=exploradores|comercio|misioneros|tratado|ayuda|bodareal|gladiadores|legion|horda|cielo`.

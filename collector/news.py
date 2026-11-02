@@ -110,6 +110,7 @@ def publish(cfg, data):
         gh(cfg, "POST", "/git/refs", {"ref": "refs/heads/" + BRANCH, "sha": commit["sha"]})
 
 
+STAMP_MEL = os.path.expanduser("~/.cache/monito-mel.ts")   # el feed MEL (papers del laboratorio) se renueva cada 7 dias
 STAMP = os.path.expanduser("~/.cache/monito-papers.ts")   # cuando se publicaron papers por ultima vez (el equipo puede estar apagado a las 7)
 
 
@@ -123,6 +124,16 @@ def papers_due(force):
     except (OSError, ValueError):
         last = 0
     return time.time() - last > 20 * 3600
+
+
+def mel_due(force):
+    if force:
+        return True
+    try:
+        last = float(open(STAMP_MEL).read())
+    except (OSError, ValueError):
+        last = 0
+    return time.time() - last > 7 * 24 * 3600
 
 
 def stamp_papers():
@@ -150,6 +161,13 @@ def main():
             stamp_papers()
     except Exception as e:   # noqa: BLE001 - que un fallo de papers no tumbe las noticias
         print("papers: %s" % e, file=sys.stderr)
+    try:
+        import mel
+        if mel_due("--mel" in sys.argv) and mel.run(cfg):
+            os.makedirs(os.path.dirname(STAMP_MEL), exist_ok=True)
+            open(STAMP_MEL, "w").write(str(time.time()))
+    except Exception as e:   # noqa: BLE001
+        print("mel: %s" % e, file=sys.stderr)
 
 
 if __name__ == "__main__":

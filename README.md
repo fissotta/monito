@@ -203,6 +203,6 @@ Todo se sintetiza con WebAudio (sin archivos): los animales **hablan con voz de 
 
 Si en la TV no suena: toca cualquier parte de la pantalla una vez; luego, al tocar la etiqueta de versión de la cabecera, la línea «Sonido» muestra el estado del audio y un botón «probar» que hace sonar una fanfarria (así se distingue un problema de la página de un volumen bajo o silenciado en la TV).
 
-## Mensajes a pantalla completa y botones de prueba
+## Mensajes a pantalla completa
 
-Los avisos por horario (almuerzo, seminarios, café, jobs) ocupan **toda la pantalla**, al centro, con fondo blanco, el mono grande y el texto grande; empiezan con una **trompeta** («¡tu-tu tu-tuuu!»). Al tocarlos se cierran. Al tocar la etiqueta de versión de la cabecera, el cuadro trae botones **Probar** para lanzar cada aviso, cada saga de ciencia ficción (terminan en cataclismo y reinicio, ~2 min) y varios sucesos sin esperar la hora o el azar.
+Los avisos por horario (almuerzo, seminarios, jobs) ocupan **toda la pantalla**, al centro, con fondo blanco, el mono grande y el texto grande; empiezan con una **trompeta** («¡tu-tu tu-tuuu!»). Al tocarlos se cierran.

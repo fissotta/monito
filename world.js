@@ -2661,12 +2661,10 @@ const World = (function () {
     { id: "almuerzo", at: 12 * 60, days: null, title: "¡A almorzar!", sub: "Buen provecho · el paper puede esperar", mode: "eat", food: "banana", secs: 9 },
     { id: "seminario", at: 9 * 60 + 20, days: [4], title: "¡Seminario FCV!", sub: "Es hora: ¡todos al seminario!", mode: "walk", acc: { name: "lentes redondos", a: "#333", d: "#111" }, secs: 14 },
     { id: "tarde", at: 9 * 60 + 30, days: [4], title: "¿Qué hacen acá?", sub: "¿¿¿No deberían estar en el seminario???", mode: "hop", tone: "alert", secs: 16 },
-    { id: "cafe", at: 16 * 60, days: [1, 2, 3, 4, 5], title: "¡Hora del café!", sub: "Un cafecito y seguimos con los genomas", mode: "coffee", secs: 8 },
     { id: "labsem", at: 9 * 60 + 50, days: [1], title: "¡Seminario de LAB!", sub: "A las 10:00 todos al seminario", mode: "walk", acc: { name: "lentes redondos", a: "#333", d: "#111" }, secs: 14 },
     { id: "labtarde", at: 10 * 60, days: [1], title: "¿Por qué sigues acá?", sub: "¡¡¡Hay seminario!!!", mode: "hop", tone: "alert", secs: 16 },
     { id: "casa", at: 18 * 60, days: [1, 2, 3, 4, 5], title: "¿Lanzaste tus jobs?", sub: "Antes de irte: guarda, respalda y apaga el autoclave", mode: "stretch", secs: 10 },
   ];
-  let TESTDO = {};
   const firedBig = new Set();
   function bigCheck(d) {
     const m = d.getHours() * 60 + d.getMinutes();
@@ -2675,7 +2673,7 @@ const World = (function () {
       if (b.at === m && (!b.days || b.days.includes(d.getDay())) && !firedBig.has(key)) { firedBig.add(key); bigRun(b); }
     }
   }
-  if (Q.get("big")) setTimeout(() => { const b = BIG.find(x => x.id === Q.get("big")); if (b) bigRun(b); }, 1500);   // prueba: ?big=almuerzo|seminario|tarde|cafe|casa
+  if (Q.get("big")) setTimeout(() => { const b = BIG.find(x => x.id === Q.get("big")); if (b) bigRun(b); }, 1500);   // prueba: ?big=almuerzo|seminario|tarde|casa
   let lunchAt = 0;
   function lunchCheck(now) {   // una vez por segundo
     if (now - lunchAt < 1000) return;
@@ -2724,7 +2722,7 @@ const World = (function () {
     for (let i = 0; i < 14; i++) plan();
     if (S.era >= 3 && S.era <= 4) addStruct("castle", W * .5, { tribe: 1 });
     S.structs.forEach(s => s.built = 1);
-    const DO = TESTDO = { pajaros: spawnFlock, nube: () => skyMessage("¿Ya corriste GTDB-Tk en tus MAGs?", W / 2), guerra: () => { if (!tribalWar()) startWar(); }, caceria: startHunt, cohete: () => { S.destSeen = true; ensureDest(); tryLaunch(); }, meteorito: meteor, ovni: ufo, plaga: () => hurt(.25, "Plaga"),
+    const DO = { pajaros: spawnFlock, nube: () => skyMessage("¿Ya corriste GTDB-Tk en tus MAGs?", W / 2), guerra: () => { if (!tribalWar()) startWar(); }, caceria: startHunt, cohete: () => { S.destSeen = true; ensureDest(); tryLaunch(); }, meteorito: meteor, ovni: ufo, plaga: () => hurt(.25, "Plaga"),
       terremoto: quake, volcan: volcano, festival, eclipse: () => { S.eclipse = 10; }, lluvia: () => { S.rain = 12; }, cometa: comet };
     Object.assign(DO, { cataclismo: () => cataclysm({ surv: 4 }), pandemia: pandemic, incendio: fire, inundacion: () => flood(14, "Inundación"), tormenta: storm, aurora, estrellas: starShower,
       exploradores: explorers, comercio: trade, misioneros: missionaries, tratado: treaty, ayuda: aid, bodareal: royalWedding,
@@ -2748,15 +2746,5 @@ const World = (function () {
   if (WARP) setTimeout(() => { for (let t = 0; t < WARP; t += .05) step(.05); }, 3500);
   festive(0);   // fiestas de hoy: los gorros deben estar listos antes de crear los animales
   layout(); testSetup(); requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
-  // para los botones de prueba del cuadro de version (index.html)
-  const testApi = {
-    toast: t => pushToast(t),
-    bigs: () => BIG.map(b => ({ id: b.id, n: b.title })),
-    big: id => { const b = BIG.find(x => x.id === id); if (b) bigRun(b); },
-    sagas: () => SAGAS.map(q => ({ id: q.id, n: q.name })),
-    saga: id => { if (!S.started) return "La civilización empieza cuando cae el primer animal"; if (S.cata || S.saga) return "Ya hay una saga o catástrofe en curso: espera a que termine"; startSaga(id); return ""; },
-    sucesos: () => ["cataclismo", "guerra", "guerramundial", "pandemia", "cohete", "eclipse", "aurora", "cometa", "ovni", "festival", "pruebanuclear", "asedio"],
-    suceso: n => { if (!S.started) return "La civilización empieza cuando cae el primer animal"; const f = TESTDO[n]; if (f) f(); return ""; },
-  };
-  return { _S: S, _ERAS: ERAS, test: testApi };
+  return { _S: S, _ERAS: ERAS };
 })();

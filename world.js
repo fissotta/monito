@@ -2620,6 +2620,8 @@ const World = (function () {
     { id: "seminario", at: 9 * 60 + 20, days: [4], title: "¡Seminario FCV!", sub: "Es hora: ¡todos al seminario!", mode: "walk", acc: { name: "lentes redondos", a: "#333", d: "#111" }, secs: 14 },
     { id: "tarde", at: 9 * 60 + 30, days: [4], title: "¿Qué hacen acá?", sub: "¿¿¿No deberían estar en el seminario???", mode: "hop", tone: "alert", secs: 16 },
     { id: "cafe", at: 16 * 60, days: [1, 2, 3, 4, 5], title: "¡Hora del café!", sub: "Un cafecito y seguimos con los genomas", mode: "coffee", secs: 8 },
+    { id: "labsem", at: 9 * 60 + 50, days: [1], title: "¡Seminario de LAB!", sub: "A las 10:00 todos al seminario", mode: "walk", acc: { name: "lentes redondos", a: "#333", d: "#111" }, secs: 14 },
+    { id: "labtarde", at: 10 * 60, days: [1], title: "¿Por qué sigues acá?", sub: "¡¡¡Hay seminario!!!", mode: "hop", tone: "alert", secs: 16 },
     { id: "casa", at: 18 * 60, days: [1, 2, 3, 4, 5], title: "¿Lanzaste tus jobs?", sub: "Antes de irte: guarda, respalda y apaga el autoclave", mode: "stretch", secs: 10 },
   ];
   const firedBig = new Set();

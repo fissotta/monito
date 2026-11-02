@@ -7,7 +7,7 @@
  * Pruebas: ?turbo=20 acelera el tiempo; ?era=N empieza en esa era; ?do=guerra|cohete|meteorito|ovni|... */
 const World = (function () {
   "use strict";
-  const A = Zoo.api, LOW = !!A.low, FX_MAX = LOW ? 110 : 240;   // FX_MAX = tope de particulas decorativas
+  const A = Zoo.api, SN = A.snd, LOW = !!A.low, FX_MAX = LOW ? 110 : 240;   // FX_MAX = tope de particulas decorativas
   const NS = "http://www.w3.org/2000/svg";
   const Q = new URLSearchParams(location.search);
   const SKYOFF = Q.get("cielo") === "off";   // ?cielo=off: sin cielo vivo
@@ -186,6 +186,7 @@ const World = (function () {
     if (S.log.length > 40) S.log.length = 40;
     S.hudT = 0;
     if (S.started) pushToast(text);   // aviso flotante que se desvanece
+    if (S.started) SN.fx("ding", 3);
   }
   function showBanner(text) {
     banner.textContent = text; banner.classList.remove("on"); void banner.offsetWidth; banner.classList.add("on");
@@ -378,6 +379,7 @@ const World = (function () {
     const def = KINDS[kind];
     const s = Object.assign({ kind, x, w: def.w, t: rnd(0, 9), built: 0, dying: 0, flip: chance(.5), mobile: !!def.mobile, temp: !!def.temp, _c: {} }, o || {});
     s.$ = sel => s._c[sel] || (s._c[sel] = s.el.querySelector(sel));
+    if (S.started) SN.fx("thud", .5);
     if (def.init) def.init(s);
     s.el = el("g", {}, gStruct); s.el.innerHTML = def.draw(s);
     if (BLD[kind]) { s.el.style.pointerEvents = "all"; s.el.style.cursor = "pointer"; s.el.addEventListener("click", e => { e.stopPropagation(); showBuilding(s, e.clientX, e.clientY); }); }   // los importantes dicen que son
@@ -540,11 +542,13 @@ const World = (function () {
   const dust = (x, n) => { for (let i = 0; i < n; i++) fx("puff", { x: x + rnd(-14, 14), y: floorY() + rnd(2, 8), vx: rnd(-25, 25), vy: -rnd(5, 25), r0: 2, r1: 7, life: rnd(.5, .9), col: "#b9a98a", op: .6 }); };
   const burst = (x, y, n, col, sp) => { for (let i = 0; i < n; i++) { const a = rnd(0, 6.28), v = rnd(.3, 1) * sp; fx("spark", { x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - sp * .3, g: 200, life: rnd(.4, .9), col }); } };
   function boom(x, y, big) {
+    SN.fx(big ? "boomBig" : "boom", .4);
     fx("flash", { x, y, r0: 4, r1: big ? 46 : 20, life: .35, col: "#ffd27a", op: .9 });
     for (let i = 0; i < (big ? 9 : 4); i++) fx("puff", { x: x + rnd(-8, 8), y: y + rnd(-6, 4), vx: rnd(-30, 30), vy: -rnd(10, 40), r0: 3, r1: big ? 16 : 10, life: rnd(.7, 1.3), col: pick(["#6b6b6b", "#8a8a8a", "#3b3b3b"]), op: .75 });
     burst(x, y, big ? 14 : 6, "#ff9a3c", 130);
   }
   function fireworks(x, y) {
+    SN.fx("pop", .15);
     const h = rnd(0, 360);
     for (let i = 0; i < 30; i++) { const a = i / 30 * 6.28, v = rnd(70, 120); fx("spark", { x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: 90, life: rnd(.9, 1.4), col: `hsl(${h + rnd(-30, 30)} 90% 60%)`, r: 2 }); }
   }
@@ -642,6 +646,7 @@ const World = (function () {
   );
   let skyDeck = [];
   function skyMessage(fixed, atX) {
+    SN.fx("whoosh", 2);
     if (!skyDeck.length) skyDeck = shuffle(SKY_MSGS.concat(SKY_MSGS_MORE));
     const txt = typeof fixed === "string" ? fixed : skyDeck.pop(), w = txt.length * 9 + 104, dir = chance(.5) ? 1 : -1, y0 = skyY(rnd(.42, .68)), dur = rnd(24, 32);
     // una nube gordita: base redondeada, ruedas de esponja arriba (mas grandes al centro) y una sombra azulada abajo para dar volumen
@@ -888,6 +893,7 @@ const World = (function () {
   }
   // ---------- poderes: botones para provocar sucesos en la civilizacion (para mal o para bien) ----------
   function manna() {   // comida del cielo
+    SN.fx("cheer", 3);
     logEv(`¡Cae comida del cielo sobre ${T()}!`);
     const items = [
       `<path d="M-6 0Q0 8 6 0Q4 -7 -6 -4Z" fill="#ffd84a" stroke="#c9a200" stroke-width=".6"/>`,
@@ -907,6 +913,7 @@ const World = (function () {
     });
   }
   function alienGift() {   // los alienigenas regalan tecnologia
+    SN.fx("zap", 3);
     const tx = rnd(W * .3, W * .7), sx = chance(.5) ? -70 : W + 70, ex = sx < 0 ? W + 80 : -80, y = Math.max(SKY + 50, skyY(.25)), ground = floorY() - y;
     logEv(`¡Una nave alienígena se detiene sobre ${T()}!`);
     fx("g", { x: sx, y, life: 11, html: `<ellipse rx="30" ry="9" fill="#8fe3c8"/><ellipse cy="-6" rx="14" ry="9" fill="#bff3ff" opacity=".85"/><circle cx="-18" cy="2" r="2.2" fill="#fff27a"/><circle cx="0" cy="4" r="2.2" fill="#fff27a"/><circle cx="18" cy="2" r="2.2" fill="#fff27a"/>`,
@@ -1351,6 +1358,7 @@ const World = (function () {
 
   // --- sucesos ---
   function festival() {
+    SN.fx("cheer", 3);
     const g = free(); if (g.length < 3) return;
     S.stats.festivales++;
     g.slice(0, 12).forEach(x => { x.act = "cheer"; x.stay = rnd(4, 7); x.m.t = 0; });
@@ -1359,6 +1367,7 @@ const World = (function () {
     logEv(pick([`Gran fiesta en ${T()}`, `Celebran la cosecha con música`, `Se casan dos monos y todos bailan`]));
   }
   function hurt(frac, text, key) {
+    SN.fx("sad", 4);
     S.stats[key || "plagas"]++;
     const n = Math.max(1, Math.floor(popTotal() * frac));
     let k = Math.min(n, Math.floor(S.extra)); S.extra -= k;
@@ -1366,6 +1375,7 @@ const World = (function () {
     logEv(`${text} (-${n})`);
   }
   function quake() {
+    SN.fx("rumble", 3);
     S.stats.terremotos++;
     const t = S.structs.filter(s => !s.mobile && !s.dying && !s.temp && s.built > .8);
     if (t.length > 2 && chance(.6)) { const s = pick(t); s.dying = .001; boom(s.x, floorY() - 10, true); }
@@ -1373,12 +1383,14 @@ const World = (function () {
     S.shake = 1.2; logEv(`Terremoto: tiembla la tierra`);
   }
   function volcano() {
+    SN.fx("rumble", 3);
     const x = chance(.5) ? rnd(60, W * .25) : rnd(W * .75, W - 60);
     const v = addStruct("volcano", x); v.lifeT = 14;
     logEv(`Un volcán despierta cerca de ${T()}`);
     groundMons().slice(0, 5).forEach(g => { g.m.mode = "react"; g.m.t = 0; g.m.dur = 1.7; g.m.say = "¡aaah!"; });
   }
   function meteor(quiet) {
+    SN.fx("whoosh", 1);
     const x = rnd(W * .15, W * .85), x0 = x + rnd(250, 420);
     fx("g", { x: x0, y: SKY - 30, life: 1.3, vx: (x - x0) / 1.3, vy: (floorY() + 6) / 1.3 * 1.0, html: `<circle r="6" fill="#ffd27a"/><circle r="11" fill="#ff9a3c" opacity=".4"/><line x1="0" y1="0" x2="60" y2="-40" stroke="#ff9a3c" stroke-width="5" stroke-linecap="round" opacity=".6"/>`,
       tick: f => { if (f.life < .05 && !f.hit) { f.hit = true; impact(f.x, quiet); } } });
@@ -1398,6 +1410,7 @@ const World = (function () {
     logEv(`Un cometa cruza el cielo: ¿buen augurio?`);
   }
   function ufo() {
+    SN.fx("zap", 3);
     const g = pick(free()); if (!g) return;
     S.busy = true; g.hold = true; g.act = "idle"; g.stay = 99;
     const dir = chance(.5) ? 1 : -1;
@@ -1472,6 +1485,7 @@ const World = (function () {
     }
   }
   function fire() {
+    SN.fx("crackle", 3);
     const t = S.structs.filter(s => !s.mobile && !s.dying && !s.temp && s.built > .8 && !s.fireT);
     if (!t.length) return;
     const s = pick(t); S.stats.incendios++;
@@ -1480,6 +1494,7 @@ const World = (function () {
     free().slice(0, 4).forEach(g => { g.m.say = "¡fuego!"; g.m.mode = "react"; g.m.t = 0; g.m.dur = 1.7; });
   }
   function flood(secs, text) {
+    SN.fx("splash", 3);
     S.flood = S.floodMax = secs; logEv(text);
     groundMons().slice(0, 6).forEach(g => { g.m.say = "¡agua!"; g.m.mode = "react"; g.m.t = 0; g.m.dur = 1.7; });
   }
@@ -1492,6 +1507,7 @@ const World = (function () {
     if (!S.saga) { tint.setAttribute("fill", "#d98c2b"); tint.style.opacity = .12; }
   }
   function storm() {
+    SN.fx("thunder", 3);
     S.rain = rnd(9, 14); logEv(`Tormenta eléctrica sobre ${T()}`);
     for (let i = 0; i < 3 + (Math.random() * 3 | 0); i++) later(1 + i * rnd(1.5, 3), () => bolt());
   }
@@ -1511,6 +1527,7 @@ const World = (function () {
     cheerSome(4, 6);
   }
   function starShower() {
+    SN.fx("cheer", 3);
     logEv(`Lluvia de estrellas: todos piden un deseo`); cheerSome(5, 5);
     for (let i = 0; i < 14; i++) later(i * .45, () => fx("g", { x: rnd(0, W), y: SKY + rnd(0, skyH() * .3), life: .9, vx: 260, vy: 150,
       html: `<line x1="0" y1="0" x2="-40" y2="-24" stroke="#fff" stroke-width="2" stroke-linecap="round"/><circle r="2.2" fill="#fff"/>` }));
@@ -1721,6 +1738,7 @@ const World = (function () {
   // --- guerra y paz ---
   const WEAPON = ["stone", "stone", "arrow", "arrow", "ball", "ball", "bullet", "laser"];
   function startWar(label, opts) {
+    SN.fx("clash", 5);
     opts = opts || {};
     const L = [], R2 = []; let cx = rnd(W * .3, W * .7), tribes = null;
     if (opts.tribes) {   // guerra entre dos pueblos: cada uno pone a los suyos a ambos lados de la frontera
@@ -1985,7 +2003,7 @@ const World = (function () {
     gs.sort((a, b) => Math.abs(a.x - pad.x) - Math.abs(b.x - pad.x));
     const grp = gs.slice(0, 2 + (Math.random() * 3 | 0));
     grp.forEach(g => sendTo(g, pad.x + rnd(-16, 16), "cheer", 1, 99));
-    S.launch = { pad, grp, t: 0, pl }; S.busy = true;
+    S.launch = { pad, grp, t: 0, pl }; S.busy = true; later(6, () => SN.fx("rocket", 5));
     logEv(`Preparan un cohete hacia ${pl.name}`);
     return true;
   }
@@ -2446,7 +2464,7 @@ const World = (function () {
   }
   function eraUp() {
     S.era++; S.eraT = 0; S.eraDur = ERAS[S.era].dur * rnd(.75, 1.35); S.msT = 4; S.medieval = false; S.digital = false;
-    ground.setAttribute("fill", ERAS[S.era].ground);
+    SN.fx("fanfare", 3); ground.setAttribute("fill", ERAS[S.era].ground);
     showBanner(ERAS[S.era].name); logEv(`Comienza: ${ERAS[S.era].name}`);
     if (S.era === 3) logEv(`Nace ${S.city}, la primera aldea de ${T()}`);
     burst(W / 2, floorY() - 20, 14, "#ffd23f", 100);
@@ -2569,12 +2587,16 @@ const World = (function () {
       row("Riqueza (especies)", x => x.R) + row("Shannon H′", x => x.H.toFixed(2)) + row("Simpson 1−D", x => x.simp.toFixed(2)) + row("Dominancia", x => Math.round(x.dom * 100) + " %") + row("Equidad J", x => x.J.toFixed(2)) +
       `</table><div class="small">Riqueza: cuántas especies hay. Shannon: diversidad que pesa especies raras y comunes (más alto = más diverso). Simpson: probabilidad de que dos animales al azar sean de especies distintas. Dominancia: % de la especie más abundante (Berger–Parker). Equidad: qué parejo es el reparto entre especies (1 = perfecto).</div></div>`;
   }
+  function kindCounts() {   // monos, jirafas y focas (suelo + la gente no dibujada repartida en partes iguales)
+    const ico = { mono: "🐵", jirafa: "🦒", foca: "🦭" }, g = groundMons(), ex = Math.floor(S.extra / 3);
+    return TRIBE_KINDS.map(k => ico[k] + " " + (g.filter(x => x.m.kind === k).length + ex)).join("  ");
+  }
   function renderHud() {
     if (!S.started) { if (hudOpen) hud.innerHTML = "La civilización empieza cuando cae el primer animal de los anillos."; return; }
     if (S.hudT > 0) return;
     S.hudT = .3;
     const e = ERAS[S.era], pop = popTotal(), st = S.stats;
-    chip.innerHTML = `<b>${eraName()}</b> · ${fmtYear(curYear())}` + (S.cycle > 1 ? ` · Ciclo ${S.cycle}` : "") + ` ▸<br><span class="ct">Animales: ${pop}</span>`;
+    chip.innerHTML = `<b>${eraName()}</b> · ${fmtYear(curYear())}` + (S.cycle > 1 ? ` · Ciclo ${S.cycle}` : "") + ` ▸<br><span class="ct">Animales: ${pop} · ${kindCounts()}</span>`;
     let h = `<b>${eraName()}</b> · ${fmtYear(curYear())}<br>${popLine()}` + (S.cycle > 1 ? ` · Ciclo ${S.cycle}` : "") + (S.tribes.some(t => t.cult) && !S.unified && S.era <= 4 ? `<br>Culturas: ${S.tribes.map(t => `${TRIBE_INFO[t.kind].plural} ${CULTURES[t.cult] ? CULTURES[t.cult].name : "—"}`).join(" · ")}` : "") +
       (S.saga ? `<br>Saga: ${S.saga.def.name}` : "") +
       (S.era === 7 && S.destSeen ? ` · ${S.dest.name}: ${S.colonists}${S.won ? " ✔" : "/" + S.goal}` : "");
@@ -2618,6 +2640,7 @@ const World = (function () {
     for (let i = 0; i < BIG_TIMES; i++) bigSeries.push(setTimeout(() => bigMsg(o), i * BIG_GAP * 1000));
   }
   function bigMsg(o) {
+    SN.fx("bell", 3);
     closeBig();
     const NS = "http://www.w3.org/2000/svg", sp = pick(A.SPECIES_BY_KIND.mono);
     const m = { sp, kind: "mono", pal: A.palette(sp), dir: 1, phase: 0, t: 0, dur: 6, mode: o.mode, mood: { low: 0, mid: 1, high: o.mode === "hop" ? 1 : 0 }, theta: 0, seed: 5,

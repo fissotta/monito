@@ -30,6 +30,7 @@ def build():
         title = " ".join("".join(a.find(".//ArticleTitle").itertext()).split())
         abstract = " ".join((x.get("Label") + ": " if x.get("Label") else "") + "".join(x.itertext()) for x in a.iter("AbstractText"))
         authors = [au.findtext("LastName") for au in a.iter("Author") if au.findtext("LastName")]
+        full = ", ".join((au.findtext("LastName") + " " + (au.findtext("Initials") or "")).strip() for au in a.iter("Author") if au.findtext("LastName"))
         y = a.findtext(".//ArticleDate/Year") or a.findtext(".//PubDate/Year") or (a.findtext(".//PubDate/MedlineDate") or "")[:4]
         mo = a.findtext(".//ArticleDate/Month") or a.findtext(".//PubDate/Month") or "1"
         d = a.findtext(".//ArticleDate/Day") or a.findtext(".//PubDate/Day") or "1"
@@ -40,7 +41,7 @@ def build():
             ts = int(time.time())
         items.append({"t": title[:220], "u": "https://pubmed.ncbi.nlm.nih.gov/%s/" % pmid, "ts": ts, "y": y, "k": "MEL",
                       "s": (a.findtext(".//Journal/ISOAbbreviation") or "PubMed")[:40],
-                      "a": (authors[0] + (" et al." if len(authors) > 1 else "")) if authors else "", "ab": " ".join(abstract.split())[:1800]})
+                      "a": (authors[0] + (" et al." if len(authors) > 1 else "")) if authors else "", "al": full[:1500], "ab": " ".join(abstract.split())[:1800]})
     items.sort(key=lambda x: -x["ts"])
     return {"updated": int(time.time()), "items": items}
 

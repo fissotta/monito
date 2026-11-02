@@ -818,10 +818,11 @@ const Zoo = (function () {
           nbuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate); const d = nbuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
         }
         if (ctx.state === "suspended") ctx.resume();
+        if (!ctx.__prime) { ctx.__prime = 1; const b = ctx.createBufferSource(); b.buffer = ctx.createBuffer(1, 1, 22050); b.connect(ctx.destination); b.start(0); }   // sonido vacio: termina de despertar el audio en navegadores estrictos
       } catch (e) { ctx = null; }
       if (onState) onState();
     };
-    for (const ev of ["pointerdown", "touchstart", "keydown", "click"]) document.addEventListener(ev, unlock, { passive: true });
+    for (const ev of ["pointerup", "touchend", "mouseup", "keydown", "click"]) document.addEventListener(ev, unlock, { passive: true, capture: true });   // captura: los botones frenan el click; Chrome solo autoriza el audio en touchend/click/keydown
     const quiet = () => { const h = new Date().getHours(); return (h >= 21 || h < 7) && !/[?&]sonido\b/.test(Q); };
     const ok = () => !!(ctx && on && ctx.state === "running" && !document.hidden && !quiet());
     const env = (g, t, v, a, d) => { g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + d); };
@@ -877,6 +878,8 @@ const Zoo = (function () {
       clash() { for (let i = 0; i < 4; i++) { noise(.09, .2, "bandpass", r(1800, 3500), 900, i * .12, 3); tone(r(800, 1400), 500, .08, "square", .05, i * .12, { lp: 2500 }); } },
     };
     return {
+      info: () => (!AC ? "este navegador no tiene audio" : (on ? "encendido" : "apagado") + " · " + (ctx ? "motor " + ctx.state : "esperando un toque") + (quiet() ? " · horario de silencio" : "")),
+      test() { unlock(); if (ctx) { try { FX.fanfare(); } catch (e) { /* sin audio */ } } },
       state: () => (!on ? "off" : ctx && ctx.state === "running" ? "on" : "wait"),
       unlock, setOnState: fn => { onState = fn; },
       toggle() { on = !on; try { localStorage.setItem("monito-snd", on ? "1" : "0"); } catch (e) { /* sin almacenamiento */ } unlock(); if (on && ctx) FX.ding(); if (onState) onState(); return on; },

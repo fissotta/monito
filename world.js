@@ -938,8 +938,8 @@ const World = (function () {
     { id: "tormenta", ico: "⛈️", n: "Tormenta", bad: 1, run: storm },
     { id: "terremoto", ico: "🌍", n: "Terremoto", bad: 1, run: quake },
     { id: "incendio", ico: "🔥", n: "Incendio", bad: 1, run: fire },
-    { id: "plaga", ico: "🦠", n: "Plaga", bad: 1, run: () => { if (S.pandemic) { pushToast("Ya hay una plaga en curso"); return false; } pandemic(); } },
-    { id: "abduccion", ico: "🛸", n: "Abducción", bad: 1, run: () => { if (S.busy || S.ufo || !free().length) { pushToast("Ahora no hay nadie que abducir"); return false; } ufo(); } },
+    { id: "plaga", ico: '<svg viewBox="0 0 16 16" width="14" height="14" style="vertical-align:-2px"><g stroke="#4c9a2a" stroke-width="1.6" stroke-linecap="round"><path d="M8 1v3M8 12v3M1 8h3M12 8h3M3 3l2 2M11 11l2 2M13 3l-2 2M5 11l-2 2"/></g><circle cx="8" cy="8" r="4.3" fill="#7bc043"/><circle cx="6.8" cy="7" r="1" fill="#2f6f1a"/><circle cx="9.4" cy="9" r="1.2" fill="#2f6f1a"/></svg>', n: "Plaga", bad: 1, run: () => { if (S.pandemic) { pushToast("Ya hay una plaga en curso"); return false; } pandemic(); } },
+    { id: "abduccion", ico: '<svg viewBox="0 0 16 16" width="14" height="14" style="vertical-align:-2px"><path d="M6 14l-1.5 1.5h7L10 14z" fill="#ffe27a" opacity=".8"/><ellipse cx="8" cy="9" rx="7" ry="2.6" fill="#9aa5b4"/><path d="M4.6 8.2C5 4 11 4 11.4 8.2z" fill="#8fd3ff"/><circle cx="4.5" cy="9.2" r=".6" fill="#ffd23f"/><circle cx="8" cy="10" r=".6" fill="#ffd23f"/><circle cx="11.5" cy="9.2" r=".6" fill="#ffd23f"/></svg>', n: "Abducción", bad: 1, run: () => { if (S.busy || S.ufo || !free().length) { pushToast("Ahora no hay nadie que abducir"); return false; } ufo(); } },
     { id: "manna", ico: "🍎", n: "Comida", tip: "Comida del cielo", run: manna },
     { id: "regalo", ico: "👽", n: "Aliens", tip: "Los aliens regalan tecnología", run: alienGift },
     { id: "deseos", ico: "🌠", n: "Deseos", run: () => { starShower(); S.extra += 3; } },
@@ -955,7 +955,7 @@ const World = (function () {
         if (!S.started) { pushToast("La civilización empieza cuando cae el primer animal"); return; }
         if (S.cata || S.saga) { pushToast("La civilización está en plena crisis: espera un momento"); return; }
         if (p.run() === false) return;
-        pushToast(`${p.ico} ${p.n}`);
+        pushToast(p.n);
         b.disabled = true; setTimeout(() => { b.disabled = false; }, 20000);   // enfriamiento de 20 s por boton
       });
       box.appendChild(b);
@@ -2588,15 +2588,15 @@ const World = (function () {
       `</table><div class="small">Riqueza: cuántas especies hay. Shannon: diversidad que pesa especies raras y comunes (más alto = más diverso). Simpson: probabilidad de que dos animales al azar sean de especies distintas. Dominancia: % de la especie más abundante (Berger–Parker). Equidad: qué parejo es el reparto entre especies (1 = perfecto).</div></div>`;
   }
   function kindCounts() {   // monos, jirafas y focas (suelo + la gente no dibujada repartida en partes iguales)
-    const ico = { mono: "🐵", jirafa: "🦒", foca: "🦭" }, g = groundMons(), ex = Math.floor(S.extra / 3);
-    return TRIBE_KINDS.map(k => ico[k] + " " + (g.filter(x => x.m.kind === k).length + ex)).join("  ");
+    const nom = { mono: "Monos", jirafa: "Jirafas", foca: "Focas" }, g = groundMons(), ex = Math.floor(S.extra / 3);   // sin emojis: la TV no tiene los mas nuevos
+    return TRIBE_KINDS.map(k => nom[k] + " " + (g.filter(x => x.m.kind === k).length + ex)).join(" · ");
   }
   function renderHud() {
     if (!S.started) { if (hudOpen) hud.innerHTML = "La civilización empieza cuando cae el primer animal de los anillos."; return; }
     if (S.hudT > 0) return;
     S.hudT = .3;
     const e = ERAS[S.era], pop = popTotal(), st = S.stats;
-    chip.innerHTML = `<b>${eraName()}</b> · ${fmtYear(curYear())}` + (S.cycle > 1 ? ` · Ciclo ${S.cycle}` : "") + ` ▸<br><span class="ct">Animales: ${pop} · ${kindCounts()}</span>`;
+    chip.innerHTML = `<b>${eraName()}</b> · ${fmtYear(curYear())}` + (S.cycle > 1 ? ` · Ciclo ${S.cycle}` : "") + ` ▸<br><span class="ct">Animales: ${pop}<br>${kindCounts()}</span>`;
     let h = `<b>${eraName()}</b> · ${fmtYear(curYear())}<br>${popLine()}` + (S.cycle > 1 ? ` · Ciclo ${S.cycle}` : "") + (S.tribes.some(t => t.cult) && !S.unified && S.era <= 4 ? `<br>Culturas: ${S.tribes.map(t => `${TRIBE_INFO[t.kind].plural} ${CULTURES[t.cult] ? CULTURES[t.cult].name : "—"}`).join(" · ")}` : "") +
       (S.saga ? `<br>Saga: ${S.saga.def.name}` : "") +
       (S.era === 7 && S.destSeen ? ` · ${S.dest.name}: ${S.colonists}${S.won ? " ✔" : "/" + S.goal}` : "");

@@ -286,8 +286,8 @@ svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
 if (/[?&]ua\b/.test(location.search)) addEventListener("load", () => { const d = document.createElement("div"); d.style.cssText = "position:fixed;left:8px;right:8px;top:40px;z-index:99;background:#fff;color:#000;border:2px solid #c00;padding:10px;font:16px monospace;word-break:break-all"; d.textContent = navigator.userAgent + " | " + innerWidth + "x" + innerHeight + " @" + devicePixelRatio; document.body.appendChild(d); setTimeout(() => d.remove(), 60000); });
 </script>
 <script src="qrcode.min.js?v=1"></script>
-<script src="zoo.js?v=20261102h"></script>
-<script src="world.js?v=20261102h"></script>
+<script src="zoo.js?v=20261102i"></script>
+<script src="world.js?v=20261102i"></script>
 <script>
 // ====== Configuración ======
 const REPO = "fissotta/monito"; // "usuario/monito"  (vacío = modo demo)
@@ -308,8 +308,8 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
 const demo = !REPO || new URLSearchParams(location.search).has("demo");
-const BUILD = "20261102h";   // subir junto con los ?v= de los <script> en cada publicacion
-const PR = 36;   // numero del pull request de esta version (lo que se ve en gris junto al estado; subirlo en cada publicacion)
+const BUILD = "20261102i";   // subir junto con los ?v= de los <script> en cada publicacion
+const PR = 37;   // numero del pull request de esta version (lo que se ve en gris junto al estado; subirlo en cada publicacion)
 $("ver").textContent = "v" + PR;
 const state = { data: {}, next: 0, timer: null, stale: 300 };
 // si se publica una version nueva, la pagina (p. ej. en la TV) se recarga sola; revisa cada 10 min
@@ -683,7 +683,14 @@ document.addEventListener("click", () => { $("verPop").hidden = true; });
 function Marquee(view, track, speed, html) {
   const m = { items: [], i: 0, x: 0, paused: false, firstW: null };
   const add = () => { track.insertAdjacentHTML("beforeend", html(m.items[m.i], m.i)); m.i = (m.i + 1) % m.items.length; };
-  const fill = () => { let g = 0; while (m.items.length && track.scrollWidth + m.x < view.clientWidth + 500 && g++ < m.items.length + 3) add(); };
+  const fill = () => {   // hasta que, aun con el primero ya fuera por la izquierda, lo que queda cubra el ancho visible (con items muy anchos antes quedaba un hueco en blanco a la derecha)
+    let g = 0;
+    while (m.items.length && g++ < m.items.length + 3) {
+      const f = track.firstElementChild, fw = f ? f.offsetWidth + 40 : 0;
+      if (track.scrollWidth - fw >= view.clientWidth + 400) break;
+      add();
+    }
+  };
   m.set = items => { track.innerHTML = ""; m.items = items; m.i = 0; m.x = 0; m.firstW = null; track.style.transform = ""; fill(); };
   m.step = dt => {   // por cuadro: solo se escribe el desplazamiento; la estructura cambia cuando una noticia sale por la izquierda
     if (m.paused || !m.items.length) return;

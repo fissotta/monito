@@ -200,3 +200,5 @@ Además, el cielo muestra ~130 mensajes aleatorios más sobre bioinformática (e
 ## Sonido
 
 Todo se sintetiza con WebAudio (sin archivos): los animales **hablan con voz de su especie** cuando aparece su globo de diálogo (monos: chillidos «uh-uh-ah»; jirafas: zumbido grave y resoplido; focas: «arf, arf»; pensar suena menos que hablar) y la civilización tiene **efectos**: explosiones, construcciones, fanfarria al cambiar de época, campana de los mensajes grandes, cohetes, naves, terremotos, tormentas, fuego, fiestas, etc. El navegador solo deja sonar tras un toque en la pantalla; el botón 🔈/🔊/🔇 de la cabecera silencia o enciende (se recuerda). Hay silencio de 21:00 a 07:00. Pruebas: `?mudo` lo apaga, `?sonido` ignora el horario.
+
+Si en la TV no suena: toca cualquier parte de la pantalla una vez; luego, al tocar la etiqueta de versión de la cabecera, la línea «Sonido» muestra el estado del audio y un botón «probar» que hace sonar una fanfarria (así se distingue un problema de la página de un volumen bajo o silenciado en la TV).

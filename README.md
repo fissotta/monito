@@ -141,7 +141,7 @@ Los **botones de poderes** ahora van en el borde superior de la zona de la civil
 
 ## Conteo de animales y diversidad
 
-Bajo el nombre de la época (el cuadro bajo el logo, en la civilización) se ve el **conteo de animales** y cuántos son monos 🐵, jirafas 🦒 y focas 🦭. Al tocarlo, el cuadro central agrega una tabla de **diversidad alfa** calculada con la especie de cada animal que se ve (los de los anillos y los de la civilización): **riqueza** (nº de especies), **Shannon H′**, **Simpson 1−D**, **dominancia** (Berger–Parker, % de la especie más abundante) y **equidad de Pielou**, para todos los animales y por equipo (monos, jirafas, focas). Cada índice trae su explicación breve.
+Bajo el nombre de la época (el cuadro bajo el logo, en la civilización) se ve el **conteo de animales**. Al tocarlo, el cuadro central agrega una tabla de **diversidad alfa** calculada con la especie de cada animal que se ve (los de los anillos y los de la civilización): **riqueza** (nº de especies), **Shannon H′**, **Simpson 1−D**, **dominancia** (Berger–Parker, % de la especie más abundante) y **equidad de Pielou**, para todos los animales y por equipo (monos, jirafas, focas). Cada índice trae su explicación breve.
 
 ## Popups
 

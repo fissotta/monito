@@ -186,7 +186,6 @@ const World = (function () {
     if (S.log.length > 40) S.log.length = 40;
     S.hudT = 0;
     if (S.started) pushToast(text);   // aviso flotante que se desvanece
-    if (S.started) SN.fx("ding", 3);
   }
   function showBanner(text) {
     banner.textContent = text; banner.classList.remove("on"); void banner.offsetWidth; banner.classList.add("on");
@@ -379,7 +378,6 @@ const World = (function () {
     const def = KINDS[kind];
     const s = Object.assign({ kind, x, w: def.w, t: rnd(0, 9), built: 0, dying: 0, flip: chance(.5), mobile: !!def.mobile, temp: !!def.temp, _c: {} }, o || {});
     s.$ = sel => s._c[sel] || (s._c[sel] = s.el.querySelector(sel));
-    if (S.started) SN.fx("thud", .5);
     if (def.init) def.init(s);
     s.el = el("g", {}, gStruct); s.el.innerHTML = def.draw(s);
     if (BLD[kind]) { s.el.style.pointerEvents = "all"; s.el.style.cursor = "pointer"; s.el.addEventListener("click", e => { e.stopPropagation(); showBuilding(s, e.clientX, e.clientY); }); }   // los importantes dicen que son
@@ -646,7 +644,6 @@ const World = (function () {
   );
   let skyDeck = [];
   function skyMessage(fixed, atX) {
-    SN.fx("whoosh", 2);
     if (!skyDeck.length) skyDeck = shuffle(SKY_MSGS.concat(SKY_MSGS_MORE));
     const txt = typeof fixed === "string" ? fixed : skyDeck.pop(), w = txt.length * 9 + 104, dir = chance(.5) ? 1 : -1, y0 = skyY(rnd(.42, .68)), dur = rnd(24, 32);
     // una nube gordita: base redondeada, ruedas de esponja arriba (mas grandes al centro) y una sombra azulada abajo para dar volumen
@@ -2464,7 +2461,7 @@ const World = (function () {
   }
   function eraUp() {
     S.era++; S.eraT = 0; S.eraDur = ERAS[S.era].dur * rnd(.75, 1.35); S.msT = 4; S.medieval = false; S.digital = false;
-    SN.fx("fanfare", 3); ground.setAttribute("fill", ERAS[S.era].ground);
+    ground.setAttribute("fill", ERAS[S.era].ground);
     showBanner(ERAS[S.era].name); logEv(`Comienza: ${ERAS[S.era].name}`);
     if (S.era === 3) logEv(`Nace ${S.city}, la primera aldea de ${T()}`);
     burst(W / 2, floorY() - 20, 14, "#ffd23f", 100);
@@ -2640,7 +2637,6 @@ const World = (function () {
     for (let i = 0; i < BIG_TIMES; i++) bigSeries.push(setTimeout(() => bigMsg(o), i * BIG_GAP * 1000));
   }
   function bigMsg(o) {
-    SN.fx("bell", 3);
     closeBig();
     const NS = "http://www.w3.org/2000/svg", sp = pick(A.SPECIES_BY_KIND.mono);
     const m = { sp, kind: "mono", pal: A.palette(sp), dir: 1, phase: 0, t: 0, dur: 6, mode: o.mode, mood: { low: 0, mid: 1, high: o.mode === "hop" ? 1 : 0 }, theta: 0, seed: 5,

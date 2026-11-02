@@ -534,6 +534,7 @@ const Zoo = (function () {
       const u = reacting ? m.t / m.dur : 1 - m.thinkT / m.thinkDur, bd = ((m.bp && m.bp.bub) || 27) * kOf(m);
       if (p.bubbleKey !== txt) {
         p.bubbleKey = txt;
+        Snd.voice(m.kind || (m.sp && m.sp.kind) || "mono", !reacting);   // habla (o murmura) con voz de su especie
         const lines = wrapLines(txt, 26), n = lines.length, w = Math.max(14, Math.max(...lines.map(l => l.length)) * 4.6 + 8);
         while (p.bubbleTx.firstChild) p.bubbleTx.removeChild(p.bubbleTx.firstChild);
         lines.forEach((l, i) => { const ts = el("tspan", { x: 0, dy: i ? 9 : 0 }, p.bubbleTx); ts.textContent = l; });
@@ -801,8 +802,97 @@ const Zoo = (function () {
   }
   function init(machineIds, dataFn, kindMap) { ids = machineIds; getData = dataFn; kinds = kindMap || {}; }
 
+  // ---- sonido (WebAudio sintetizado, sin archivos): voces de monos, jirafas y focas y efectos de la civilizacion ----
+  // El navegador solo deja sonar tras un toque: hasta entonces queda en espera. Silencio de 21:00 a 07:00. Boton en la cabecera para silenciar; ?mudo lo apaga y ?sonido ignora el horario.
+  const Snd = (function () {
+    const AC = window.AudioContext || window.webkitAudioContext, Q = location.search;
+    let ctx = null, master = null, nbuf = null, on = true, onState = null, lastV = 0;
+    const lastFx = {};
+    try { on = localStorage.getItem("monito-snd") !== "0"; } catch (e) { /* sin almacenamiento */ }
+    if (/[?&]mudo\b/.test(Q)) on = false;
+    const unlock = () => {
+      if (!AC) return;
+      try {
+        if (!ctx) {
+          ctx = new AC(); master = ctx.createGain(); master.gain.value = .55; master.connect(ctx.destination);
+          nbuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate); const d = nbuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        }
+        if (ctx.state === "suspended") ctx.resume();
+      } catch (e) { ctx = null; }
+      if (onState) onState();
+    };
+    for (const ev of ["pointerdown", "touchstart", "keydown", "click"]) document.addEventListener(ev, unlock, { passive: true });
+    const quiet = () => { const h = new Date().getHours(); return (h >= 21 || h < 7) && !/[?&]sonido\b/.test(Q); };
+    const ok = () => !!(ctx && on && ctx.state === "running" && !document.hidden && !quiet());
+    const env = (g, t, v, a, d) => { g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + d); };
+    // un tono con deslizamiento de frecuencia, vibrato y filtro opcionales
+    function tone(f0, f1, dur, type, vol, delay, o) {
+      o = o || {}; const t = ctx.currentTime + (delay || 0), os = ctx.createOscillator(), g = ctx.createGain(); let out = os;
+      os.type = type || "sine"; os.frequency.setValueAtTime(f0, t); os.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+      if (o.vib) { const l = ctx.createOscillator(), lg = ctx.createGain(); l.frequency.value = o.vib; lg.gain.value = o.vd || f0 * .04; l.connect(lg); lg.connect(os.frequency); l.start(t); l.stop(t + dur + .05); }
+      if (o.lp || o.bp) { const f = ctx.createBiquadFilter(); f.type = o.bp ? "bandpass" : "lowpass"; f.frequency.value = o.bp || o.lp; f.Q.value = o.q || 1; os.connect(f); out = f; }
+      out.connect(g); g.connect(master); env(g, t, vol, o.a || .01, dur); os.start(t); os.stop(t + dur + .05);
+    }
+    function noise(dur, vol, ftype, fa, fb, delay, q) {
+      const t = ctx.currentTime + (delay || 0), s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+      s.buffer = nbuf; s.loop = true; f.type = ftype; f.Q.value = q || 1; f.frequency.setValueAtTime(fa, t); f.frequency.exponentialRampToValueAtTime(Math.max(20, fb), t + dur);
+      s.connect(f); f.connect(g); g.connect(master); env(g, t, vol, Math.min(.03, dur / 3), dur); s.start(t); s.stop(t + dur + .05);
+    }
+    const r = (a, b) => a + Math.random() * (b - a);
+    const VOICE = {
+      mono() {   // ¡uh-uh-ah-ah!: chillidos cortos que suben y un "aaah" final
+        const n = 3 + (Math.random() * 3 | 0), p = r(.9, 1.25);
+        for (let i = 0; i < n; i++) tone(420 * p + i * 35, 800 * p + i * 50, .11, "sawtooth", .16, i * .13, { lp: 2200 });
+        tone(780 * p, 430 * p, .42, "sawtooth", .17, n * .13, { lp: 1800, vib: 9, vd: 25 });
+      },
+      jirafa() {   // las jirafas casi no suenan: un zumbido grave y a veces un resoplido
+        const p = r(.9, 1.15);
+        tone(92 * p, 108 * p, .9, "sawtooth", .15, 0, { lp: 330, vib: 5, vd: 5 });
+        tone(184 * p, 200 * p, .8, "sine", .06, 0, { vib: 5, vd: 6 });
+        if (Math.random() < .45) noise(.2, .12, "bandpass", 1300, 700, 1, 1.5);
+      },
+      foca() {   // ¡arf! ¡arf! y a veces un lamento
+        const n = 1 + (Math.random() * 3 | 0), p = r(.85, 1.2);
+        for (let i = 0; i < n; i++) { tone(230 * p, 120 * p, .17, "sawtooth", .22, i * .26, { bp: 650, q: 1.6 }); noise(.12, .05, "bandpass", 900, 500, i * .26, 1); }
+        if (Math.random() < .3) tone(340 * p, 240 * p, .7, "sawtooth", .15, n * .26, { bp: 600, q: 2, vib: 8, vd: 18 });
+      },
+    };
+    const FX = {
+      boom() { noise(.6, .35, "lowpass", 700, 70); tone(110, 38, .5, "sine", .3); },
+      boomBig() { noise(1.3, .55, "lowpass", 900, 50); tone(95, 28, 1, "sine", .45); noise(.25, .25, "highpass", 3000, 1200); },
+      thud() { tone(130, 55, .14, "sine", .28); noise(.08, .1, "lowpass", 900, 300); },
+      ding() { tone(880, 880, .35, "sine", .12); tone(1320, 1320, .4, "sine", .09, .09); },
+      fanfare() { [523, 659, 784, 1047].forEach((f, i) => tone(f, f, i === 3 ? .6 : .16, "triangle", .2, i * .15, { lp: 3000 })); },
+      whoosh() { noise(.9, .12, "bandpass", 250, 2200, 0, 1.2); },
+      pop() { noise(.12, .22, "bandpass", 3200, 1500, 0, 2); tone(1500, 600, .2, "sine", .1); },
+      bell() { tone(784, 784, 1.1, "sine", .2); tone(1568, 1568, .8, "sine", .06); tone(659, 659, 1.3, "sine", .2, .5); },
+      rocket() { noise(2.2, .3, "lowpass", 250, 1800, 0, .7); tone(70, 150, 2, "sawtooth", .1, 0, { lp: 300 }); },
+      zap() { tone(1400, 160, .5, "sawtooth", .12, 0, { lp: 2500 }); tone(300, 900, .35, "square", .05, .2, { lp: 1500, vib: 14, vd: 120 }); },
+      rumble() { noise(1.8, .4, "lowpass", 180, 60, 0, 1.5); tone(48, 32, 1.6, "sine", .3, 0, { vib: 11, vd: 3 }); },
+      thunder() { noise(.1, .3, "highpass", 4000, 2000); noise(1.6, .4, "lowpass", 500, 70, .12); },
+      splash() { noise(1, .22, "bandpass", 900, 300, 0, .8); noise(.6, .14, "bandpass", 1800, 600, .3, .8); },
+      crackle() { for (let i = 0; i < 7; i++) noise(.04, .18, "bandpass", r(1500, 4000), 800, i * r(.08, .2), 2); },
+      cheer() { [523, 659, 784, 988, 1319].forEach((f, i) => tone(f, f * 1.02, .22, "triangle", .13, i * .09, { lp: 3500 })); },
+      sad() { tone(330, 220, .7, "triangle", .15, 0, { lp: 1200, vib: 5, vd: 8 }); tone(247, 165, .9, "triangle", .13, .4, { lp: 1000 }); },
+      clash() { for (let i = 0; i < 4; i++) { noise(.09, .2, "bandpass", r(1800, 3500), 900, i * .12, 3); tone(r(800, 1400), 500, .08, "square", .05, i * .12, { lp: 2500 }); } },
+    };
+    return {
+      state: () => (!on ? "off" : ctx && ctx.state === "running" ? "on" : "wait"),
+      unlock, setOnState: fn => { onState = fn; },
+      toggle() { on = !on; try { localStorage.setItem("monito-snd", on ? "1" : "0"); } catch (e) { /* sin almacenamiento */ } unlock(); if (on && ctx) FX.ding(); if (onState) onState(); return on; },
+      fx(name, minGap) {   // efecto de la civilizacion; cada tipo con su pausa minima para que no se amontonen
+        if (!ok() || !FX[name]) return; const t = ctx.currentTime;
+        if (t - (lastFx[name] || -9) < (minGap || .25)) return; lastFx[name] = t; try { FX[name](); } catch (e) { /* audio no disponible */ }
+      },
+      voice(kind, soft) {   // un animal habla: como mucho una voz cada ~2 s (cada ~7 s si solo piensa) para no saturar
+        if (!ok() || !VOICE[kind]) return; const t = ctx.currentTime;
+        if (t - lastV < (soft ? 7 : 2) || (soft && Math.random() < .5)) return; lastV = t; try { VOICE[kind](); } catch (e) { /* audio no disponible */ }
+      },
+    };
+  })();
+
   const api = {
-    SPECIES, SAYS, ACC, build, draw, palette, takeAcc, spawn,
+    SPECIES, SAYS, ACC, build, draw, palette, takeAcc, spawn, snd: Snd,
     ids: () => ids,
     make: kind => newMonkey({ cpu: 50, ram: 50, n: 16 }, "cpu", pick(SPECIES_BY_KIND[kind || pick(["mono", "jirafa", "foca"])]), Math.random() < .5, rollCeleb(.03)),
     kindOf, CELEBS, SPECIES_BY_KIND,

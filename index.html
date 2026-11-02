@@ -128,6 +128,7 @@ h1 { font-size: 20px; margin: 0; letter-spacing: .12em; }
 .cal-grid .ev0 { background: rgba(124,58,237,.24); }
 .cal-grid .ev1 { background: rgba(13,148,136,.26); }
 .cal-grid .ev2 { background: rgba(217,119,6,.26); }
+.cal-grid .ev3 { background: rgba(220,38,38,.34); }
 .cal-grid .evs { border-radius: 8px 0 0 8px; } .cal-grid .eve { border-radius: 0 8px 8px 0; }
 .cal-info .hl { color: var(--bad); font-weight: 700; }
 .cal-info .evn { font-weight: 700; }
@@ -226,8 +227,8 @@ svg { display: block; width: 100%; max-width: 360px; margin: 0 auto; }
   .weather .wx-t { font-size: clamp(24px, min(2.6vw, 4.3vh), 54px); }
   .weather .wx-s { font-size: clamp(11px, min(1vw, 1.7vh), 18px); }
   #grid { display: contents; }
-  .legendbar { grid-column: 2 / span 3; grid-row: 2; margin: 0; line-height: 1.2; }
-  .melRow { grid-column: 1; grid-row: 2; margin: 0; min-width: 0; }
+  .legendbar { grid-column: 4; grid-row: 2; margin: 0; line-height: 1.2; }
+  .melRow { grid-column: 1 / span 3; grid-row: 2; margin: 0; min-width: 0; }
   .eraRow { grid-column: 1 / -1; margin-top: 0; }
   .layout { padding-bottom: 6px; }   /* la cinta de papers va de lado a lado */
 }
@@ -254,7 +255,7 @@ svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
   <h1>MONITO</h1>
   <div id="news" class="news" hidden><span class="news-tag" id="newsTag">Noticias</span><div class="news-view"><div class="news-track" id="newsTrack"></div></div></div>
   <div class="controls">
-    <span class="status" id="status" aria-live="polite">—</span><button class="ver" id="ver" type="button" title="Más datos de la versión"></button>
+    <span class="status" id="status" aria-live="polite">—</span><button class="ver" id="snd" type="button" title="Sonido"></button><button class="ver" id="ver" type="button" title="Más datos de la versión"></button>
     <button id="btnTheme" title="Cambiar color: automático (por hora), día o noche"></button>
   </div>
 </header>
@@ -285,8 +286,8 @@ svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
 if (/[?&]ua\b/.test(location.search)) addEventListener("load", () => { const d = document.createElement("div"); d.style.cssText = "position:fixed;left:8px;right:8px;top:40px;z-index:99;background:#fff;color:#000;border:2px solid #c00;padding:10px;font:16px monospace;word-break:break-all"; d.textContent = navigator.userAgent + " | " + innerWidth + "x" + innerHeight + " @" + devicePixelRatio; document.body.appendChild(d); setTimeout(() => d.remove(), 60000); });
 </script>
 <script src="qrcode.min.js?v=1"></script>
-<script src="zoo.js?v=20261031t"></script>
-<script src="world.js?v=20261031t"></script>
+<script src="zoo.js?v=20261102a"></script>
+<script src="world.js?v=20261102a"></script>
 <script>
 // ====== Configuración ======
 const REPO = "fissotta/monito"; // "usuario/monito"  (vacío = modo demo)
@@ -307,8 +308,8 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
 const demo = !REPO || new URLSearchParams(location.search).has("demo");
-const BUILD = "20261031t";   // subir junto con los ?v= de los <script> en cada publicacion
-const PR = 32;   // numero del pull request de esta version (lo que se ve en gris junto al estado; subirlo en cada publicacion)
+const BUILD = "20261102a";   // subir junto con los ?v= de los <script> en cada publicacion
+const PR = 33;   // numero del pull request de esta version (lo que se ve en gris junto al estado; subirlo en cada publicacion)
 $("ver").textContent = "v" + PR;
 const state = { data: {}, next: 0, timer: null, stale: 300 };
 // si se publica una version nueva, la pagina (p. ej. en la TV) se recarga sola; revisa cada 10 min
@@ -491,11 +492,11 @@ function parseEvs(txt) {
   const out = [];
   for (const line of txt.split(/\r?\n/)) {
     const m = line.trim().match(/^(\d{4}-\d{2}-\d{2})\s*(?:a|-|\.\.)\s*(\d{4}-\d{2}-\d{2})\s*\|\s*([^|]+?)\s*(?:\|\s*(.*?))?\s*$/);
-    if (m && m[1] <= m[2]) out.push({ from: m[1], to: m[2], name: m[3], desc: m[4] || "", c: out.length % 3 });
+    if (m && m[1] <= m[2]) { const red = /\|\s*rojo\s*$/i.test(line); out.push({ from: m[1], to: m[2], name: m[3], desc: red ? (m[4] || "").replace(/\|\s*rojo\s*$/i, "").trim() : (m[4] || ""), c: red ? 3 : out.filter(e => e.c < 3).length % 3 }); }   // "| rojo" al final: se pinta de rojo y gana sobre otros eventos
   }
   return out;
 }
-const evsOf = k => EVS.filter(e => k >= e.from && k <= e.to);
+const evsOf = k => EVS.filter(e => k >= e.from && k <= e.to).sort((a, b) => b.c - a.c);
 function parseSems(txt) {
   const out = {}, now = new Date(); let last = null;
   for (let line of txt.split(/\r?\n/)) {
@@ -559,7 +560,7 @@ function renderCal() {
     const hol = holName(k), ev = evsOf(k)[0], evc = ev ? ` ev ev${ev.c}${k === ev.from || i % 7 === 0 ? " evs" : ""}${k === ev.to || i % 7 === 6 ? " eve" : ""}` : "";
     h += `<button title="${esc([hol, ...evsOf(k).map(e => e.name)].filter(Boolean).join(" · "))}" class="d${we ? " we" : ""}${hol ? " hol" : ""}${evc}${d.getMonth() !== m ? " o" : ""}${today ? " today" : ""}${es ? (es.every(e => e.none) ? " sem semno" : " sem") : ""}${k === calSel ? " sel" : ""}" data-date="${k}"${today ? ' aria-current="date"' : ""}>${d.getDate()}</button>`;
   }
-  $("cal").innerHTML = h + `</div>${EVS.length || true ? `<div class="cal-leg"><span><i style="background:rgba(220,38,38,.3)"></i>Feriado</span>${EVS.map(e => `<span><i style="background:${["#7c3aed", "#0d9488", "#d97706"][e.c]}"></i>${esc(e.name)}</span>`).join("")}</div>` : ""}<div class="cal-info" id="calInfo">${infoHtml()}</div><div class="cal-foot"><button id="calToday">Hoy</button></div>`;
+  $("cal").innerHTML = h + `</div>${EVS.length || true ? `<div class="cal-leg"><span><i style="background:rgba(220,38,38,.3)"></i>Feriado</span>${EVS.map(e => `<span><i style="background:${["#7c3aed", "#0d9488", "#d97706", "#dc2626"][e.c]}"></i>${esc(e.name)}</span>`).join("")}</div>` : ""}<div class="cal-info" id="calInfo">${infoHtml()}</div><div class="cal-foot"><button id="calToday">Hoy</button></div>`;
 }
 let calIdle = 0;
 function bumpCal() { clearTimeout(calIdle); calIdle = setTimeout(() => { if (!$("cal").hidden) toggleCal(false); }, 10000); }   // se cierra solo tras 10 s sin tocarlo
@@ -644,7 +645,7 @@ function showPaper(i, list) {   // ventana con revista, fecha, abstract y un QR 
   let qr = "";
   try { const q = qrcode(0, "M"); q.addData(p.u); q.make(); qr = q.createSvgTag({ cellSize: 4, margin: 0, scalable: true }); } catch { /* sin QR: no se muestra */ }
   $("papPop").innerHTML = `<button class="x" aria-label="Cerrar">×</button><div class="pp-body"><div class="pp-txt"><span class="pp-tag">${esc(p.k)}${p.p ? " · preprint" : ""}</span><h3><a href="${esc(p.u)}" target="_blank" rel="noopener" title="Abrir el paper">${esc(p.t)}</a></h3>` +
-    `<div class="pp-meta">${esc(p.a ? p.a + " · " : "")}<b>${esc(p.s)}</b> · ${fecha}</div><p class="pp-ab">${p.ab ? esc(p.ab) : '<span style="color:var(--muted)">Sin abstract disponible: escanea el QR para ver el paper.</span>'}</p></div>` +
+    `<div class="pp-meta">${esc(p.al ? p.al + " · " : p.a ? p.a + " · " : "")}<b>${esc(p.s)}</b> · ${fecha}</div><p class="pp-ab">${p.ab ? esc(p.ab) : '<span style="color:var(--muted)">Sin abstract disponible: escanea el QR para ver el paper.</span>'}</p></div>` +
     `<div class="pp-qr"><div class="qr">${qr}</div><div style="margin-top:6px">Escanea con el celular para abrirlo</div></div></div>`;
   $("papPop").hidden = false; armPop($("papPop"));
 }
@@ -654,6 +655,9 @@ document.addEventListener("click", () => { $("papPop").hidden = true; });
 document.addEventListener("keydown", e => { if (e.key === "Escape") $("papPop").hidden = true; });
 for (const ev of ["pointermove", "touchstart", "wheel"]) $("papPop").addEventListener(ev, () => { if (!$("papPop").hidden) armPop($("papPop")); }, { passive: true });
 if (new URLSearchParams(location.search).has("paper")) setTimeout(() => showPaper(0), 3500);   // prueba: abre el primer paper
+const sndIcon = () => { const st = Zoo.api.snd.state(); $("snd").textContent = st === "off" ? "🔇" : st === "on" ? "🔊" : "🔈"; $("snd").title = st === "off" ? "Sonido apagado: toca para encender" : st === "on" ? "Sonido encendido: toca para silenciar" : "Toca la pantalla para activar el sonido"; };
+Zoo.api.snd.setOnState(sndIcon); sndIcon();
+$("snd").addEventListener("click", e => { e.stopPropagation(); Zoo.api.snd.toggle(); });
 $("ver").addEventListener("click", e => {
   e.stopPropagation();
   const ua = navigator.userAgent, ch = (ua.match(/Chrome\/(\d+)/) || [])[1], tv = /Tizen|SMART-TV|SmartTV|Web0S/i.test(ua);

@@ -84,7 +84,7 @@ crontab -e   # agregar:
 ## Feriados y congresos en el calendario
 
 - Los **feriados de Chile** salen marcados en rojo (se calculan por año: Semana Santa, traslados a lunes de San Pedro y San Pablo y Encuentro de Dos Mundos, Iglesias Evangélicas, Fiestas Patrias, etc.). Es referencial: no incluye jornadas electorales ni feriados decretados aparte.
-- Los **congresos y eventos de varios días** se leen de `eventos.txt` (`AAAA-MM-DD a AAAA-MM-DD | NOMBRE | descripción`) y pintan todo el rango de días, con leyenda de colores. Al tocar un día, el cuadro de abajo dice qué es.
+- Los **congresos y eventos de varios días** se leen de `eventos.txt` (`AAAA-MM-DD a AAAA-MM-DD | NOMBRE | descripción`; con `| rojo` al final el evento se pinta de rojo y gana sobre otros) y pintan todo el rango de días, con leyenda de colores. Al tocar un día, el cuadro de abajo dice qué es.
 
 ## Feed de papers
 
@@ -135,13 +135,13 @@ En la TV (navegador Tizen) la página se dibuja a ~30 cuadros por segundo, con m
 
 ## MEL: los papers del laboratorio
 
-A la izquierda de la leyenda de colores hay una cinta pequeña con el título **MEL** (Microbial Ecophysiology Lab): los papers de R. Quatrini que se usaron para armar los temas del feed de papers (60 trabajos, del más nuevo al más antiguo). Al tocar uno se abre el mismo cuadro con título, autores, revista, fecha, **abstract** y **QR** del enlace. `collector/mel.py` los baja de PubMed con su abstract y los publica como `mel.json` en la rama `mel`; se renueva una vez por semana desde el cron de `news.py`.
+Junto a la leyenda de colores (que va a la derecha, bajo el último equipo) hay una cinta ancha con el título **MEL** (Microbial Ecophysiology Lab): los papers de R. Quatrini que se usaron para armar los temas del feed de papers (60 trabajos, del más nuevo al más antiguo). Al tocar uno se abre el mismo cuadro con título, **todos los autores**, revista, fecha, **abstract** y **QR** del enlace. `collector/mel.py` los baja de PubMed con su abstract y los publica como `mel.json` en la rama `mel`; se renueva una vez por semana desde el cron de `news.py`.
 
 Los **botones de poderes** ahora van en el borde superior de la zona de la civilización (a la derecha, junto al logo); en celular siguen junto a la leyenda.
 
 ## Conteo de animales y diversidad
 
-Bajo el nombre de la época (el cuadro bajo el logo, en la civilización) se ve el **conteo de animales**. Al tocarlo, el cuadro central agrega una tabla de **diversidad alfa** calculada con la especie de cada animal que se ve (los de los anillos y los de la civilización): **riqueza** (nº de especies), **Shannon H′**, **Simpson 1−D**, **dominancia** (Berger–Parker, % de la especie más abundante) y **equidad de Pielou**, para todos los animales y por equipo (monos, jirafas, focas). Cada índice trae su explicación breve.
+Bajo el nombre de la época (el cuadro bajo el logo, en la civilización) se ve el **conteo de animales** y cuántos son monos 🐵, jirafas 🦒 y focas 🦭. Al tocarlo, el cuadro central agrega una tabla de **diversidad alfa** calculada con la especie de cada animal que se ve (los de los anillos y los de la civilización): **riqueza** (nº de especies), **Shannon H′**, **Simpson 1−D**, **dominancia** (Berger–Parker, % de la especie más abundante) y **equidad de Pielou**, para todos los animales y por equipo (monos, jirafas, focas). Cada índice trae su explicación breve.
 
 ## Popups
 
@@ -196,3 +196,7 @@ Además, el cielo muestra ~130 mensajes aleatorios más sobre bioinformática (e
 - **El tiempo:** usa Open-Meteo (gratis, sin clave) para Santiago (cambiar `WX_PLACE` en `index.html` si el laboratorio está en otra ciudad). Al tocar el cuadro se abre el pronóstico de 7 días con la probabilidad de lluvia y un mapa de **Windy**, con un enlace para abrirlo completo.
 - **Almuerzo:** a las **12:00** (hora del computador) aparece «¡A almorzar!» y todos los animales, los de los anillos y los del suelo, paran a comer; durante esa hora cruzan mensajes al azar sobre el almuerzo. A las 13:00 vuelven al trabajo. Se ajusta con `LUNCH_FROM` y `LUNCH_LEN` en `world.js`.
 - Pruebas: `?lunch` fuerza la hora de almuerzo, `?wx` abre el tiempo, `?theme=dark` fuerza el tema oscuro.
+
+## Sonido
+
+Todo se sintetiza con WebAudio (sin archivos): los animales **hablan con voz de su especie** cuando aparece su globo de diálogo (monos: chillidos «uh-uh-ah»; jirafas: zumbido grave y resoplido; focas: «arf, arf»; pensar suena menos que hablar) y la civilización tiene **efectos**: explosiones, construcciones, fanfarria al cambiar de época, campana de los mensajes grandes, cohetes, naves, terremotos, tormentas, fuego, fiestas, etc. El navegador solo deja sonar tras un toque en la pantalla; el botón 🔈/🔊/🔇 de la cabecera silencia o enciende (se recuerda). Hay silencio de 21:00 a 07:00. Pruebas: `?mudo` lo apaga, `?sonido` ignora el horario.

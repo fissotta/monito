@@ -86,6 +86,11 @@ const World = (function () {
     logoBg.setAttribute("x", x); logoBg.setAttribute("y", y - 3); logoBg.setAttribute("width", lw + 16); logoBg.setAttribute("height", h + 6); logoBg.setAttribute("opacity", dark || !SKY ? .9 : 0);
     logoImg.setAttribute("x", x + 8); logoImg.setAttribute("y", y); logoImg.setAttribute("width", lw); logoImg.setAttribute("height", h);
     // la pastilla de la epoca va dentro de la civilizacion, justo bajo el logo (en pantallas angostas vuelve a su lugar, bajo el clima)
+    const pw = document.getElementById("powers"), lb = document.querySelector(".legendbar");   // botones de poderes: borde superior de la civilizacion (en celular, junto a la leyenda)
+    if (pw && lb) {
+      if (narrow) { if (pw.parentNode !== lb) lb.appendChild(pw); pw.classList.remove("fl"); pw.style.top = ""; }
+      else { if (pw.parentNode !== document.body) document.body.appendChild(pw); pw.classList.add("fl"); pw.style.top = (SKY ? SKY + 6 : 56) + "px"; }
+    }
     const slot = document.getElementById("eraSlot");
     if (narrow) { if (slot && chip.parentNode !== slot) slot.appendChild(chip); chip.classList.remove("fl"); chip.style.left = chip.style.top = ""; }
     else { if (chip.parentNode !== document.body) document.body.appendChild(chip); chip.classList.add("fl"); chip.style.left = (x + 4) + "px"; chip.style.top = (y + h + 10) + "px"; }

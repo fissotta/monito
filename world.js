@@ -186,7 +186,6 @@ const World = (function () {
     if (S.log.length > 40) S.log.length = 40;
     S.hudT = 0;
     if (S.started) pushToast(text);   // aviso flotante que se desvanece
-    if (S.started) SN.fx("ding", 3);
   }
   function showBanner(text) {
     banner.textContent = text; banner.classList.remove("on"); void banner.offsetWidth; banner.classList.add("on");
@@ -379,7 +378,6 @@ const World = (function () {
     const def = KINDS[kind];
     const s = Object.assign({ kind, x, w: def.w, t: rnd(0, 9), built: 0, dying: 0, flip: chance(.5), mobile: !!def.mobile, temp: !!def.temp, _c: {} }, o || {});
     s.$ = sel => s._c[sel] || (s._c[sel] = s.el.querySelector(sel));
-    if (S.started) SN.fx("thud", .5);
     if (def.init) def.init(s);
     s.el = el("g", {}, gStruct); s.el.innerHTML = def.draw(s);
     if (BLD[kind]) { s.el.style.pointerEvents = "all"; s.el.style.cursor = "pointer"; s.el.addEventListener("click", e => { e.stopPropagation(); showBuilding(s, e.clientX, e.clientY); }); }   // los importantes dicen que son
@@ -646,7 +644,6 @@ const World = (function () {
   );
   let skyDeck = [];
   function skyMessage(fixed, atX) {
-    SN.fx("whoosh", 2);
     if (!skyDeck.length) skyDeck = shuffle(SKY_MSGS.concat(SKY_MSGS_MORE));
     const txt = typeof fixed === "string" ? fixed : skyDeck.pop(), w = txt.length * 9 + 104, dir = chance(.5) ? 1 : -1, y0 = skyY(rnd(.42, .68)), dur = rnd(24, 32);
     // una nube gordita: base redondeada, ruedas de esponja arriba (mas grandes al centro) y una sombra azulada abajo para dar volumen
@@ -2464,7 +2461,7 @@ const World = (function () {
   }
   function eraUp() {
     S.era++; S.eraT = 0; S.eraDur = ERAS[S.era].dur * rnd(.75, 1.35); S.msT = 4; S.medieval = false; S.digital = false;
-    SN.fx("fanfare", 3); ground.setAttribute("fill", ERAS[S.era].ground);
+    ground.setAttribute("fill", ERAS[S.era].ground);
     showBanner(ERAS[S.era].name); logEv(`Comienza: ${ERAS[S.era].name}`);
     if (S.era === 3) logEv(`Nace ${S.city}, la primera aldea de ${T()}`);
     burst(W / 2, floorY() - 20, 14, "#ffd23f", 100);
@@ -2640,7 +2637,7 @@ const World = (function () {
     for (let i = 0; i < BIG_TIMES; i++) bigSeries.push(setTimeout(() => bigMsg(o), i * BIG_GAP * 1000));
   }
   function bigMsg(o) {
-    SN.fx("bell", 3);
+    SN.fx("trumpet", 3);
     closeBig();
     const NS = "http://www.w3.org/2000/svg", sp = pick(A.SPECIES_BY_KIND.mono);
     const m = { sp, kind: "mono", pal: A.palette(sp), dir: 1, phase: 0, t: 0, dur: 6, mode: o.mode, mood: { low: 0, mid: 1, high: o.mode === "hop" ? 1 : 0 }, theta: 0, seed: 5,
@@ -2669,6 +2666,7 @@ const World = (function () {
     { id: "labtarde", at: 10 * 60, days: [1], title: "¿Por qué sigues acá?", sub: "¡¡¡Hay seminario!!!", mode: "hop", tone: "alert", secs: 16 },
     { id: "casa", at: 18 * 60, days: [1, 2, 3, 4, 5], title: "¿Lanzaste tus jobs?", sub: "Antes de irte: guarda, respalda y apaga el autoclave", mode: "stretch", secs: 10 },
   ];
+  let TESTDO = {};
   const firedBig = new Set();
   function bigCheck(d) {
     const m = d.getHours() * 60 + d.getMinutes();
@@ -2726,7 +2724,7 @@ const World = (function () {
     for (let i = 0; i < 14; i++) plan();
     if (S.era >= 3 && S.era <= 4) addStruct("castle", W * .5, { tribe: 1 });
     S.structs.forEach(s => s.built = 1);
-    const DO = { pajaros: spawnFlock, nube: () => skyMessage("¿Ya corriste GTDB-Tk en tus MAGs?", W / 2), guerra: () => { if (!tribalWar()) startWar(); }, caceria: startHunt, cohete: () => { S.destSeen = true; ensureDest(); tryLaunch(); }, meteorito: meteor, ovni: ufo, plaga: () => hurt(.25, "Plaga"),
+    const DO = TESTDO = { pajaros: spawnFlock, nube: () => skyMessage("¿Ya corriste GTDB-Tk en tus MAGs?", W / 2), guerra: () => { if (!tribalWar()) startWar(); }, caceria: startHunt, cohete: () => { S.destSeen = true; ensureDest(); tryLaunch(); }, meteorito: meteor, ovni: ufo, plaga: () => hurt(.25, "Plaga"),
       terremoto: quake, volcan: volcano, festival, eclipse: () => { S.eclipse = 10; }, lluvia: () => { S.rain = 12; }, cometa: comet };
     Object.assign(DO, { cataclismo: () => cataclysm({ surv: 4 }), pandemia: pandemic, incendio: fire, inundacion: () => flood(14, "Inundación"), tormenta: storm, aurora, estrellas: starShower,
       exploradores: explorers, comercio: trade, misioneros: missionaries, tratado: treaty, ayuda: aid, bodareal: royalWedding,
@@ -2750,5 +2748,15 @@ const World = (function () {
   if (WARP) setTimeout(() => { for (let t = 0; t < WARP; t += .05) step(.05); }, 3500);
   festive(0);   // fiestas de hoy: los gorros deben estar listos antes de crear los animales
   layout(); testSetup(); requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
-  return { _S: S, _ERAS: ERAS };
+  // para los botones de prueba del cuadro de version (index.html)
+  const testApi = {
+    toast: t => pushToast(t),
+    bigs: () => BIG.map(b => ({ id: b.id, n: b.title })),
+    big: id => { const b = BIG.find(x => x.id === id); if (b) bigRun(b); },
+    sagas: () => SAGAS.map(q => ({ id: q.id, n: q.name })),
+    saga: id => { if (!S.started) return "La civilización empieza cuando cae el primer animal"; if (S.cata || S.saga) return "Ya hay una saga o catástrofe en curso: espera a que termine"; startSaga(id); return ""; },
+    sucesos: () => ["cataclismo", "guerra", "guerramundial", "pandemia", "cohete", "eclipse", "aurora", "cometa", "ovni", "festival", "pruebanuclear", "asedio"],
+    suceso: n => { if (!S.started) return "La civilización empieza cuando cae el primer animal"; const f = TESTDO[n]; if (f) f(); return ""; },
+  };
+  return { _S: S, _ERAS: ERAS, test: testApi };
 })();

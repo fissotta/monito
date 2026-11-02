@@ -199,6 +199,10 @@ Además, el cielo muestra ~130 mensajes aleatorios más sobre bioinformática (e
 
 ## Sonido
 
-Todo se sintetiza con WebAudio (sin archivos): los animales **hablan con voz de su especie** cuando aparece su globo de diálogo (monos: chillidos «uh-uh-ah»; jirafas: zumbido grave y resoplido; focas: «arf, arf»; pensar suena menos que hablar) y la civilización tiene **efectos**: explosiones, construcciones, fanfarria al cambiar de época, campana de los mensajes grandes, cohetes, naves, terremotos, tormentas, fuego, fiestas, etc. El navegador solo deja sonar tras un toque en la pantalla; el botón 🔈/🔊/🔇 de la cabecera silencia o enciende (se recuerda). Hay silencio de 21:00 a 07:00. Pruebas: `?mudo` lo apaga, `?sonido` ignora el horario.
+Todo se sintetiza con WebAudio (sin archivos): los animales **hablan con voz de su especie** cuando aparece su globo de diálogo (monos: chillidos «uh-uh-ah»; jirafas: zumbido grave y resoplido; focas: «arf, arf»; pensar suena menos que hablar) y los **sucesos que les pasan** tienen efecto: meteoritos, explosiones, guerras, plagas, terremotos, volcanes, tormentas, inundaciones, incendios, naves, cohetes y las bendiciones. No suena nada por avisos, mensajes ni cambios de época. El navegador solo deja sonar tras un toque en la pantalla; el botón 🔈/🔊/🔇 de la cabecera silencia o enciende (se recuerda). Hay silencio de 21:00 a 07:00. Pruebas: `?mudo` lo apaga, `?sonido` ignora el horario.
 
 Si en la TV no suena: toca cualquier parte de la pantalla una vez; luego, al tocar la etiqueta de versión de la cabecera, la línea «Sonido» muestra el estado del audio y un botón «probar» que hace sonar una fanfarria (así se distingue un problema de la página de un volumen bajo o silenciado en la TV).
+
+## Mensajes a pantalla completa y botones de prueba
+
+Los avisos por horario (almuerzo, seminarios, café, jobs) ocupan **toda la pantalla**, al centro, con fondo blanco, el mono grande y el texto grande; empiezan con una **trompeta** («¡tu-tu tu-tuuu!»). Al tocarlos se cierran. Al tocar la etiqueta de versión de la cabecera, el cuadro trae botones **Probar** para lanzar cada aviso, cada saga de ciencia ficción (terminan en cataclismo y reinicio, ~2 min) y varios sucesos sin esperar la hora o el azar.

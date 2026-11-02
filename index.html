@@ -152,6 +152,10 @@ body { padding-bottom: 150px; }
   padding: 12px 16px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; font-size: 13px; line-height: 1.5;
   cursor: pointer; box-shadow: 0 10px 40px rgba(0,0,0,.35); }
 #hud.open { display: block; }
+#hud table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin: 4px 0; font-variant-numeric: tabular-nums; }
+#hud th, #hud td { padding: 2px 6px; text-align: right; border-bottom: 1px solid var(--border); } #hud th:first-child, #hud td:first-child { text-align: left; }
+#hud th { color: var(--muted); font-weight: 600; } #hud .muted, #hud .small { color: var(--muted); } #hud .small { font-size: 11px; margin-top: 3px; line-height: 1.35; }
+#hudChip .ct { font-size: 11px; color: var(--muted); } #hudChip { line-height: 1.25; }
 #bigMsg { position: fixed; left: 0; right: 0; top: 0; height: min(24vh, 210px); z-index: 60; display: flex; align-items: center; justify-content: center; cursor: pointer;
   background: var(--bg); border-bottom: 3px solid var(--accent); box-shadow: 0 8px 28px rgba(0,0,0,.28); animation: bmIn .45s ease; }
 #bigMsg[hidden] { display: none; }
@@ -281,8 +285,8 @@ svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
 if (/[?&]ua\b/.test(location.search)) addEventListener("load", () => { const d = document.createElement("div"); d.style.cssText = "position:fixed;left:8px;right:8px;top:40px;z-index:99;background:#fff;color:#000;border:2px solid #c00;padding:10px;font:16px monospace;word-break:break-all"; d.textContent = navigator.userAgent + " | " + innerWidth + "x" + innerHeight + " @" + devicePixelRatio; document.body.appendChild(d); setTimeout(() => d.remove(), 60000); });
 </script>
 <script src="qrcode.min.js?v=1"></script>
-<script src="zoo.js?v=20261031s"></script>
-<script src="world.js?v=20261031s"></script>
+<script src="zoo.js?v=20261031t"></script>
+<script src="world.js?v=20261031t"></script>
 <script>
 // ====== Configuración ======
 const REPO = "fissotta/monito"; // "usuario/monito"  (vacío = modo demo)
@@ -303,8 +307,8 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
 const demo = !REPO || new URLSearchParams(location.search).has("demo");
-const BUILD = "20261031s";   // subir junto con los ?v= de los <script> en cada publicacion
-const PR = 31;   // numero del pull request de esta version (lo que se ve en gris junto al estado; subirlo en cada publicacion)
+const BUILD = "20261031t";   // subir junto con los ?v= de los <script> en cada publicacion
+const PR = 32;   // numero del pull request de esta version (lo que se ve en gris junto al estado; subirlo en cada publicacion)
 $("ver").textContent = "v" + PR;
 const state = { data: {}, next: 0, timer: null, stale: 300 };
 // si se publica una version nueva, la pagina (p. ej. en la TV) se recarga sola; revisa cada 10 min

@@ -139,6 +139,10 @@ A la izquierda de la leyenda de colores hay una cinta pequeña con el título **
 
 Los **botones de poderes** ahora van en el borde superior de la zona de la civilización (a la derecha, junto al logo); en celular siguen junto a la leyenda.
 
+## Conteo de animales y diversidad
+
+Bajo el nombre de la época (el cuadro bajo el logo, en la civilización) se ve el **conteo de animales**. Al tocarlo, el cuadro central agrega una tabla de **diversidad alfa** calculada con la especie de cada animal que se ve (los de los anillos y los de la civilización): **riqueza** (nº de especies), **Shannon H′**, **Simpson 1−D**, **dominancia** (Berger–Parker, % de la especie más abundante) y **equidad de Pielou**, para todos los animales y por equipo (monos, jirafas, focas). Cada índice trae su explicación breve.
+
 ## Popups
 
 Clic en la fecha/hora abre el calendario; clic en «Próximo seminario» abre la lista completa de seminarios. Las ventanas se cierran con ×, tocando fuera o solas: el calendario a los 10 s, el tiempo y la lista de seminarios a los 30 s, el resumen de época a 1 min, planetas 15 s y edificios 5 s.

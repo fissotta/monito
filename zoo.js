@@ -874,6 +874,11 @@ const Zoo = (function () {
       splash() { noise(1, .22, "bandpass", 900, 300, 0, .8); noise(.6, .14, "bandpass", 1800, 600, .3, .8); },
       crackle() { for (let i = 0; i < 7; i++) noise(.04, .18, "bandpass", r(1500, 4000), 800, i * r(.08, .2), 2); },
       cheer() { [523, 659, 784, 988, 1319].forEach((f, i) => tone(f, f * 1.02, .22, "triangle", .13, i * .09, { lp: 3500 })); },
+      trumpet() {   // ¡tu-tu tu-tuuu!: dos notas cortas, una y una larga, con timbre de metal
+        [[523, .11, 0], [523, .11, .14], [659, .2, .3], [784, .75, .56]].forEach(n => {
+          tone(n[0], n[0], n[1], "sawtooth", .2, n[2], { lp: 2600, a: .025 }); tone(n[0] * 2, n[0] * 2, n[1], "square", .04, n[2], { lp: 3500, a: .03 });
+        });
+      },
       sad() { tone(330, 220, .7, "triangle", .15, 0, { lp: 1200, vib: 5, vd: 8 }); tone(247, 165, .9, "triangle", .13, .4, { lp: 1000 }); },
       clash() { for (let i = 0; i < 4; i++) { noise(.09, .2, "bandpass", r(1800, 3500), 900, i * .12, 3); tone(r(800, 1400), 500, .08, "square", .05, i * .12, { lp: 2500 }); } },
     };

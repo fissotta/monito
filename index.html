@@ -157,16 +157,17 @@ body { padding-bottom: 150px; }
 #hud th, #hud td { padding: 2px 6px; text-align: right; border-bottom: 1px solid var(--border); } #hud th:first-child, #hud td:first-child { text-align: left; }
 #hud th { color: var(--muted); font-weight: 600; } #hud .muted, #hud .small { color: var(--muted); } #hud .small { font-size: 11px; margin-top: 3px; line-height: 1.35; }
 #hudChip .ct { font-size: 11px; color: var(--muted); } #hudChip { line-height: 1.25; }
-#bigMsg { position: fixed; left: 0; right: 0; top: 0; height: min(24vh, 210px); z-index: 60; display: flex; align-items: center; justify-content: center; cursor: pointer;
-  background: var(--bg); border-bottom: 3px solid var(--accent); box-shadow: 0 8px 28px rgba(0,0,0,.28); animation: bmIn .45s ease; }
+#verPop .tbs { margin-top: 4px; line-height: 1.9; } .tb { padding: 1px 7px; min-height: 24px; font-size: 11px; margin: 1px 2px 1px 0; border-radius: 999px; }
+#bigMsg { position: fixed; left: 0; right: 0; top: 0; bottom: 0; width: 100vw; height: 100vh; z-index: 60; display: flex; align-items: center; justify-content: center; cursor: pointer;
+  background: #fff; color: #1b2733; animation: bmIn .45s ease; }   /* pantalla completa de verdad, fondo blanco (tambien de noche) */
 #bigMsg[hidden] { display: none; }
-@keyframes bmIn { from { opacity: 0; transform: translateY(-40%); } to { opacity: 1; transform: none; } }
-.bm-in { display: flex; align-items: center; gap: clamp(8px, 2.5vw, 32px); padding: 0 3vw; max-width: 100vw; height: 100%; }
-.bm-mono { height: 92%; width: auto; flex: none; overflow: visible; }
-.bm-t { font-weight: 900; font-size: clamp(24px, 4.6vw, 66px); line-height: 1.05; letter-spacing: -.02em; color: var(--accent); }
-.bm-s { margin-top: .25em; font-size: clamp(14px, 2vw, 28px); font-weight: 700; line-height: 1.2; }
+@keyframes bmIn { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
+.bm-in { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 2vh; padding: 3vh 4vw; max-width: 100vw; height: 100%; }
+.bm-mono { height: 52vh; width: auto; flex: none; overflow: visible; }
+.bm-t { font-weight: 900; font-size: clamp(36px, 8vw, 150px); line-height: 1.05; letter-spacing: -.02em; color: #1d4ed8; }
+.bm-s { margin-top: .2em; font-size: clamp(20px, 3.4vw, 60px); font-weight: 700; line-height: 1.2; color: #334155; }
 .bm-in.alert .bm-t { color: #e53935; animation: bmShake .5s infinite; }
-@keyframes bmShake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+@keyframes bmShake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
 #hud .ev { color: var(--muted); }
 #toasts { position: fixed; left: 10px; bottom: 92px; z-index: 31; display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
 .toast { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 4px 9px; font-size: 12px;
@@ -193,7 +194,7 @@ button:hover { border-color: var(--accent); }
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .status { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 .ver { color: var(--muted); opacity: .65; font-size: 11px; margin-left: 4px; background: none; border: 0; padding: 2px 4px; min-height: 0; cursor: pointer; }
-#verPop { position: fixed; z-index: 50; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(460px, 94vw); padding: 12px 16px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,.35); font-size: 14px; line-height: 1.6; }
+#verPop { position: fixed; z-index: 50; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(680px, 94vw); max-height: 90vh; overflow: auto; padding: 12px 16px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,.35); font-size: 14px; line-height: 1.6; }
 #verPop[hidden] { display: none; }
 #verPop h3 { margin: 0 0 6px; font-size: 16px; } #verPop .k { color: var(--muted); }
 main {
@@ -286,8 +287,8 @@ svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
 if (/[?&]ua\b/.test(location.search)) addEventListener("load", () => { const d = document.createElement("div"); d.style.cssText = "position:fixed;left:8px;right:8px;top:40px;z-index:99;background:#fff;color:#000;border:2px solid #c00;padding:10px;font:16px monospace;word-break:break-all"; d.textContent = navigator.userAgent + " | " + innerWidth + "x" + innerHeight + " @" + devicePixelRatio; document.body.appendChild(d); setTimeout(() => d.remove(), 60000); });
 </script>
 <script src="qrcode.min.js?v=1"></script>
-<script src="zoo.js?v=20261102d"></script>
-<script src="world.js?v=20261102d"></script>
+<script src="zoo.js?v=20261102e"></script>
+<script src="world.js?v=20261102e"></script>
 <script>
 // ====== Configuración ======
 const REPO = "fissotta/monito"; // "usuario/monito"  (vacío = modo demo)
@@ -308,7 +309,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
 const demo = !REPO || new URLSearchParams(location.search).has("demo");
-const BUILD = "20261102d";   // subir junto con los ?v= de los <script> en cada publicacion
+const BUILD = "20261102e";   // subir junto con los ?v= de los <script> en cada publicacion
 const PR = 35;   // numero del pull request de esta version (lo que se ve en gris junto al estado; subirlo en cada publicacion)
 $("ver").textContent = "v" + PR;
 const state = { data: {}, next: 0, timer: null, stale: 300 };
@@ -666,12 +667,25 @@ $("ver").addEventListener("click", e => {
     `<div><span class="k">Sonido:</span> ${Zoo.api.snd.info()} · <button type="button" id="sndTest" style="padding:0 6px;min-height:0">probar</button></div>` +
     `<div><span class="k">Modo liviano:</span> ${Zoo.api.low ? "sí" : "no"}</div>` +
     `<div><span class="k">Cuadros por segundo:</span> ${Zoo.api.low ? (Zoo.api.probe() < 0 ? "midiendo…" : "medidos " + Zoo.api.probe() + " → " + (Zoo.api.minDt() ? "limitado a 30" : "sin límite")) : "sin límite"}</div>` +
+    `<div class="k" style="margin-top:6px"><b>Probar</b> (toca uno):</div>` + testButtons() +
     (/[?&]off=/.test(location.search) ? `<div><span class="k">Apagado para probar:</span> ${decodeURIComponent((location.search.match(/[?&]off=([^&]*)/) || [])[1] || "")}</div>` : "");
   $("verPop").hidden = false; armPop($("verPop"));
 });
 if (Zoo.api.low) { setTimeout(Zoo.api.reprobe, 60000); setInterval(Zoo.api.reprobe, 600000); }   // la TV vuelve a medir sus cuadros por segundo a los 60 s y cada 10 min
 if (/[?&]verclick\b/.test(location.search)) setTimeout(() => $("ver").click(), 9000);   // prueba: abre el cuadro de la version
-$("verPop").addEventListener("click", e => { e.stopPropagation(); if (e.target.id === "sndTest") { Zoo.api.snd.test(); return; } $("verPop").hidden = true; });
+function testButtons() {   // botones para probar avisos, sagas de ciencia ficcion y sucesos sin esperar la hora o el azar
+  const T = World.test, b = (g, id, n) => `<button type="button" class="tb" data-g="${g}" data-id="${esc(id)}">${esc(n)}</button>`;
+  return `<div class="tbs"><span class="k">Avisos:</span> ${T.bigs().map(x => b("big", x.id, x.n)).join("")}</div>` +
+    `<div class="tbs"><span class="k">Sagas sci-fi</span> (duran ~2 min y terminan en cataclismo): ${T.sagas().map(x => b("saga", x.id, x.n)).join("")}</div>` +
+    `<div class="tbs"><span class="k">Sucesos:</span> ${T.sucesos().map(x => b("do", x, x)).join("")}</div>`;
+}
+$("verPop").addEventListener("click", e => {
+  e.stopPropagation();
+  if (e.target.id === "sndTest") { Zoo.api.snd.test(); return; }
+  const t = e.target.closest && e.target.closest(".tb");
+  if (t) { const T = World.test, g = t.dataset.g, id = t.dataset.id; $("verPop").hidden = true; setTimeout(() => { if (g === "big") T.big(id); else { const m = g === "saga" ? T.saga(id) : T.suceso(id); if (m) T.toast(m); } }, 200); return; }
+  $("verPop").hidden = true;
+});
 document.addEventListener("click", () => { $("verPop").hidden = true; });
 
 // cinta de texto sin duplicar la lista: solo hay en pantalla las noticias/papers que caben (mas un poco de reserva) y, a medida que salen por la

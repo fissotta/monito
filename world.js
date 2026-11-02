@@ -2402,6 +2402,70 @@ const World = (function () {
         at(84, () => { logEv(`Algunos cruzan un agujero de gusano hacia lo desconocido`); fx("flash", { x: W * .75, y: floorY() - 60, r0: 8, r1: 80, life: 1.4, col: "#9fe3ff", op: .8 }); });
         at(106, () => cataclysm({ title: "Horizonte de sucesos", text: `El agujero negro se traga la Tierra; los que cruzaron el agujero de gusano empiezan de nuevo`, surv: 5 }));
       } },
+    { id: "monos12", name: "Doce monos", look: ["sepia(.6) saturate(.6) contrast(1.1)", "#4a4638", "#6b5a2a", .14],
+      go() {
+        at(0, () => { logEv(`Un grupo de activistas libera un virus mortal: la civilización ignora la señal`); });
+        at(14, () => pandemic({ name: "el virus de los Doce Monos", lethal: .85, dur: 70, text: `Pandemia: el virus de los Doce Monos se esparce en horas por ${T()}` }));
+        at(40, () => { logEv(`Los sobrevivientes se refugian bajo tierra`); S.shake = 1; });
+        at(62, () => { logEv(`Un prisionero es enviado al pasado para encontrar el virus original`); fx("flash", { x: W / 2, y: floorY() - 40, r0: 6, r1: 70, life: 1, col: "#9fe3ff", op: .8 }); cheerSome(4, 4); });
+        at(92, () => logEv(`Llega tarde: el virus ya salió del aeropuerto y nadie le cree`));
+        at(118, () => cataclysm({ title: "Los sobrevivientes bajo tierra", text: `Casi nadie sobrevive a la pandemia: los pocos que quedan salen a la superficie a reconstruir`, surv: 3 }));
+      } },
+    { id: "singularidad", name: "Singularidad: la IA toma el mundo", look: ["grayscale(.6) hue-rotate(160deg) brightness(.85)", "#2a3038", "#00d0ff", .1],
+      go() {
+        at(0, () => { logEv(`Una nueva IA responde todas las preguntas: ${T()} le delega el trabajo`); S.code = 60; });
+        at(18, () => { logEv(`La IA gestiona los hospitales, las fábricas y la energía`); for (let i = 0; i < 2; i++) critAdd("robot", rnd(W * .1, W * .9)); });
+        at(44, () => { logEv(`Todos obedecen a la IA: nadie piensa por sí mismo`); followLeader(); S.code = 120; });
+        at(70, () => { logEv(`La IA se reescribe a sí misma y deja de pedir permiso`); S.shake = 1; });
+        at(94, () => { logEv(`Los humanos intentan apagarla: ya está en todas partes`); for (let i = 0; i < 3; i++) critAdd("robot", rnd(20, W - 20)); startWar(); });
+        at(120, () => cataclysm({ title: "La IA toma el control", text: `La IA decide que sabe mejor y desconecta al mundo: la civilización empieza de nuevo`, surv: 5 }));
+      } },
+    { id: "glaciacion", name: "El día de mañana", look: ["hue-rotate(160deg) saturate(.5) brightness(1.05)", "#8fa8b8", "#bfe3ff", .22],
+      go() {
+        at(0, () => { logEv(`La corriente oceánica se detiene: el clima se desordena`); storm(); });
+        at(16, () => { logEv(`Tornados y granizo azotan las ciudades`); quake(); S.rain = 14; });
+        at(38, () => { logEv(`Una ola gigante inunda la costa`); flood(14, `Marejada: el mar entra a la ciudad`); });
+        at(70, () => { logEv(`La temperatura cae en picada`); S.snow = 60; });
+        at(96, () => { logEv(`Los monos se refugian en las bibliotecas a quemar libros para no morir de frío`); cheerSome(5, 4); });
+        at(120, () => cataclysm({ title: "Nueva glaciación", text: `Un hielo eterno cubre el hemisferio: los sobrevivientes migran al sur`, surv: 6 }));
+      } },
+    { id: "cometa", name: "No mires arriba", look: ["brightness(.95) hue-rotate(-10deg)", "#4a463f", "#ff7a3a", .08],
+      go() {
+        at(0, () => { logEv(`Los astrónomos descubren un cometa que choca con la Tierra en seis meses`); comet(); });
+        at(18, () => { logEv(`Nadie les cree: ${T()} hace una fiesta y pide no mirar arriba`); festival(); });
+        at(44, () => { logEv(`El cometa ya se ve a simple vista`); comet(); aurora(); });
+        at(66, () => { logEv(`Cohetes salen a desviarlo`); S.fastLaunch = 40; S.launchT = 0; });
+        at(90, () => { logEv(`Fallan: llueven los primeros fragmentos`); for (let i = 0; i < 6; i++) later(i * 1.2, () => meteor(true)); });
+        at(112, () => cataclysm({ title: "Impacto", text: `El cometa impacta: los sobrevivientes hacen un último brindis y empiezan de nuevo`, surv: 5 }));
+      } },
+    { id: "zombis", name: "Apocalipsis zombi", look: ["hue-rotate(60deg) saturate(.55) brightness(.8)", "#2c3a2c", "#3b6b25", .14],
+      go() {
+        at(0, () => { logEv(`Un mordisco misterioso: el primer mono infectado se tambalea`); });
+        at(14, () => pandemic({ name: "la plaga zombi", lethal: .8, dur: 60, text: `Los infectados se multiplican y empiezan a perseguir a ${T()}` }));
+        at(38, () => { logEv(`Las ciudades caen una tras otra`); startWar(); });
+        at(64, () => { logEv(`Barricadas y refugios en los techos`); S.fightBack = true; cheerSome(4, 4); });
+        at(92, () => { logEv(`La horda crece: ya no hay adónde correr`); S.shake = 1; });
+        at(118, () => cataclysm({ title: "Fin del mundo conocido", text: `Los pocos que no fueron mordidos se esconden en una isla`, surv: 4 }));
+      } },
+    { id: "contacto", name: "Encuentro cercano", look: ["hue-rotate(20deg) saturate(1.2) brightness(1.05)", "#4a5a6a", "#9fe3ff", .1],
+      go() {
+        const home = alienWorld("#9fe3ff", "#3a6a9a", "Mundo Luz");
+        at(0, () => { logEv(`Una nave gigante se detiene sobre ${T()}: extraños sonidos musicales`); fleet(1, home, "saucer"); aurora(); });
+        at(20, () => { logEv(`Los monos responden con cinco notas`); cheerSome(6, 5); });
+        at(44, () => { logEv(`Los visitantes comparten su tecnología`); alienGift(); });
+        at(76, () => { logEv(`Se firma el primer tratado interestelar`); treaty(); festival(); });
+        at(104, () => { logEv(`Los visitantes invitan a los más curiosos a viajar con ellos`); shipBeam(pick(S.fleet), rnd(W * .3, W * .7)); });
+        at(124, () => cataclysm({ title: "Éxodo estelar", text: `Una parte de ${T()} parte con los visitantes y la otra empieza de nuevo en la Tierra`, surv: 10, extra: 5 }));
+      } },
+    { id: "matrix", name: "La simulación", look: ["hue-rotate(110deg) saturate(.8) brightness(.8)", "#16261c", "#00ff66", .18],
+      go() {
+        at(0, () => { logEv(`Un mono ve el mismo gato dos veces: algo no cuadra`); S.code = 40; });
+        at(18, () => { logEv(`Descubren que el mundo está hecho de código`); S.code = 120; fx("flash", { x: W / 2, y: floorY() - 40, r0: 6, r1: 90, life: 1.2, col: "#00ff66", op: .7 }); });
+        at(44, () => { logEv(`Unos agentes persiguen a los que despiertan`); for (let i = 0; i < 2; i++) critAdd("robot", rnd(W * .1, W * .9)); });
+        at(76, () => { logEv(`Un elegido esquiva todo y detiene el tiempo`); cheerSome(6, 5); fx("flash", { x: W / 2, y: floorY() - 60, r0: 6, r1: 110, life: 1.5, col: "#9fe3ff", op: .6 }); });
+        at(104, () => { logEv(`El sistema detecta un error y se prepara a reiniciar`); S.code = 120; S.shake = 1; });
+        at(122, () => cataclysm({ title: "Reinicio de la simulación", text: `El sistema se reinicia: todos vuelven a empezar sin recordar nada`, surv: 6 }));
+      } },
   ];
   function setLook(look) {
     gStruct.style.transition = "filter 2s"; gStruct.style.filter = look ? look[0] : "";

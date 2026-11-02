@@ -808,6 +808,7 @@ const Zoo = (function () {
     kindOf, CELEBS, SPECIES_BY_KIND,
     setCelebHandler: fn => { onCeleb = fn; },
     setFestive: names => { FEST = names || []; },
+    census: () => { const out = []; for (const id in zoos) for (const m of zoos[id].ms) out.push({ k: m.kind || (m.sp && m.sp.kind) || "mono", s: m.sp.name }); return out; },   // los animales de los anillos (especie y equipo), para los indices de diversidad
     setStatic: on => { STATIC = !!on && !/[?&]anillos=vivos/.test(location.search); if (!STATIC) for (const id in zoos) zoos[id].sv = null; },
     low: LOW, off: isOff, minDt: () => MIN_DT,
     reprobe: () => { if (LOW && !NOCAP) { probe.done = false; probe.t0 = 0; probe.s = 0; probe.skip = 500; MIN_DT = 0; } },   // vuelve a medir sin limite unos segundos (la primera medicion cae justo cuando la pagina carga)

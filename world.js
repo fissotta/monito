@@ -2553,16 +2553,33 @@ const World = (function () {
     }
   }
   const popLine = () => S.unified ? `Población ${popTotal()} · ${S.nation}` : S.tribes.map(t => { const w = TRIBE_INFO[t.kind].plural; return `${w[0].toUpperCase() + w.slice(1)} ${popOf(t.i)}`; }).join(" · ");
+  // indices de diversidad alfa de los animales (la especie de cada uno): riqueza, Shannon, Simpson, dominancia y equidad
+  const alpha = list => {
+    const c = {}; list.forEach(x => { c[x.s] = (c[x.s] || 0) + 1; });
+    const ns = Object.values(c), N = ns.reduce((a, b) => a + b, 0), R = ns.length;
+    if (!N) return { N: 0, R: 0, H: 0, simp: 0, dom: 0, J: 0 };
+    let H = 0, D = 0, mx = 0; ns.forEach(n => { const p = n / N; H -= p * Math.log(p); D += p * p; mx = Math.max(mx, p); });
+    return { N, R, H, simp: 1 - D, dom: mx, J: R > 1 ? H / Math.log(R) : 0 };
+  };
+  function diversityHtml() {
+    const all = groundMons().map(g => ({ k: g.m.kind, s: g.m.sp.name })).concat(A.census()), cols = [["Todos", all]].concat(TRIBE_KINDS.map(k => [TRIBE_INFO[k].plural[0].toUpperCase() + TRIBE_INFO[k].plural.slice(1), all.filter(x => x.k === k)])), r = cols.map(([, l]) => alpha(l));
+    const row = (n, f) => `<tr><td>${n}</td>${r.map(x => `<td>${f(x)}</td>`).join("")}</tr>`;
+    return `<div style="margin-top:6px;border-top:1px solid var(--border);padding-top:4px"><b>Diversidad alfa</b> <span class="muted">· calculada con los ${r[0].N} animales que se ven (anillos y civilización) de ${popTotal()} en total</span>` +
+      `<table><tr><th></th>${cols.map(([n]) => `<th>${n}</th>`).join("")}</tr>` +
+      row("Riqueza (especies)", x => x.R) + row("Shannon H′", x => x.H.toFixed(2)) + row("Simpson 1−D", x => x.simp.toFixed(2)) + row("Dominancia", x => Math.round(x.dom * 100) + " %") + row("Equidad J", x => x.J.toFixed(2)) +
+      `</table><div class="small">Riqueza: cuántas especies hay. Shannon: diversidad que pesa especies raras y comunes (más alto = más diverso). Simpson: probabilidad de que dos animales al azar sean de especies distintas. Dominancia: % de la especie más abundante (Berger–Parker). Equidad: qué parejo es el reparto entre especies (1 = perfecto).</div></div>`;
+  }
   function renderHud() {
     if (!S.started) { if (hudOpen) hud.innerHTML = "La civilización empieza cuando cae el primer animal de los anillos."; return; }
     if (S.hudT > 0) return;
     S.hudT = .3;
     const e = ERAS[S.era], pop = popTotal(), st = S.stats;
-    chip.innerHTML = `<b>${eraName()}</b> · ${fmtYear(curYear())}` + (S.cycle > 1 ? ` · Ciclo ${S.cycle}` : "") + " ▸";
+    chip.innerHTML = `<b>${eraName()}</b> · ${fmtYear(curYear())}` + (S.cycle > 1 ? ` · Ciclo ${S.cycle}` : "") + ` ▸<br><span class="ct">Animales: ${pop}</span>`;
     let h = `<b>${eraName()}</b> · ${fmtYear(curYear())}<br>${popLine()}` + (S.cycle > 1 ? ` · Ciclo ${S.cycle}` : "") + (S.tribes.some(t => t.cult) && !S.unified && S.era <= 4 ? `<br>Culturas: ${S.tribes.map(t => `${TRIBE_INFO[t.kind].plural} ${CULTURES[t.cult] ? CULTURES[t.cult].name : "—"}`).join(" · ")}` : "") +
       (S.saga ? `<br>Saga: ${S.saga.def.name}` : "") +
       (S.era === 7 && S.destSeen ? ` · ${S.dest.name}: ${S.colonists}${S.won ? " ✔" : "/" + S.goal}` : "");
     if (hudOpen) {
+      h += diversityHtml();
       h += `<div class="ev" style="margin-top:4px;max-height:42vh;overflow:auto">` +
         S.log.slice(0, 14).map(l => `${l.y}: ${l.text}`).join("<br>") + `</div>` +
         (S.rel ? `<div style="margin-top:4px">Religión: ${S.rel.name}${S.rel2 && S.done.reforma ? " · rival: " + S.rel2.name : ""}</div>` : "") +

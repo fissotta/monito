@@ -1,6 +1,8 @@
-02/nov Celia
-09/nov Abraham
-16/nov No hay
-23/nov Issotta
-30/nov Sofi
-07/dic Celia
+2-Nov	Celia
+9-Nov	Gabriel
+16-Nov	No hay
+23-Nov	Abraham
+30-Nov	No hay
+07-dic	Issotta
+14-dic	Sofi
+21-dic	Celia

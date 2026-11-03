@@ -207,3 +207,7 @@ Si en la TV no suena: toca cualquier parte de la pantalla una vez; luego, al toc
 ## Mensajes a pantalla completa
 
 Los avisos por horario (almuerzo, seminarios, jobs) ocupan **toda la pantalla**, al centro, con fondo blanco, el mono grande y el texto grande; empiezan con una **trompeta** («¡tu-tu tu-tuuu!»). Al tocarlos se cierran.
+
+## Tocar un animal del medidor
+
+Al tocar un animal que está en un anillo (caminando, sentado o esperando) se **cae al mundo de abajo** gritando un insulto o una maldición en un globo (los famosos gritan su frase), con su voz de mono, jirafa o foca. El anillo queda con uno menos y se repone solo con la carga. `?sinCaer` en la URL deja el comportamiento anterior (solo saludar).

@@ -680,10 +680,10 @@ const Zoo = (function () {
       });
     }
     // globo de dialogo: lo que dice al tocarlo (react) o lo que piensa mientras camina (think); puede tener varias lineas
-    const reacting = m.mode === "react" && m.say, thinking = !reacting && m.thinkT > 0 && m.think, txt = reacting ? m.say : thinking ? m.think : null;
+    const shoutLeft = m.shoutUntil ? m.shoutUntil - performance.now() : 0, shouting = shoutLeft > 0 && m.shout, reacting = !shouting && m.mode === "react" && m.say, thinking = !shouting && !reacting && m.thinkT > 0 && m.think, txt = shouting ? m.shout : reacting ? m.say : thinking ? m.think : null;
     sD(p.bubble, txt);
     if (txt) {
-      const u = reacting ? m.t / m.dur : 1 - m.thinkT / m.thinkDur, bd = ((m.bp && m.bp.bub) || 27) * kOf(m);
+      const u = shouting ? 1 - shoutLeft / SHOUT_MS : reacting ? m.t / m.dur : 1 - m.thinkT / m.thinkDur, bd = ((m.bp && m.bp.bub) || 27) * kOf(m);
       if (p.bubbleKey !== txt) {
         p.bubbleKey = txt;
         Snd.voice(m.kind || (m.sp && m.sp.kind) || "mono", !reacting);   // habla (o murmura) con voz de su especie
@@ -853,8 +853,21 @@ const Zoo = (function () {
     "Sofi, ¿cómo va ese manuscrito?", "Un poquito de paper cada día, Sofi", "Sofi, ¿ya citaste todo lo que debías?"];
   let sofiDeck = [];
   const nextSofi = () => { if (!sofiDeck.length) sofiDeck = SOFI.slice().sort(() => Math.random() - .5); return sofiDeck.pop(); };
+  const SHOUT_MS = 2800;
+  const CURSES = ["¡Chucha, me botaste!", "¡Maldición!", "¡Bruto, cuidado!", "¡Me lleva el diablo!", "¡La weá!", "¡Zopenco!", "¡Animal!", "¡Pesado de porquería!", "¡Me las vas a pagar!", "¡Qué te pasa, tarado!", "¡Ay, mi cola!", "¡Por las barbas de mi abuelo!", "¡Mal nacido!", "¡Sinvergüenza!", "¡#$%&!", "¡Cretino!", "¡Desgraciado!", "¡Ya te vi, matón!", "¡Pa' qué tocai, hueón!", "¡Me lleva la chingada!", "¡Rayos y centellas!", "¡Cabeza de chorlito!", "¡Esto es acoso animal!", "¡Voy a denunciarte!"];
+  function dropAndCurse(m) {   // al tocar un animal del medidor: se cae al mundo de abajo gritando un insulto (los famosos gritan su frase)
+    let z = null; for (const id in zoos) if (zoos[id].ms.indexOf(m) >= 0) { z = zoos[id]; break; }
+    if (!z || !onRelease || m.mode === "cross") return false;
+    const rc = m.parts.root.getBoundingClientRect();
+    m.shout = m.celeb ? `“${m.celeb.quote}”` : pick(CURSES); m.shoutUntil = performance.now() + SHOUT_MS;
+    Snd.voice(m.kind || (m.sp && m.sp.kind) || "mono");
+    z.ms.splice(z.ms.indexOf(m), 1); z.v = (z.v || 0) + 1;
+    onRelease(m, rc.left + rc.width / 2, rc.bottom, z.id, true);
+    return true;
+  }
   function react(m) {
     if (!m.ctx || m.mode === "cross") return;
+    if (!/[?&]sinCaer\b/.test(location.search) && dropAndCurse(m)) return;
     const now = performance.now(), slept = m.mode === "sleep";
     m.taps = now - (m.lastTap || 0) < FAST_TAP_MS ? (m.taps || 0) + 1 : 1;
     m.lastTap = now;

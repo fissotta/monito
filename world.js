@@ -976,13 +976,13 @@ const World = (function () {
   const thoughtFor = g => g.m.celeb && chance(.4) ? `“${g.m.celeb.quote}”` : chance(.28) ? pick(KIND_THOUGHTS[g.m.kind] || KIND_THOUGHTS.mono) : pick(chance(.55) ? THOUGHTS.any.concat(eraThoughts()) : (eraThoughts().length ? eraThoughts() : THOUGHTS.any));
   const eraThoughts = () => (THOUGHTS[Math.min(S.era, 8)] || []).concat(S.era === 6 && !S.digital ? THOUGHTS.nuc : []);
   function say(text) { const g = pick(groundMons()); if (g && g.m.mode !== "sleep") { g.m.say = text; g.m.mode = "react"; g.m.t = 0; g.m.dur = 1.7; } }
-  function adopt(m, x, y, id) {   // un mono se desborda del anillo hacia el mundo
+  function adopt(m, x, y, id, drop) {   // un mono se desborda del anillo hacia el mundo
     gMon.appendChild(m.parts.root);
     m.dir = chance(.5) ? 1 : -1; m.mode = "run"; m.theta = 0; m.mood = { low: 0, mid: 1, high: 0 }; m.pop = undefined;
     const zoo = document.querySelector(`.zoo[data-id="${id}"]`), card = zoo ? zoo.closest(".card") : null;
     const g = { m, tribe: Math.max(0, TRIBE_KINDS.indexOf(m.kind)), state: "climb", card, x, y, rot: 0, vx: 0, vy: 0, vr: 0, dy: rnd(6, GROUND_H - 12), sp: rnd(.85, 1.2), climbT: rnd(5, 10), stay: 0, tu: .5, tv: .5, act: "idle" };
     S.mon.push(g);
-    if (!card) fall(g);
+    if (!card || drop) fall(g);   // drop = lo tocaron en el medidor: cae de inmediato
   }
   A.setReleaseHandler(adopt);
   function fall(g) { g.state = "fall"; g.vx = rnd(-60, 60); g.vy = -rnd(80, 180); g.vr = rnd(-420, 420); g.bounced = false; g.m.mode = "fall"; g.m.t = 0; }

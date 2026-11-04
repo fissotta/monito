@@ -26,7 +26,7 @@ import urllib.error
 import urllib.request
 
 CONF = os.path.expanduser(os.environ.get("MONITO_CONF", "~/.config/monito.env"))
-SAMPLE_SECONDS = 1.0
+SAMPLE_SECONDS = 30.0  # CPU = promedio de esta ventana (antes 1 s)
 JITTER_SECONDS = 10
 BRANCH, FILE = "data", "data.json"
 

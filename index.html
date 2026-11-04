@@ -286,8 +286,8 @@ svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
 if (/[?&]ua\b/.test(location.search)) addEventListener("load", () => { const d = document.createElement("div"); d.style.cssText = "position:fixed;left:8px;right:8px;top:40px;z-index:99;background:#fff;color:#000;border:2px solid #c00;padding:10px;font:16px monospace;word-break:break-all"; d.textContent = navigator.userAgent + " | " + innerWidth + "x" + innerHeight + " @" + devicePixelRatio; document.body.appendChild(d); setTimeout(() => d.remove(), 60000); });
 </script>
 <script src="qrcode.min.js?v=1"></script>
-<script src="zoo.js?v=20261103a"></script>
-<script src="world.js?v=20261103a"></script>
+<script src="zoo.js?v=20261104b"></script>
+<script src="world.js?v=20261104b"></script>
 <script>
 // ====== Configuración ======
 const REPO = "fissotta/monito"; // "usuario/monito"  (vacío = modo demo)
@@ -308,8 +308,8 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
 const demo = !REPO || new URLSearchParams(location.search).has("demo");
-const BUILD = "20261103a";   // subir junto con los ?v= de los <script> en cada publicacion
-const PR = 38;   // numero del pull request de esta version (lo que se ve en gris junto al estado; subirlo en cada publicacion)
+const BUILD = "20261104b";   // subir junto con los ?v= de los <script> en cada publicacion
+const PR = 40;   // numero del pull request de esta version (lo que se ve en gris junto al estado; subirlo en cada publicacion)
 $("ver").textContent = "v" + PR;
 const state = { data: {}, next: 0, timer: null, stale: 300 };
 // si se publica una version nueva, la pagina (p. ej. en la TV) se recarga sola; revisa cada 10 min
@@ -367,7 +367,9 @@ function ringSVG(d) {
   s += `<path d="${arc(92, 0, 360)}" fill="none" stroke="var(--track)" stroke-width="14"/>`;
   if (d.ram > 0) s += `<path class="seg" d="${arc(92, 0, 3.6 * d.ram)}" fill="none" stroke="${color(d.ram)}" stroke-width="14" stroke-linecap="round"/>`;
   // centro
-  const load = d.load ? d.load[0].toFixed(2) : "—";
+  // Load = procesos en cola; el óptimo máximo es 1 por hilo (load = hilos → 100 %)
+  const nth = d.cores.length || 1;
+  const load = d.load ? `${d.load[0].toFixed(1)} / ${nth}` : "—";
   const temp = d.temp == null ? "—" : Math.round(d.temp) + " °C";
   s += `<text x="150" y="128" font-size="11" style="fill:var(--muted)">UPTIME</text>
         <text x="150" y="153" font-size="24" font-weight="600">${fmtUp(d.uptime)}</text>

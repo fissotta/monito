@@ -971,15 +971,18 @@ const Zoo = (function () {
   // El navegador solo deja sonar tras un toque: hasta entonces queda en espera. Silencio de 21:00 a 07:00. Boton en la cabecera para silenciar; ?mudo lo apaga y ?sonido ignora el horario.
   const Snd = (function () {
     const AC = window.AudioContext || window.webkitAudioContext, Q = location.search;
-    let ctx = null, master = null, nbuf = null, on = true, onState = null, lastV = 0;
+    let ctx = null, master = null, nbuf = null, on = true, onState = null, lastV = 0, fxOn = false, amb = true, ambOut = null, dest = null, water = null, wbuf = null, nextEv = 0, act = .8, wl = .8, recent = [];
     const lastFx = {};
     try { on = localStorage.getItem("monito-snd") !== "0"; } catch (e) { /* sin almacenamiento */ }
+    try { fxOn = localStorage.getItem("monito-fx") === "1"; amb = localStorage.getItem("monito-amb") !== "0"; } catch (e) { /* sin almacenamiento */ }
     if (/[?&]mudo\b/.test(Q)) on = false;
+    if (/[?&]fx\b/.test(Q)) fxOn = true;
+    if (/[?&]ambiente\b/.test(Q)) amb = true;
     const unlock = () => {
       if (!AC) return;
       try {
         if (!ctx) {
-          ctx = new AC(); master = ctx.createGain(); master.gain.value = .55; master.connect(ctx.destination);
+          ctx = new AC(); master = ctx.createGain(); master.gain.value = .55; master.connect(ctx.destination); ambOut = ctx.createGain(); ambOut.gain.value = .5; ambOut.connect(master);
           nbuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate); const d = nbuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
         }
         if (ctx.state === "suspended") ctx.resume();
@@ -989,7 +992,8 @@ const Zoo = (function () {
     };
     for (const ev of ["pointerup", "touchend", "mouseup", "keydown", "click"]) document.addEventListener(ev, unlock, { passive: true, capture: true });   // captura: los botones frenan el click; Chrome solo autoriza el audio en touchend/click/keydown
     const quiet = () => { const h = new Date().getHours(); return (h >= 21 || h < 7) && !/[?&]sonido\b/.test(Q); };
-    const ok = () => !!(ctx && on && ctx.state === "running" && !document.hidden && !quiet());
+    const okx = flag => !!(ctx && flag && ctx.state === "running" && !document.hidden && !quiet());
+    const ok = () => okx(on);
     const env = (g, t, v, a, d) => { g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + d); };
     // un tono con deslizamiento de frecuencia, vibrato y filtro opcionales
     function tone(f0, f1, dur, type, vol, delay, o) {
@@ -997,12 +1001,12 @@ const Zoo = (function () {
       os.type = type || "sine"; os.frequency.setValueAtTime(f0, t); os.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
       if (o.vib) { const l = ctx.createOscillator(), lg = ctx.createGain(); l.frequency.value = o.vib; lg.gain.value = o.vd || f0 * .04; l.connect(lg); lg.connect(os.frequency); l.start(t); l.stop(t + dur + .05); }
       if (o.lp || o.bp) { const f = ctx.createBiquadFilter(); f.type = o.bp ? "bandpass" : "lowpass"; f.frequency.value = o.bp || o.lp; f.Q.value = o.q || 1; os.connect(f); out = f; }
-      out.connect(g); g.connect(master); env(g, t, vol, o.a || .01, dur); os.start(t); os.stop(t + dur + .05);
+      out.connect(g); g.connect(dest || master); env(g, t, vol, o.a || .01, dur); os.start(t); os.stop(t + dur + .05);
     }
     function noise(dur, vol, ftype, fa, fb, delay, q) {
       const t = ctx.currentTime + (delay || 0), s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
       s.buffer = nbuf; s.loop = true; f.type = ftype; f.Q.value = q || 1; f.frequency.setValueAtTime(fa, t); f.frequency.exponentialRampToValueAtTime(Math.max(20, fb), t + dur);
-      s.connect(f); f.connect(g); g.connect(master); env(g, t, vol, Math.min(.03, dur / 3), dur); s.start(t); s.stop(t + dur + .05);
+      s.connect(f); f.connect(g); g.connect(dest || master); env(g, t, vol, Math.min(.03, dur / 3), dur); s.start(t); s.stop(t + dur + .05);
     }
     const r = (a, b) => a + Math.random() * (b - a);
     const VOICE = {
@@ -1047,16 +1051,95 @@ const Zoo = (function () {
       sad() { tone(330, 220, .7, "triangle", .15, 0, { lp: 1200, vib: 5, vd: 8 }); tone(247, 165, .9, "triangle", .13, .4, { lp: 1000 }); },
       clash() { for (let i = 0; i < 4; i++) { noise(.09, .2, "bandpass", r(1800, 3500), 900, i * .12, 3); tone(r(800, 1400), 500, .08, "square", .05, i * .12, { lp: 2500 }); } },
     };
+    // ---- ambiente: bosque valdiviano (aves chilenas, grillos, cigarras, agua, viento). Todo al azar: los sonidos, su orden, su tono, su lado
+    // (izquierda/derecha) y las pausas cambian siempre, y la "actividad" sube y baja sola, para que no se note cuando algo se repite. ----
+    const AMB = {
+      chucao() { const p = r(.92, 1.1), n = 2 + (Math.random() * 3 | 0); for (let i = 0; i < n; i++) { const d = i * r(.55, .7), v = .15 + i * .015; tone(1100 * p, 1500 * p, .09, "sine", v, d); tone(1750 * p, 1300 * p, .11, "sine", v, d + .13); tone(1250 * p, 850 * p, .2, "sine", v * .9, d + .27, { vib: 12, vd: 40 }); } },
+      fiofio() { const p = r(.9, 1.12), n = 2 + (Math.random() * 2 | 0); for (let i = 0; i < n; i++) { tone(1700 * p, 2700 * p, .42, "sine", .13, i * .6, { vib: 6, vd: 30 }); tone(2400 * p, 1800 * p, .12, "sine", .07, i * .6 + .42); } },
+      zorzal() { const n = 5 + (Math.random() * 5 | 0); let d = 0; for (let i = 0; i < n; i++) { const f = r(1800, 3600), l = r(.08, .2); tone(f, f * r(.8, 1.25), l, "sine", .1, d, { vib: 18, vd: 40 }); d += l + r(.02, .1); } },
+      queltehue() { const p = r(.9, 1.1), n = 5 + (Math.random() * 5 | 0); tone(1000 * p, 1700 * p, .12, "sawtooth", .08, 0, { bp: 1500, q: 2 }); for (let i = 0; i < n; i++) tone(1500 * p, 1000 * p, .08, "sawtooth", .1, .25 + i * .15, { bp: 1700, q: 2.5 }); },
+      huethuet() { const p = r(.9, 1.15), n = 2 + (Math.random() * 2 | 0); for (let i = 0; i < n; i++) { tone(720 * p, 420 * p, .13, "sawtooth", .13, i * .32, { lp: 1600 }); noise(.08, .05, "bandpass", 1100, 600, i * .32, 1.2); } },
+      carpintero() { const n = 9 + (Math.random() * 8 | 0); let d = 0; for (let i = 0; i < n; i++) { noise(.03, .17, "bandpass", r(1500, 2200), 900, d, 3); tone(900, 300, .035, "sine", .06, d); d += Math.max(.045, .1 - i * .004); } },
+      pitio() { const p = r(.92, 1.1), n = 5 + (Math.random() * 6 | 0); for (let i = 0; i < n; i++) tone(1900 * p, 1750 * p, .07, "sine", .11, i * .11); },
+      picaflor() { const f = r(2600, 3400); tone(f, f * 1.15, .35, "sine", .045, 0, { vib: 60, vd: 220 }); },
+      loro() { const n = 3 + (Math.random() * 3 | 0), p = r(.9, 1.15); for (let i = 0; i < n; i++) tone(1500 * p, 1050 * p, .16, "sawtooth", .08, i * r(.2, .3), { bp: 2000, q: 1.5 }); },
+      buho() { const p = r(.9, 1.1); tone(390 * p, 350 * p, .26, "sine", .13, 0, { vib: 6, vd: 5 }); tone(390 * p, 340 * p, .3, "sine", .13, .42, { vib: 6, vd: 5 }); },
+      tsit() { const n = 4 + (Math.random() * 5 | 0), f = r(3800, 4600); for (let i = 0; i < n; i++) tone(f, f * 1.05, .04, "sine", .07, i * .09); },
+      grillo() {
+        const f = r(4100, 4900), G = 4 + (Math.random() * 7 | 0), gap = r(.3, .45);
+        for (let g = 0; g < G; g++) for (let k = 0; k < 3; k++) tone(f, f, .03, "sine", .05, g * gap + k * .045);
+      },
+      cigarra() {   // zumbido largo que sube y baja: una portadora de 4-5 kHz con la amplitud pulsando ~40 veces por segundo
+        const t = ctx.currentTime, dur = r(2.5, 6), os = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain(), lf = ctx.createOscillator(), lg = ctx.createGain();
+        os.type = "sawtooth"; os.frequency.value = r(3800, 5200); f.type = "bandpass"; f.frequency.value = os.frequency.value; f.Q.value = 3;
+        lf.frequency.value = r(32, 52); lg.gain.value = .02; g.gain.value = .02; lf.connect(lg); lg.connect(g.gain);
+        const env2 = ctx.createGain(); os.connect(f); f.connect(g); g.connect(env2); env2.connect(dest || master); env(env2, t, .6, dur * .35, dur); os.start(t); lf.start(t);
+        os.stop(t + dur + .1); lf.stop(t + dur + .1);
+      },
+      gota() { const n = 1 + (Math.random() * 3 | 0); for (let i = 0; i < n; i++) { const f = r(700, 1200); tone(f, f * r(1.8, 2.5), .09, "sine", .09, i * r(.15, .5)); } },
+      viento() { noise(r(3, 5), .09, "bandpass", r(500, 800), r(900, 1500), 0, .7); },
+    };
+    const AMB_W = { chucao: 1.2, fiofio: 1.2, zorzal: 1, queltehue: .6, huethuet: .8, carpintero: .6, pitio: .8, picaflor: .6, loro: .5, buho: .3, tsit: 1, grillo: 1.5, cigarra: 1.2, gota: 1.3, viento: .7 };
+    function ambPlay(name) {
+      let pn = null;
+      try { if (ctx.createStereoPanner) { pn = ctx.createStereoPanner(); pn.pan.value = r(-.9, .9); pn.connect(ambOut); } } catch (e) { pn = null; }
+      dest = pn || ambOut; try { AMB[name](); } catch (e) { /* audio no disponible */ } dest = null;
+    }
+    function ambPick() {   // al azar con pesos, sin repetir ninguno de los ultimos 4
+      let tot = 0; const c = [];
+      for (const k in AMB_W) if (recent.indexOf(k) < 0) { c.push(k); tot += AMB_W[k]; }
+      let x = Math.random() * tot, pick = c[0];
+      for (const k of c) { x -= AMB_W[k]; if (x <= 0) { pick = k; break; } }
+      recent.push(pick); if (recent.length > 4) recent.shift(); return pick;
+    }
+    // el arroyo: tres capas de ruido filtrado cuyo tono y volumen derivan solos
+    const WL = [[350, .9, .2], [1400, .7, .15], [3200, .8, .07]];
+    function waterStart() {
+      if (water) return;
+      if (!wbuf) { wbuf = ctx.createBuffer(1, ctx.sampleRate * 4, ctx.sampleRate); const d = wbuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+      const t = ctx.currentTime;
+      water = WL.map(l => {
+        const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+        s.buffer = wbuf; s.loop = true; f.type = "bandpass"; f.frequency.value = l[0]; f.Q.value = l[1]; g.gain.value = 0;
+        s.connect(f); f.connect(g); g.connect(ambOut); s.start(t, Math.random() * 3); g.gain.setTargetAtTime(l[2] * wl, t, 1.5);
+        return { s: s, f: f, g: g, l: l };
+      });
+    }
+    function waterStop() {
+      if (!water) return; const t = ctx.currentTime, w = water; water = null;
+      w.forEach(x => { x.g.gain.setTargetAtTime(0, t, .4); x.s.stop(t + 2); });
+    }
+    function ambStep() {
+      if (!ctx) return;
+      const want = okx(amb);
+      if (!want) { waterStop(); return; }
+      try {
+        waterStart(); const t = ctx.currentTime;
+        if (Math.random() < .35) { wl = Math.max(.45, Math.min(1.1, wl + r(-.2, .2))); water.forEach(x => { x.f.frequency.setTargetAtTime(x.l[0] * r(.7, 1.5), t, 1.2); x.g.gain.setTargetAtTime(x.l[2] * wl * r(.7, 1.1), t, 1.5); }); }
+        const now = Date.now();
+        if (now >= nextEv) {
+          ambPlay(ambPick());
+          act = Math.max(.4, Math.min(1.6, act + r(-.25, .25)));
+          nextEv = now + (Math.random() < .08 ? r(.2, .7) : r(.9, 5) / act) * 1000;   // a veces dos o tres seguidos, como un coro
+        }
+      } catch (e) { /* audio no disponible */ }
+    }
+    setInterval(ambStep, 400);
     return {
-      info: () => (!AC ? "este navegador no tiene audio" : (on ? "encendido" : "apagado") + " · " + (ctx ? "motor " + ctx.state : "esperando un toque") + (quiet() ? " · horario de silencio" : "")),
+      info: () => (!AC ? "este navegador no tiene audio" : "voces " + (on ? "sí" : "no") + ", efectos " + (fxOn ? "sí" : "no") + ", ambiente " + (amb ? "sí" : "no") + " · " + (ctx ? "motor " + ctx.state : "esperando un toque") + (quiet() ? " · horario de silencio" : "")),
       test() { unlock(); if (ctx) { try { FX.fanfare(); } catch (e) { /* sin audio */ } } },
       state: () => (!on ? "off" : ctx && ctx.state === "running" ? "on" : "wait"),
       unlock, setOnState: fn => { onState = fn; },
       toggle() { on = !on; try { localStorage.setItem("monito-snd", on ? "1" : "0"); } catch (e) { /* sin almacenamiento */ } unlock(); if (on && ctx) FX.ding(); if (onState) onState(); return on; },
       fx(name, minGap) {   // efecto de la civilizacion; cada tipo con su pausa minima para que no se amontonen
-        if (!ok() || !FX[name]) return; const t = ctx.currentTime;
+        if (!okx(fxOn) || !FX[name]) return; const t = ctx.currentTime;
         if (t - (lastFx[name] || -9) < (minGap || .25)) return; lastFx[name] = t; try { FX[name](); } catch (e) { /* audio no disponible */ }
       },
+      fxState: () => (!fxOn ? "off" : ctx && ctx.state === "running" ? "on" : "wait"),
+      ambState: () => (!amb ? "off" : ctx && ctx.state === "running" ? "on" : "wait"),
+      toggleFx() { fxOn = !fxOn; try { localStorage.setItem("monito-fx", fxOn ? "1" : "0"); } catch (e) { /* sin almacenamiento */ } unlock(); if (fxOn && ctx) FX.ding(); if (onState) onState(); return fxOn; },
+      toggleAmb() { amb = !amb; try { localStorage.setItem("monito-amb", amb ? "1" : "0"); } catch (e) { /* sin almacenamiento */ } unlock(); nextEv = 0; if (!amb) waterStop(); if (onState) onState(); return amb; },
+      ambList: () => Object.keys(AMB), ambPlay(name) { if (ctx && AMB[name]) ambPlay(name); },
       voice(kind, soft) {   // un animal habla: como mucho una voz cada ~2 s (cada ~7 s si solo piensa) para no saturar
         if (!ok() || !VOICE[kind]) return; const t = ctx.currentTime;
         if (t - lastV < (soft ? 7 : 2) || (soft && Math.random() < .5)) return; lastV = t; try { VOICE[kind](); } catch (e) { /* audio no disponible */ }

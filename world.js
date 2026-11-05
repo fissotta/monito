@@ -643,18 +643,22 @@ const World = (function () {
     "Dato: IQ-TREE puede elegir solo el mejor modelo evolutivo", "Dato: AlphaFold predice estructuras de proteínas con inteligencia artificial", "Dato: el hierro y el azufre son comida para muchos acidófilos", "Dato: un MAG es un genoma reconstruido a partir de un metagenoma",
   );
   let skyDeck = [];
-  function skyMessage(fixed, atX) {
+  const POSTER_ON = () => Q.has("poster") || Date.now() < new Date(2026, 10, 20).getTime();   // hasta el final del 19-nov-2026
+  function skyMessage(fixed, atX, hot) {
     if (!skyDeck.length) skyDeck = shuffle(SKY_MSGS.concat(SKY_MSGS_MORE));
-    const txt = typeof fixed === "string" ? fixed : skyDeck.pop(), w = txt.length * 9 + 104, dir = chance(.5) ? 1 : -1, y0 = skyY(rnd(.42, .68)), dur = rnd(24, 32);
+    const txt = typeof fixed === "string" ? fixed : skyDeck.pop(), w = txt.length * (hot ? 12 : 9) + 104, dir = chance(.5) ? 1 : -1, y0 = skyY(rnd(.42, .68)), dur = rnd(24, 32);
     // una nube gordita: base redondeada, ruedas de esponja arriba (mas grandes al centro) y una sombra azulada abajo para dar volumen
     const n = Math.max(3, Math.round(w / 78)), lo = -w / 2 + 40, hi = w / 2 - 40;
     const puffs = Array.from({ length: n }, (_, i) => { const t = n === 1 ? .5 : i / (n - 1), r = 24 + 16 * Math.sin(Math.PI * t) + ((i * 5) % 3) * 3; return [lo + (hi - lo) * t, -4 - r * .5, r]; });
     puffs.push([-w / 2 + 30, 10, 26], [w / 2 - 30, 10, 26]);
     const shapes = dy => `<rect x="${-w / 2 + 22}" y="${-8 + dy}" width="${w - 44}" height="44" rx="22"/>` + puffs.map(([x, y, r]) => `<circle cx="${x.toFixed(1)}" cy="${y + dy}" r="${r.toFixed(1)}"/>`).join("");
     fx("g", { x: atX != null ? atX : dir > 0 ? -w / 2 - 10 : W + w / 2 + 10, y: y0, vx: dir * (W + w + 20) / dur, life: dur,
-      html: `<g style="fill:#9db2d3" opacity=".35">${shapes(7)}</g><g style="fill:var(--cloud)" opacity=".97">${shapes(0)}</g>` +
+      html: hot   // aviso urgente: nube rojiza y texto rojo brillante que parpadea (la animacion es CSS, .hotblink en index.html)
+        ? `<g style="fill:#c4544e" opacity=".4">${shapes(7)}</g><g style="fill:#f6bdb8" opacity=".98">${shapes(0)}</g>` +
+          `<text class="hotblink" text-anchor="middle" y="23" style="fill:#ff0000;font-size:21px;font-weight:900;stroke:#fff;stroke-width:.8px;paint-order:stroke">${txt}</text>`
+        : `<g style="fill:#9db2d3" opacity=".35">${shapes(7)}</g><g style="fill:var(--cloud)" opacity=".97">${shapes(0)}</g>` +
         `<text text-anchor="middle" y="19" style="fill:var(--text);font-size:15px;font-weight:700">${txt}</text>`,
-      tick: g => { g.y = y0 + Math.sin(g.t * .8) * 6; } });
+      tick: g => { g.y = y0 + Math.sin(g.t * (hot ? 1.6 : .8)) * (hot ? 9 : 6); } });
   }
   // ---------- cielo vivo: nubes que pasan, pajaros, sol o luna, estrellas fugaces, luciernagas y mariposas ----------
   const gAmb = el("g", { "pointer-events": "none", "clip-path": "url(#ambclip)" }, gSky); gSky.insertBefore(gAmb, dark);   // detras de edificios y animales
@@ -2547,6 +2551,8 @@ const World = (function () {
     if (S.rain > 0) { S.rain -= h; for (let i = 0; i < h * 90; i++) fx("drop", { x: rnd(0, W), y: SKY - 10, vy: rnd(500, 700), vx: -40, life: 3 }); }
     if (S.snow > 0) { S.snow -= h; for (let i = 0; i < h * 30; i++) fx("flake", { x: rnd(0, W), y: SKY - 10, vy: rnd(40, 80), life: 8 }); }
     S.skyT = (S.skyT == null ? rnd(14, 26) : S.skyT) - h; if (S.skyT <= 0) { S.skyT = rnd(35, 80); skyMessage(); }
+    // aviso fijo de la entrega del poster: nube roja que pasa cada ~1 a 1,5 min hasta el 19 de noviembre (?poster lo fuerza para probar)
+    if (POSTER_ON()) { S.posterT = (S.posterT == null ? rnd(15, 30) : S.posterT) - h; if (S.posterT <= 0) { S.posterT = rnd(55, 95); skyMessage("Entrega Póster 19 Nov !!!", null, true); } }
     if (S.lunch) { S.lunchMsgT -= h; if (S.lunchMsgT <= 0) { S.lunchMsgT = rnd(110, 200); skyMessage(pick(LUNCH_MSGS)); } }
     S.skyChk = (S.skyChk || 0) - h; if (S.skyChk <= 0) { S.skyChk = 2; const n = measureSky(); if (Math.abs(n - SKY) > 3) layout(); }   // el reparto de la pantalla sigue al tamaño de la informacion
     qStep(); pandemicStep(h);

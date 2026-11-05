@@ -1093,7 +1093,7 @@ const Zoo = (function () {
       recent.push(pick); if (recent.length > 4) recent.shift(); return pick;
     }
     // el arroyo: tres capas de ruido filtrado cuyo tono y volumen derivan solos
-    const WL = [[350, .9, .2], [1400, .7, .15], [3200, .8, .07]];
+    const WL = [[260, .7, .1]];   // solo un murmullo grave (el ruido agudo sonaba a estatica de TV); el burbujeo va aparte, con gotitas sueltas
     function waterStart() {
       if (water) return;
       if (!wbuf) { wbuf = ctx.createBuffer(1, ctx.sampleRate * 4, ctx.sampleRate); const d = wbuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
@@ -1116,6 +1116,9 @@ const Zoo = (function () {
       try {
         waterStart(); const t = ctx.currentTime;
         if (Math.random() < .35) { wl = Math.max(.45, Math.min(1.1, wl + r(-.2, .2))); water.forEach(x => { x.f.frequency.setTargetAtTime(x.l[0] * r(.7, 1.5), t, 1.2); x.g.gain.setTargetAtTime(x.l[2] * wl * r(.7, 1.1), t, 1.5); }); }
+        dest = ambOut; const nb = 2 + (Math.random() * 6 | 0);   // burbujas del arroyo: gotitas cortas que suben de tono, sin ritmo fijo
+        for (let i = 0; i < nb; i++) { const f = r(350, 1700); tone(f, f * r(1.4, 2.3), r(.03, .09), "sine", r(.025, .07) * wl, r(0, .4)); }
+        dest = null;
         const now = Date.now();
         if (now >= nextEv) {
           ambPlay(ambPick());

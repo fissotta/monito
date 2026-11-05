@@ -193,12 +193,17 @@ button:hover { border-color: var(--accent); }
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .status { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 @keyframes hotblink { 0%, 100% { opacity: 1 } 50% { opacity: .15 } }
-.hsmoke { transform-box: fill-box; transform-origin: center; animation: hsmoke 1.6s ease-out infinite; opacity: 0; }
-@keyframes hsmoke { 0% { transform: translateY(0) scale(.5); opacity: 0 } 15% { opacity: .85 } 100% { transform: translateY(-24px) scale(1.6); opacity: 0 } }
-.hshake { animation: hshake .3s linear infinite; }
-@keyframes hshake { 0% { transform: translate(0, 0) } 25% { transform: translate(1px, -1px) } 50% { transform: translate(-1px, 0) } 75% { transform: translate(1px, 1px) } 100% { transform: translate(0, 0) } }
-.hbang { opacity: 0; animation: hbang 1s ease-out infinite; }
-@keyframes hbang { 0% { opacity: 0; transform: translateY(4px) } 25% { opacity: 1 } 80% { opacity: 1; transform: translateY(-8px) } 100% { opacity: 0; transform: translateY(-10px) } }
+/* nube del poster: 8 s de ciclo; la cara esta tranquila hasta el 76 % y enojada el resto (~2 s) */
+.hcalm { animation: hcalm 8s steps(1) infinite; }
+@keyframes hcalm { 0% { opacity: 1 } 76% { opacity: 0 } 100% { opacity: 0 } }
+.hang { opacity: 0; animation: hang 8s linear infinite; }
+@keyframes hang { 0% { opacity: 0; transform: translate(0, 0) } 75.9% { opacity: 0; transform: translate(0, 0) } 76% { opacity: 1; transform: translate(1px, -1px) } 79% { transform: translate(-1px, 1px) } 82% { transform: translate(1px, 0) } 85% { transform: translate(-1px, -1px) } 88% { transform: translate(1px, 1px) } 91% { transform: translate(-1px, 0) } 94% { transform: translate(1px, -1px) } 97% { opacity: 1; transform: translate(0, 1px) } 100% { opacity: 1; transform: translate(0, 0) } }
+.hsmoke { transform-box: fill-box; transform-origin: center; opacity: 0; animation: hsmoke 8s ease-out infinite; }
+@keyframes hsmoke { 0%, 76% { transform: translateY(0) scale(.5); opacity: 0 } 80% { opacity: .85 } 100% { transform: translateY(-26px) scale(1.7); opacity: 0 } }
+.hbang { opacity: 0; animation: hbang 8s ease-out infinite; }
+@keyframes hbang { 0%, 76% { opacity: 0; transform: translateY(4px) } 79% { opacity: 1 } 97% { opacity: 1; transform: translateY(-12px) } 100% { opacity: 0; transform: translateY(-14px) } }
+.hvein { opacity: 0; animation: hvein 8s steps(1) infinite; }
+@keyframes hvein { 0% { opacity: 0 } 76% { opacity: 1 } 82% { opacity: 0 } 85% { opacity: 1 } 91% { opacity: 0 } 94% { opacity: 1 } 100% { opacity: 0 } }
 .hotblink { animation: hotblink .7s steps(1, end) infinite; }
 #sfx, #samb { border: 1px solid var(--border, #cbd5e1); border-radius: 8px; padding: 2px 7px; }
 .ver { color: var(--muted); opacity: .65; font-size: 11px; margin-left: 4px; background: none; border: 0; padding: 2px 4px; min-height: 0; cursor: pointer; }
@@ -295,8 +300,8 @@ svg text { fill: var(--text); text-anchor: middle; font-family: inherit; }
 if (/[?&]ua\b/.test(location.search)) addEventListener("load", () => { const d = document.createElement("div"); d.style.cssText = "position:fixed;left:8px;right:8px;top:40px;z-index:99;background:#fff;color:#000;border:2px solid #c00;padding:10px;font:16px monospace;word-break:break-all"; d.textContent = navigator.userAgent + " | " + innerWidth + "x" + innerHeight + " @" + devicePixelRatio; document.body.appendChild(d); setTimeout(() => d.remove(), 60000); });
 </script>
 <script src="qrcode.min.js?v=1"></script>
-<script src="zoo.js?v=20261105e"></script>
-<script src="world.js?v=20261105e"></script>
+<script src="zoo.js?v=20261105f"></script>
+<script src="world.js?v=20261105f"></script>
 <script>
 // ====== Configuración ======
 const REPO = "fissotta/monito"; // "usuario/monito"  (vacío = modo demo)
@@ -317,8 +322,8 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
 const demo = !REPO || new URLSearchParams(location.search).has("demo");
-const BUILD = "20261105e";   // subir junto con los ?v= de los <script> en cada publicacion
-const PR = 45;   // numero del pull request de esta version (lo que se ve en gris junto al estado; subirlo en cada publicacion)
+const BUILD = "20261105f";   // subir junto con los ?v= de los <script> en cada publicacion
+const PR = 46;   // numero del pull request de esta version (lo que se ve en gris junto al estado; subirlo en cada publicacion)
 $("ver").textContent = "v" + PR;
 const state = { data: {}, next: 0, timer: null, stale: 300 };
 // si se publica una version nueva, la pagina (p. ej. en la TV) se recarga sola; revisa cada 10 min
